@@ -6,7 +6,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Commit a cada etapa implementada.** Terminou uma etapa, faz o commit — não acumule várias etapas num commit só.
 - **Sem coautoria na mensagem do commit.** Nada de `Co-Authored-By` ou linha de sessão; só a mensagem.
-- Não reescreva histórico já publicado (force push, rebase/amend/squash de commits pushados): o repo é sincronizado com o Lovable e isso quebra o histórico lá.
 - Código, comentários, nomes e docs em **português** — é a convenção do projeto inteiro.
 
 Não há suíte de testes automatizados no projeto.
@@ -27,7 +26,7 @@ Autenticação em duas vias: `X-API-Key` para máquina (uma chave de escrita por
 
 As chaves de escrita e leitura são emitidas em `POST /v1/chaves` e ficam em `chave_api` (só o SHA-256; o segredo aparece uma vez na resposta). As de variável de ambiente continuam valendo em paralelo — ambiente primeiro, banco depois. A `CHAVE_ADMIN` não migrou: é a que emite e revoga as outras.
 
-Frontend: TanStack Start + React 19 + Tailwind 4 + shadcn/ui, gerado no Lovable. Rotas em `src/routes/`, `src/components/ui/` é shadcn (não edite à mão sem motivo). `vite.config.ts` usa `@lovable.dev/vite-tanstack-config`, que já inclui os plugins — adicionar plugin manualmente duplica e quebra o app.
+Frontend: TanStack Start + React 19 + Tailwind 4 + shadcn/ui. Rotas em `src/routes/`, `src/components/ui/` é shadcn (não edite à mão sem motivo). O `vite.config.ts` lista os plugins na mão (tailwind, tsconfig-paths, tanstackStart, nitro no build, react) — o nitro só entra no `build` e sai com preset `node-server`, que é o que o container roda.
 
 ## Documentos
 

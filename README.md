@@ -36,7 +36,7 @@ serviço, identificadas pelo campo `aplicacao`.
 
 ```
 backend/    FastAPI + SQLAlchemy async + Alembic + Postgres, gerenciado com uv
-frontend/   o painel (TanStack Start, gerado no Lovable)
+frontend/   o painel (TanStack Start + React 19 + Tailwind 4 + shadcn/ui, servido pelo nitro)
 nginx/      o proxy de borda: / vai pro painel, /api/ vai pra API
 docs/       modelo de dados e contratos da API
 ```
@@ -78,4 +78,3 @@ Para mexer só no backend, ver [`backend/README.md`](backend/README.md).
 - [`docs/modelo-de-dados.md`](docs/modelo-de-dados.md) — tabelas, contabilidade de tokens, cálculo de custo
 - [`docs/api.md`](docs/api.md) — contratos dos endpoints, autenticação, CORS, erros
 - [`backend/README.md`](backend/README.md) — estrutura, dev local, migrations
-- [`PROMPT-LOVABLE.md`](PROMPT-LOVABLE.md) — prompt pronto para gerar o frontend no Lovable

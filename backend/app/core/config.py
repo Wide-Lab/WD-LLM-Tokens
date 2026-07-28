@@ -11,7 +11,7 @@ class Config(BaseSettings):
 
     CORS_ORIGINS: list[str] = []
     """Origens do painel. Atrás do nginx de borda, front e API compartilham a mesma origem e
-    isto pode ficar vazio; o painel hospedado no Lovable (outra origem) precisa entrar aqui."""
+    isto pode ficar vazio; só um painel servido de outra origem precisa entrar aqui."""
 
     CHAVES_ESCRITA: dict[str, str] = {}
     """Uma chave por aplicação: `{"famossul": "chave-secreta"}`.
