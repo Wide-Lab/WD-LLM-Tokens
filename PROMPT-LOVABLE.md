@@ -8,6 +8,10 @@ backend expõe.
 > servido pelo mesmo nginx da API, então a base é `/api` na própria origem, e o
 > acesso passou a ser login com sessão em cookie `HttpOnly` — nenhum segredo no
 > browser. Regerar com o texto antigo traria a tela de volta.
+>
+> A tela de Eventos também mudou: era uma tabela plana de todas as chamadas,
+> virou duas — a lista de **atores** e o detalhe de um ator. Regerar com o texto
+> antigo achataria de novo.
 
 ---
 
@@ -61,12 +65,16 @@ Use as combinações assim:
 - Gráfico por modelo/ator/aplicação: **com** `grupo`, **sem** `intervalo` → um por dimensão.
 - Séries por dimensão (opcional): `grupo` + `intervalo` juntos.
 
-**`GET /v1/eventos`** — tabela de auditoria. Params: `aplicacao`, `ator`,
+**`GET /v1/eventos`** — a lista crua das chamadas. Params: `aplicacao`, `ator`,
 `modelo`, `de`, `ate`, `limite` (default 50), `offset`. Resposta:
 
 ```json
-{ "total": 137, "limite": 50, "offset": 0, "itens": [ { "id": "...", "criado_em": "...", "aplicacao": "...", "ator": "...", "modelo": "...", "provedor": "...", "tokens_entrada": 1200, "tokens_saida": 300, "tokens_cache_leitura": 800, "tokens_cache_escrita": 0, "custo": 0.05, "moeda": "USD", "metadados": {} } ] }
+{ "total": 137, "limite": 50, "offset": 0, "itens": [ { "id": "...", "criado_em": "...", "aplicacao": "...", "ator": "...", "modelo": "...", "provedor": "...", "tokens_entrada": 1200, "tokens_saida": 300, "tokens_cache_leitura": 800, "tokens_cache_escrita": 0, "custo": 0.05, "moeda": "USD", "id_externo": "resp_abc123", "mensagem": "quanto custa o frete?", "resposta": "O frete sai por R$ 32,00.", "metadados": {} } ] }
 ```
+
+`mensagem` é o que o ator mandou e `resposta` é o que o agente devolveu. Ambos
+podem vir `null` (o evento não trouxe conteúdo) — nesse caso não invente texto,
+mostre que não foi informado.
 
 **`GET /v1/aplicacoes`** e **`GET /v1/modelos`** — retornam array de strings para
 popular os dropdowns de filtro.
@@ -97,11 +105,29 @@ Ao mudar qualquer filtro, recarregar os dados.
   mostrando os maiores consumidores.
 - **Uso por aplicação** — barra (`grupo=aplicacao`); esconder se só há uma aplicação.
 
-## Tela 2 — Eventos
+## Tela 2 — Eventos (por ator)
 
-Tabela paginada de `GET /v1/eventos` para auditoria. Colunas: data/hora,
-aplicação, ator, modelo, tokens (entrada / saída / cache), custo. Paginação por
-`limite`/`offset` mostrando `total`. Respeita os filtros globais.
+Dois níveis. A pergunta que se faz aqui é "quem está gastando", não "o que
+aconteceu às 14h32" — então a porta de entrada é o ator, e a linha crua fica um
+clique adiante.
+
+**Nível 1 — lista de atores.** `GET /v1/metricas?grupo=ator` (respeitando os
+filtros globais), ordenada por custo decrescente. Colunas: ator, requisições,
+tokens (entrada / saída / cache), custo. Sem paginação — o `GROUP BY` já reduz a
+poucas linhas. Cada linha leva ao detalhe daquele ator.
+
+**Nível 2 — detalhe do ator.** Rota com o ator na URL, e um link de voltar.
+Dentro dele o ator é fixo: mande sempre `ator=<o da URL>` nas chamadas, mesmo que
+o campo de busca da barra de filtros esteja preenchido com outra coisa.
+
+- Cards de KPI do ator (`GET /v1/metricas?ator=...`): requisições, custo, tokens.
+- Uso por modelo (`grupo=modelo`), tabela ordenada por custo.
+- Tabela paginada de chamadas (`GET /v1/eventos?ator=...`, `limite`/`offset`
+  mostrando `total`). Colunas: data/hora, aplicação, modelo, tokens, custo.
+  Cada linha **expande** e mostra o conteúdo da chamada lado a lado: a
+  **mensagem do ator** e a **resposta do agente**, preservando as quebras de
+  linha e com altura limitada e rolagem própria, para uma resposta longa não
+  empurrar a tabela para fora da tela. Sem conteúdo, não ofereça a expansão.
 
 ## Tela 3 — Login
 

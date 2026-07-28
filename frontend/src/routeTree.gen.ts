@@ -9,13 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as EventosRouteImport } from './routes/eventos'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as EventosIndexRouteImport } from './routes/eventos/index'
+import { Route as EventosAtorRouteImport } from './routes/eventos/$ator'
 
-const EventosRoute = EventosRouteImport.update({
-  id: '/eventos',
-  path: '/eventos',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -23,49 +24,58 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const EventosIndexRoute = EventosIndexRouteImport.update({
+  id: '/eventos/',
+  path: '/eventos/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EventosAtorRoute = EventosAtorRouteImport.update({
+  id: '/eventos/$ator',
+  path: '/eventos/$ator',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/eventos': typeof EventosRoute
+  '/eventos/$ator': typeof EventosAtorRoute
+  '/eventos/': typeof EventosIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/eventos': typeof EventosRoute
+  '/eventos/$ator': typeof EventosAtorRoute
+  '/eventos': typeof EventosIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/eventos': typeof EventosRoute
+  '/eventos/$ator': typeof EventosAtorRoute
+  '/eventos/': typeof EventosIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/eventos'
+  fullPaths: '/' | '/login' | '/eventos/$ator' | '/eventos/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/eventos'
-  id: '__root__' | '/' | '/login' | '/eventos'
+  to: '/' | '/login' | '/eventos/$ator' | '/eventos'
+  id: '__root__' | '/' | '/login' | '/eventos/$ator' | '/eventos/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
-  EventosRoute: typeof EventosRoute
+  EventosAtorRoute: typeof EventosAtorRoute
+  EventosIndexRoute: typeof EventosIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/eventos': {
-      id: '/eventos'
-      path: '/eventos'
-      fullPath: '/eventos'
-      preLoaderRoute: typeof EventosRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -75,11 +85,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/eventos/': {
+      id: '/eventos/'
+      path: '/eventos'
+      fullPath: '/eventos/'
+      preLoaderRoute: typeof EventosIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/eventos/$ator': {
+      id: '/eventos/$ator'
+      path: '/eventos/$ator'
+      fullPath: '/eventos/$ator'
+      preLoaderRoute: typeof EventosAtorRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -88,8 +105,19 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
-  EventosRoute: EventosRoute,
+  EventosAtorRoute: EventosAtorRoute,
+  EventosIndexRoute: EventosIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
