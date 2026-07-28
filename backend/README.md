@@ -12,7 +12,7 @@ app/
   db/         Base declarativa, engine e sessão
   modules/
     llm/      registro_llm: ingestão, listagem e métricas de chamada ao LLM
-    precos/   preco_modelo: preço com vigência e a expressão de custo
+    precos/   preco_modelo e preco_mensagem: preço com vigência e as expressões de custo
     acesso/   usuario e chave_api: login, sessão, cadastro e emissão de chave
 ```
 
@@ -87,6 +87,19 @@ curl -X POST localhost:8000/api/v1/precos \
   -d '{"modelo":"gpt-5.6-terra","provedor":"openai","vigencia_inicio":"2026-01-01",
        "entrada_por_milhao":"1.25","saida_por_milhao":"10.00","cache_leitura_por_milhao":"0.125"}'
 ```
+
+A tarifa da mensagem de WhatsApp mora na mesma casa, em `preco_mensagem`, e casa por
+`(categoria, país do destinatário)` — uma linha por país que você atende:
+
+```bash
+curl -X POST localhost:8000/api/v1/precos/mensagem \
+  -H "X-API-Key: $CHAVE_ADMIN" -H 'Content-Type: application/json' \
+  -d '{"categoria":"utility","pais":"BR","vigencia_inicio":"2026-01-01","por_mensagem":"0.0080"}'
+```
+
+`categoria` é `marketing`, `utility` ou `authentication` — `service` é recusada com `400`, porque
+mensagem de serviço não é cobrada e isso entra como `cobravel = false` no evento. Cobrável sem
+preço cadastrado sai com custo `null`, não zero: é assim que o painel avisa que falta um país.
 
 ## Migrations
 

@@ -1,8 +1,13 @@
 # Modelo de dados
 
-Duas tabelas no centro. Uma guarda o que aconteceu (`registro_llm`), a outra guarda quanto
-custa (`preco_modelo`). O custo nunca é gravado no evento — é derivado. Em volta, quem tem
-permissão de chegar perto: `usuario` e `chave_api`.
+No centro, o que aconteceu (`registro_llm`) e quanto custa (`preco_modelo`, `preco_mensagem`).
+O custo nunca é gravado no evento — é derivado. Em volta, quem tem permissão de chegar perto:
+`usuario` e `chave_api`.
+
+As duas tabelas de preço moram juntas de propósito: **dinheiro mora num lugar só**. São duas, e
+não uma com `tipo`, porque a chave do preço é diferente em cada — `preco_modelo` casa por
+`modelo`, o WhatsApp cobra por `(categoria, país do destinatário)`. Uma tabela com metade das
+colunas nula em cada linha são duas tabelas fingindo ser uma.
 
 ## `registro_llm` — uma linha por chamada ao LLM
 
@@ -85,6 +90,34 @@ Preço por vigência para que reajuste do provedor não corrompa o custo histór
 unique (modelo, vigencia_inicio)
 ```
 
+## `preco_mensagem` — a tarifa da mensagem de WhatsApp
+
+Mesmo padrão de vigência, chave diferente: a Meta cobra por categoria e país do destinatário.
+
+| Coluna | Tipo | Notas |
+|---|---|---|
+| `id` | `uuid` PK | |
+| `categoria` | `text not null` | `marketing`, `utility`, `authentication` |
+| `pais` | `text not null` | ISO-3166 alfa-2 do destinatário (`BR`, `US`), maiúsculo |
+| `vigencia_inicio` | `date not null` | a partir de quando este preço vale |
+| `moeda` | `text not null` | `USD` |
+| `por_mensagem` | `numeric not null` | o valor de **uma** mensagem cobrável |
+
+```sql
+unique (categoria, pais, vigencia_inicio)
+index (categoria, pais, vigencia_inicio desc)   -- é a busca do lateral
+```
+
+`service` **não** entra na tabela: mensagem de serviço não é cobrada, e quem resolve isso é o
+`cobravel = false` do evento. Cadastrá-la com valor zero seria dizer a mesma coisa em dois
+lugares que podem discordar.
+
+Uma coluna de valor só, e não `por_mensagem` + `taxa_plataforma`: indo direto na Cloud API não há
+BSP nem markup. Se um dia entrar, é uma coluna e uma parcela a mais na fórmula.
+
+O `pais` casa por igualdade exata, sem curinga de mercado — país não cadastrado sai com custo
+`null`, e é esse buraco visível que pede o cadastro.
+
 ## `usuario` — quem entra no painel
 
 Não tem relação com as outras duas tabelas: ninguém "pertence" a um usuário, e nenhum evento
@@ -126,6 +159,8 @@ ser desligado.
 
 ## Cálculo de custo
 
+### Chamada ao LLM
+
 Para cada evento, escolhe-se a linha de preço do mesmo `modelo` com o maior
 `vigencia_inicio <= registro_llm.criado_em`, e soma-se balde a balde:
 
@@ -139,6 +174,29 @@ custo =  tokens_entrada        / 1e6 * entrada_por_milhao
 Se não houver preço cadastrado para o modelo, o custo do evento é `null` (o
 painel mostra tokens mesmo assim; o custo só aparece depois que o preço entra).
 
-**Moeda:** todas as linhas de `preco_modelo` na mesma moeda (USD) no v1. Misturar
+### Mensagem de WhatsApp
+
+Mesma ideia, uma parcela só: escolhe-se a linha de `preco_mensagem` de mesma `(categoria, pais)`
+com o maior `vigencia_inicio <= criado_em` da mensagem, e o custo é `por_mensagem` — quando a
+mensagem é cobrável.
+
+Quem decide se ela é cobrável **não é este serviço**: é o objeto `pricing` do webhook de status,
+que já leva em conta janela de atendimento aberta, free entry point e as isenções que a Meta foi
+criando. Recalcular a regra de cobrança de outra empresa é errar em silêncio no dia em que ela
+mudar.
+
+As três saídas precisam ser distinguíveis:
+
+| Situação | Custo |
+|---|---|
+| `cobravel = false` (serviço, janela aberta, entrada, free entry point) | `0` |
+| `cobravel = true` e há preço vigente | `por_mensagem` |
+| `cobravel = true` e **não** há preço para `(categoria, pais, data)` | `null` |
+
+O terceiro caso é o que faz o painel gritar que falta cadastrar um país, em vez de somar zero e
+mostrar um total confortável e errado. É a mesma convenção do LLM: `null` é "não sei quanto
+custou", `0` é "não custou nada" — e as duas nunca viram o mesmo número.
+
+**Moeda:** todas as linhas de preço, das duas tabelas, na mesma moeda (USD) no v1. Misturar
 moedas numa mesma agregação é o único jeito de o número sair errado. Conversão
 para BRL, se necessária, acontece na exibição — fora do backend.

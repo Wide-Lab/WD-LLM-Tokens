@@ -11,8 +11,13 @@ from fastapi import APIRouter, Depends, status
 
 from app.api.dependencies import requer_admin, requer_leitura
 from app.db.session import SessionDep
-from app.modules.precos.api.schemas import PrecoIn, PrecoOut
-from app.modules.precos.application.services import PrecoService
+from app.modules.precos.api.schemas import (
+    PrecoIn,
+    PrecoMensagemIn,
+    PrecoMensagemOut,
+    PrecoOut,
+)
+from app.modules.precos.application.services import PrecoMensagemService, PrecoService
 
 router = APIRouter(prefix="/precos", tags=["precos"])
 
@@ -27,3 +32,23 @@ async def listar_precos(session: SessionDep, modelo: str | None = None) -> list[
 async def criar_preco(payload: PrecoIn, session: SessionDep) -> PrecoOut:
     preco = await PrecoService(session).criar(payload.para_dominio())
     return PrecoOut.model_validate(preco)
+
+
+# `/precos` continua sendo o de modelo, sem alias e sem renomeação: são rotas de administração
+# usadas por `curl`, o `backend/README.md` as documenta, e mexer nelas seria churn sem consumidor.
+
+
+@router.get("/mensagem", dependencies=[Depends(requer_leitura)])
+async def listar_precos_de_mensagem(
+    session: SessionDep, categoria: str | None = None, pais: str | None = None
+) -> list[PrecoMensagemOut]:
+    precos = await PrecoMensagemService(session).listar(categoria, pais)
+    return [PrecoMensagemOut.model_validate(preco) for preco in precos]
+
+
+@router.post("/mensagem", status_code=status.HTTP_201_CREATED, dependencies=[Depends(requer_admin)])
+async def criar_preco_de_mensagem(
+    payload: PrecoMensagemIn, session: SessionDep
+) -> PrecoMensagemOut:
+    preco = await PrecoMensagemService(session).criar(payload.para_dominio())
+    return PrecoMensagemOut.model_validate(preco)

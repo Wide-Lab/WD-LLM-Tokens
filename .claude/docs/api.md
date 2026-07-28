@@ -282,6 +282,38 @@ de leitura vive exposta no browser e esta reescreve a base de todo o custo.
 
 ---
 
+## `GET /v1/precos/mensagem`, `POST /v1/precos/mensagem`
+
+A tarifa da mensagem de WhatsApp, com as mesmas duas chaves: `CHAVE_ADMIN` para escrever, chave
+de leitura ou sessão do painel para ler.
+
+**Query params do `GET`:** `categoria`, `pais` — os dois opcionais.
+
+```json
+{
+  "categoria": "utility",
+  "pais": "BR",
+  "vigencia_inicio": "2026-01-01",
+  "moeda": "USD",
+  "por_mensagem": "0.0080"
+}
+```
+
+`categoria` é `marketing`, `utility` ou `authentication`. **`service` é recusada com `400`**: a
+mensagem de serviço não é cobrada, e isso entra como `cobravel = false` no evento — não como um
+preço zero cadastrado aqui.
+
+`pais` é o ISO-3166 alfa-2 do destinatário e sobe para maiúsculas na entrada (`br` vira `BR`).
+Ele casa por igualdade exata com o país da mensagem: país não cadastrado dá custo `null`, e é
+assim que o painel denuncia o buraco em vez de somar zero.
+
+`409` quando já existe preço para o mesmo `(categoria, pais, vigencia_inicio)`.
+
+`GET`/`POST /v1/precos` continuam sendo os de **modelo**, sem alias e sem renomeação: são rotas de
+administração usadas por `curl`, e mexer nelas seria churn sem consumidor.
+
+---
+
 ## `GET /v1/llm/aplicacoes`, `GET /v1/llm/modelos`
 
 Auxiliares para popular os dropdowns de filtro do painel: devolvem a lista
