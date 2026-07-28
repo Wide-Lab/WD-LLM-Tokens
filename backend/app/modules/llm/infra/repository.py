@@ -1,4 +1,4 @@
-"""O repositório de `registro_uso`: ingestão idempotente, listagem crua e agregação.
+"""O repositório de `registro_llm`: ingestão idempotente, listagem crua e agregação.
 
 É o único arquivo que importa outro módulo (`precos`, pela expressão de custo). A alternativa
 era repetir a fórmula do dinheiro na listagem e na agregação — ver o docstring de
@@ -15,26 +15,26 @@ from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.sql import ColumnElement
 
 from app.core.exceptions import ConflictError
-from app.modules.precos.infra.custo import MOEDA_PADRAO, PrecoVigente, preco_vigente_para
-from app.modules.uso.domain.entities import (
+from app.modules.llm.domain.entities import (
     Balde,
     Filtro,
     Grupo,
     Ingestao,
     Intervalo,
     NovoRegistro,
-    RegistroUso,
+    RegistroLlm,
 )
-from app.modules.uso.infra.models import RegistroUso as RegistroUsoRow
+from app.modules.llm.infra.models import RegistroLlm as RegistroLlmRow
+from app.modules.precos.infra.custo import MOEDA_PADRAO, PrecoVigente, preco_vigente_para
 
 _UNIDADE = {Intervalo.DIA: "day", Intervalo.SEMANA: "week", Intervalo.MES: "month"}
 """`Intervalo` → argumento do `date_trunc`. O enum não guarda o termo SQL porque `dia`/`semana`/
 `mes` é o vocabulário do contrato público, e `day`/`week`/`month` é detalhe do Postgres."""
 
 _COLUNA_GRUPO: dict[Grupo, InstrumentedAttribute[str]] = {
-    Grupo.MODELO: RegistroUsoRow.modelo,
-    Grupo.ATOR: RegistroUsoRow.ator,
-    Grupo.APLICACAO: RegistroUsoRow.aplicacao,
+    Grupo.MODELO: RegistroLlmRow.modelo,
+    Grupo.ATOR: RegistroLlmRow.ator,
+    Grupo.APLICACAO: RegistroLlmRow.aplicacao,
 }
 """O mapa fechado é o que impede um `grupo` vindo da query string de virar coluna arbitrária."""
 
@@ -43,7 +43,7 @@ def _meia_noite(dia: date) -> datetime:
     return datetime.combine(dia, time.min, tzinfo=UTC)
 
 
-class RegistroUsoRepository:
+class RegistroLlmRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
@@ -75,13 +75,13 @@ class RegistroUsoRepository:
             valores["criado_em"] = novo.criado_em
 
         stmt = (
-            pg_insert(RegistroUsoRow)
+            pg_insert(RegistroLlmRow)
             .values(**valores)
             .on_conflict_do_nothing(
                 index_elements=["aplicacao", "id_externo"],
-                index_where=RegistroUsoRow.id_externo.is_not(None),
+                index_where=RegistroLlmRow.id_externo.is_not(None),
             )
-            .returning(RegistroUsoRow.id)
+            .returning(RegistroLlmRow.id)
         )
 
         inserido = await self._session.scalar(stmt)
@@ -91,9 +91,9 @@ class RegistroUsoRepository:
         # Não inseriu: já existia. Devolve o `id` da linha original, e não o que foi sorteado
         # agora — quem fez o retry precisa poder correlacionar com o primeiro envio.
         existente = await self._session.scalar(
-            select(RegistroUsoRow.id).where(
-                RegistroUsoRow.aplicacao == novo.aplicacao,
-                RegistroUsoRow.id_externo == novo.id_externo,
+            select(RegistroLlmRow.id).where(
+                RegistroLlmRow.aplicacao == novo.aplicacao,
+                RegistroLlmRow.id_externo == novo.id_externo,
             )
         )
         if existente is None:
@@ -103,45 +103,45 @@ class RegistroUsoRepository:
 
     async def listar(
         self, filtro: Filtro, limite: int, offset: int
-    ) -> tuple[list[RegistroUso], int]:
-        preco = preco_vigente_para(RegistroUsoRow.modelo, RegistroUsoRow.criado_em)
+    ) -> tuple[list[RegistroLlm], int]:
+        preco = preco_vigente_para(RegistroLlmRow.modelo, RegistroLlmRow.criado_em)
 
         stmt = self._filtrar(
             select(
-                RegistroUsoRow.id,
-                RegistroUsoRow.criado_em,
-                RegistroUsoRow.aplicacao,
-                RegistroUsoRow.ator,
-                RegistroUsoRow.modelo,
-                RegistroUsoRow.provedor,
-                RegistroUsoRow.tokens_entrada,
-                RegistroUsoRow.tokens_saida,
-                RegistroUsoRow.tokens_cache_leitura,
-                RegistroUsoRow.tokens_cache_escrita,
-                RegistroUsoRow.id_externo,
-                RegistroUsoRow.mensagem,
-                RegistroUsoRow.resposta,
-                RegistroUsoRow.metadados,
+                RegistroLlmRow.id,
+                RegistroLlmRow.criado_em,
+                RegistroLlmRow.aplicacao,
+                RegistroLlmRow.ator,
+                RegistroLlmRow.modelo,
+                RegistroLlmRow.provedor,
+                RegistroLlmRow.tokens_entrada,
+                RegistroLlmRow.tokens_saida,
+                RegistroLlmRow.tokens_cache_leitura,
+                RegistroLlmRow.tokens_cache_escrita,
+                RegistroLlmRow.id_externo,
+                RegistroLlmRow.mensagem,
+                RegistroLlmRow.resposta,
+                RegistroLlmRow.metadados,
                 self._custo(preco).label("custo"),
                 func.coalesce(preco.moeda, literal(MOEDA_PADRAO)).label("moeda"),
             )
-            .select_from(RegistroUsoRow)
+            .select_from(RegistroLlmRow)
             .outerjoin(preco.lateral, true()),
             filtro,
         )
 
         linhas = (
             await self._session.execute(
-                stmt.order_by(RegistroUsoRow.criado_em.desc()).limit(limite).offset(offset)
+                stmt.order_by(RegistroLlmRow.criado_em.desc()).limit(limite).offset(offset)
             )
         ).all()
 
         total = await self._session.scalar(
-            self._filtrar(select(func.count()).select_from(RegistroUsoRow), filtro)
+            self._filtrar(select(func.count()).select_from(RegistroLlmRow), filtro)
         )
 
         itens = [
-            RegistroUso(
+            RegistroLlm(
                 id=linha.id,
                 criado_em=linha.criado_em,
                 aplicacao=linha.aplicacao,
@@ -177,7 +177,7 @@ class RegistroUsoRepository:
         Com ~50 req/dia, isto roda em tempo de consulta sem rollup nem cache. O dia em que não
         rodar mais é o dia de materializar — e não antes."""
 
-        preco = preco_vigente_para(RegistroUsoRow.modelo, RegistroUsoRow.criado_em)
+        preco = preco_vigente_para(RegistroLlmRow.modelo, RegistroLlmRow.criado_em)
 
         chaves: list[ColumnElement[Any]] = []
         if grupo is not None:
@@ -185,7 +185,7 @@ class RegistroUsoRepository:
         if intervalo is not None:
             chaves.append(
                 cast(
-                    func.date_trunc(_UNIDADE[intervalo], RegistroUsoRow.criado_em),
+                    func.date_trunc(_UNIDADE[intervalo], RegistroLlmRow.criado_em),
                     Date,
                 ).label("periodo")
             )
@@ -197,10 +197,10 @@ class RegistroUsoRepository:
                 *(
                     func.coalesce(func.sum(coluna), 0).label(coluna.key)
                     for coluna in (
-                        RegistroUsoRow.tokens_entrada,
-                        RegistroUsoRow.tokens_saida,
-                        RegistroUsoRow.tokens_cache_leitura,
-                        RegistroUsoRow.tokens_cache_escrita,
+                        RegistroLlmRow.tokens_entrada,
+                        RegistroLlmRow.tokens_saida,
+                        RegistroLlmRow.tokens_cache_leitura,
+                        RegistroLlmRow.tokens_cache_escrita,
                     )
                 ),
                 # `SUM` ignora `NULL`, então o balde soma o custo dos eventos que **têm** preço e
@@ -209,7 +209,7 @@ class RegistroUsoRepository:
                 func.sum(self._custo(preco)).label("custo"),
                 func.coalesce(func.max(preco.moeda), literal(MOEDA_PADRAO)).label("moeda"),
             )
-            .select_from(RegistroUsoRow)
+            .select_from(RegistroLlmRow)
             .outerjoin(preco.lateral, true()),
             filtro,
         )
@@ -241,10 +241,10 @@ class RegistroUsoRepository:
     @staticmethod
     def _custo(preco: PrecoVigente) -> ColumnElement[Any]:
         return preco.custo(
-            entrada=RegistroUsoRow.tokens_entrada,
-            saida=RegistroUsoRow.tokens_saida,
-            cache_leitura=RegistroUsoRow.tokens_cache_leitura,
-            cache_escrita=RegistroUsoRow.tokens_cache_escrita,
+            entrada=RegistroLlmRow.tokens_entrada,
+            saida=RegistroLlmRow.tokens_saida,
+            cache_leitura=RegistroLlmRow.tokens_cache_leitura,
+            cache_escrita=RegistroLlmRow.tokens_cache_escrita,
         )
 
     @staticmethod
@@ -255,15 +255,15 @@ class RegistroUsoRepository:
         a meia-noite cortaria fora quase todo o último dia do período."""
 
         if filtro.de is not None:
-            stmt = stmt.where(RegistroUsoRow.criado_em >= _meia_noite(filtro.de))
+            stmt = stmt.where(RegistroLlmRow.criado_em >= _meia_noite(filtro.de))
         if filtro.ate is not None:
             stmt = stmt.where(
-                RegistroUsoRow.criado_em < _meia_noite(filtro.ate + timedelta(days=1))
+                RegistroLlmRow.criado_em < _meia_noite(filtro.ate + timedelta(days=1))
             )
         if filtro.aplicacao:
-            stmt = stmt.where(RegistroUsoRow.aplicacao == filtro.aplicacao)
+            stmt = stmt.where(RegistroLlmRow.aplicacao == filtro.aplicacao)
         if filtro.ator:
-            stmt = stmt.where(RegistroUsoRow.ator == filtro.ator)
+            stmt = stmt.where(RegistroLlmRow.ator == filtro.ator)
         if filtro.modelo:
-            stmt = stmt.where(RegistroUsoRow.modelo == filtro.modelo)
+            stmt = stmt.where(RegistroLlmRow.modelo == filtro.modelo)
         return stmt

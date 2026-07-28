@@ -4,18 +4,18 @@ from fastapi import APIRouter, Depends, Query, status
 
 from app.api.dependencies import AplicacaoDep, requer_leitura
 from app.db.session import SessionDep
-from app.modules.uso.api.dependencies import FiltroDep
-from app.modules.uso.api.schemas import (
+from app.modules.llm.api.dependencies import FiltroDep
+from app.modules.llm.api.schemas import (
     EventoIn,
     EventoOut,
     EventosOut,
     IngestaoOut,
     MetricaOut,
 )
-from app.modules.uso.application.services import UsoService
-from app.modules.uso.domain.entities import Grupo, Intervalo
+from app.modules.llm.application.services import LlmService
+from app.modules.llm.domain.entities import Grupo, Intervalo
 
-router = APIRouter(tags=["uso"])
+router = APIRouter(tags=["llm"])
 
 
 @router.post("/eventos", status_code=status.HTTP_201_CREATED)
@@ -30,7 +30,7 @@ async def ingerir_eventos(
     linha original, em vez de contar a mesma chamada duas vezes."""
 
     lote = payload if isinstance(payload, list) else [payload]
-    resultados = await UsoService(session).ingerir(
+    resultados = await LlmService(session).ingerir(
         [evento.para_dominio() for evento in lote],
         aplicacao,
     )
@@ -49,7 +49,7 @@ async def metricas(
     """O coração do painel: as quatro combinações de `grupo` × `intervalo` cobrem os KPIs, a
     série temporal, o total por dimensão e a série por dimensão."""
 
-    baldes = await UsoService(session).metricas(filtro, grupo, intervalo)
+    baldes = await LlmService(session).metricas(filtro, grupo, intervalo)
     return [
         MetricaOut(
             grupo=balde.grupo,
@@ -75,7 +75,7 @@ async def listar_eventos(
 ) -> EventosOut:
     """A lista crua, para auditoria."""
 
-    pagina = await UsoService(session).listar(filtro, limite, offset)
+    pagina = await LlmService(session).listar(filtro, limite, offset)
     return EventosOut(
         total=pagina.total,
         limite=pagina.limite,
@@ -88,9 +88,9 @@ async def listar_eventos(
 async def listar_aplicacoes(session: SessionDep) -> list[str]:
     """Popula o dropdown de filtro: as aplicações que já reportaram alguma coisa."""
 
-    return await UsoService(session).distintos(Grupo.APLICACAO)
+    return await LlmService(session).distintos(Grupo.APLICACAO)
 
 
 @router.get("/modelos", dependencies=[Depends(requer_leitura)])
 async def listar_modelos(session: SessionDep) -> list[str]:
-    return await UsoService(session).distintos(Grupo.MODELO)
+    return await LlmService(session).distintos(Grupo.MODELO)

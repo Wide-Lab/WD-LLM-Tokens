@@ -52,9 +52,9 @@ class NovaChave:
         """`aplicacao` e escopo andam juntos.
 
         A chave de escrita **é** a identidade de quem reporta — é dela que sai a `aplicacao` que
-        o `POST /v1/eventos` cobra do payload. Sem aplicação ela não teria como recusar um evento
-        no nome de outro app; com aplicação, uma chave de leitura sugeriria um recorte de dados
-        que ela não tem (os `GET` enxergam tudo)."""
+        o `POST /v1/llm/eventos` cobra do payload. Sem aplicação ela não teria como recusar um
+        evento no nome de outro app; com aplicação, uma chave de leitura sugeriria um recorte de
+        dados que ela não tem (os `GET` enxergam tudo)."""
 
         if self.escopo is EscopoChave.ESCRITA and not (self.aplicacao or "").strip():
             raise ValidationAppError("Chave de escrita precisa da aplicação dona dela.")

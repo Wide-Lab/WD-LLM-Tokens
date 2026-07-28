@@ -4,7 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_serializer
 
-from app.modules.uso.domain.entities import NovoRegistro
+from app.modules.llm.domain.entities import NovoRegistro
 
 
 class EventoIn(BaseModel):
@@ -55,7 +55,7 @@ class IngestaoOut(BaseModel):
 
 
 class MetricaOut(BaseModel):
-    """Um balde da resposta de `/v1/metricas`."""
+    """Um balde da resposta de `/v1/llm/metricas`."""
 
     grupo: str | None = None
     periodo: date | None = None

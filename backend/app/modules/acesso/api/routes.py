@@ -2,7 +2,7 @@
 
 O cookie é `HttpOnly` + `SameSite=Lax`: o painel nunca lê o token em JavaScript, e nenhum site de
 terceiros consegue disparar uma requisição autenticada por ele. Não há CSRF token porque não há
-o que proteger — tudo que escreve neste serviço (`POST /v1/eventos`, `POST /v1/precos`,
+o que proteger — tudo que escreve neste serviço (`POST /v1/llm/eventos`, `POST /v1/precos`,
 `POST /v1/usuarios`) exige `X-API-Key`, que o cookie não substitui."""
 
 import uuid

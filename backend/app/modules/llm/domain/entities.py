@@ -73,8 +73,8 @@ class NovoRegistro:
 
 
 @dataclass(frozen=True, slots=True)
-class RegistroUso:
-    """Uma linha de `registro_uso` já com o custo derivado."""
+class RegistroLlm:
+    """Uma linha de `registro_llm` já com o custo derivado."""
 
     id: uuid.UUID
     criado_em: datetime
@@ -122,7 +122,7 @@ class Filtro:
 
 @dataclass(frozen=True, slots=True)
 class Balde:
-    """Uma linha da resposta de `/v1/metricas`.
+    """Uma linha da resposta de `/v1/llm/metricas`.
 
     `grupo` e `periodo` são `None` quando o parâmetro correspondente não foi passado — as quatro
     combinações de `grupo` × `intervalo` cobrem todos os gráficos do painel."""
@@ -140,7 +140,7 @@ class Balde:
 
 @dataclass(frozen=True, slots=True)
 class Pagina:
-    itens: list[RegistroUso]
+    itens: list[RegistroLlm]
     total: int
     limite: int
     offset: int

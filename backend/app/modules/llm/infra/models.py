@@ -9,20 +9,20 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
 
-class RegistroUso(Base):
+class RegistroLlm(Base):
     """Uma linha por chamada ao LLM. Append-only: nunca `UPDATE`, nunca `DELETE`.
 
     Como é uma linha por requisição, "número de requisições" é `COUNT(*)` — sem contador, sem
     rollup. Com ~50 req/dia, agregar em tempo de consulta sobra."""
 
-    __tablename__ = "registro_uso"
+    __tablename__ = "registro_llm"
 
     __table_args__ = (
         # Idempotência: o retry de um app não conta em dobro. **Parcial** porque `id_externo` é
         # opcional — no Postgres `NULL` não colide com `NULL`, mas o índice parcial deixa isso
         # explícito e mantém fora do índice as linhas que nunca vão ser consultadas por ele.
         Index(
-            "uq_registro_uso_aplicacao_id_externo",
+            "uq_registro_llm_aplicacao_id_externo",
             "aplicacao",
             "id_externo",
             unique=True,
@@ -30,9 +30,9 @@ class RegistroUso(Base):
         ),
         # Os três eixos do painel. `aplicacao` na frente em todos porque toda consulta do serviço
         # é dentro de uma aplicação (ou de todas, e aí o índice não muda nada).
-        Index("ix_registro_uso_aplicacao_criado", "aplicacao", "criado_em"),
-        Index("ix_registro_uso_aplicacao_ator_criado", "aplicacao", "ator", "criado_em"),
-        Index("ix_registro_uso_aplicacao_modelo_criado", "aplicacao", "modelo", "criado_em"),
+        Index("ix_registro_llm_aplicacao_criado", "aplicacao", "criado_em"),
+        Index("ix_registro_llm_aplicacao_ator_criado", "aplicacao", "ator", "criado_em"),
+        Index("ix_registro_llm_aplicacao_modelo_criado", "aplicacao", "modelo", "criado_em"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

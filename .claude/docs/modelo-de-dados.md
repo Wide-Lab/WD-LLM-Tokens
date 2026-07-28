@@ -1,10 +1,10 @@
 # Modelo de dados
 
-Duas tabelas no centro. Uma guarda o que aconteceu (`registro_uso`), a outra guarda quanto
+Duas tabelas no centro. Uma guarda o que aconteceu (`registro_llm`), a outra guarda quanto
 custa (`preco_modelo`). O custo nunca é gravado no evento — é derivado. Em volta, quem tem
 permissão de chegar perto: `usuario` e `chave_api`.
 
-## `registro_uso` — uma linha por chamada ao LLM
+## `registro_llm` — uma linha por chamada ao LLM
 
 Como é **uma linha por requisição**, o "número de requisições" é só `COUNT(*)`.
 
@@ -73,7 +73,7 @@ Preço por vigência para que reajuste do provedor não corrompa o custo histór
 |---|---|---|
 | `id` | `uuid` PK | |
 | `provedor` | `text null` | |
-| `modelo` | `text not null` | casa com `registro_uso.modelo` |
+| `modelo` | `text not null` | casa com `registro_llm.modelo` |
 | `vigencia_inicio` | `date not null` | a partir de quando este preço vale |
 | `moeda` | `text not null` | `USD` no v1 (mesma moeda em todas as linhas) |
 | `entrada_por_milhao` | `numeric not null` | custo por 1.000.000 tokens de entrada |
@@ -127,7 +127,7 @@ ser desligado.
 ## Cálculo de custo
 
 Para cada evento, escolhe-se a linha de preço do mesmo `modelo` com o maior
-`vigencia_inicio <= registro_uso.criado_em`, e soma-se balde a balde:
+`vigencia_inicio <= registro_llm.criado_em`, e soma-se balde a balde:
 
 ```
 custo =  tokens_entrada        / 1e6 * entrada_por_milhao

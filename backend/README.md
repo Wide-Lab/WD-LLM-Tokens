@@ -1,7 +1,7 @@
 # Backend — Controle de Tokens
 
 FastAPI + SQLAlchemy async + Alembic + Postgres, gerenciado com `uv`. Contratos em
-[`../.claude/specs/api.md`](../.claude/specs/api.md) e [`../.claude/specs/modelo-de-dados.md`](../.claude/specs/modelo-de-dados.md).
+[`../.claude/docs/api.md`](../.claude/docs/api.md) e [`../.claude/docs/modelo-de-dados.md`](../.claude/docs/modelo-de-dados.md).
 
 ## Estrutura
 
@@ -11,7 +11,7 @@ app/
   core/       config, exceções, logging
   db/         Base declarativa, engine e sessão
   modules/
-    uso/      registro_uso: ingestão, listagem e métricas
+    llm/      registro_llm: ingestão, listagem e métricas de chamada ao LLM
     precos/   preco_modelo: preço com vigência e a expressão de custo
     acesso/   usuario e chave_api: login, sessão, cadastro e emissão de chave
 ```
@@ -21,7 +21,7 @@ domínio guarda as regras e o `infra` fala com o banco.
 
 Import de módulo a módulo, só dois:
 
-- `uso/infra/repository.py` → `precos/infra/custo.py` — a fórmula do custo vive num lugar só, e
+- `llm/infra/repository.py` → `precos/infra/custo.py` — a fórmula do custo vive num lugar só, e
   é usada tanto na listagem quanto na agregação.
 - `api/dependencies.py` → `acesso/{infra,application,domain}` — autenticação é transversal e já
   morava ali. Depende do `acesso` por dentro (sessão, serviço, entidade) e nunca pela `api`

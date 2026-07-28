@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenError
-from app.modules.uso.domain.entities import (
+from app.modules.llm.domain.entities import (
     Balde,
     Filtro,
     Grupo,
@@ -10,13 +10,13 @@ from app.modules.uso.domain.entities import (
     NovoRegistro,
     Pagina,
 )
-from app.modules.uso.infra.repository import RegistroUsoRepository
+from app.modules.llm.infra.repository import RegistroLlmRepository
 
 
-class UsoService:
+class LlmService:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
-        self._registros = RegistroUsoRepository(session)
+        self._registros = RegistroLlmRepository(session)
 
     async def ingerir(self, novos: list[NovoRegistro], aplicacao: str) -> list[Ingestao]:
         """Grava o lote e devolve um resultado por evento, **na mesma ordem**.

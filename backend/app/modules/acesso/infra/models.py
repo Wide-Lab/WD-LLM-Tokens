@@ -32,7 +32,7 @@ class Usuario(Base):
 class ChaveApi(Base):
     """Uma chave de API emitida pelo admin.
 
-    Diferente de `registro_uso`, esta tabela **muda**: `ultimo_uso_em` e `revogada_em` são
+    Diferente de `registro_llm`, esta tabela **muda**: `ultimo_uso_em` e `revogada_em` são
     `UPDATE`. O append-only vale para o que é fato consumado (um evento aconteceu e não
     desacontece); uma credencial é estado, e estado tem que poder ser desligado."""
 
@@ -49,7 +49,7 @@ class ChaveApi(Base):
     escopo vira uma linha no `StrEnum`, e não um `ALTER TYPE` em migration."""
 
     aplicacao: Mapped[str | None] = mapped_column(Text, nullable=True)
-    """Preenchida só nas de escrita — é ela que o `POST /v1/eventos` cobra do payload."""
+    """Preenchida só nas de escrita — é ela que o `POST /v1/llm/eventos` cobra do payload."""
 
     prefixo: Mapped[str] = mapped_column(Text, unique=True)
     """Os 8 hex do meio da chave, em claro. Não é segredo e não autentica nada: existe para a

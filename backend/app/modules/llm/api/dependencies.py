@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import Depends, Query
 
-from app.modules.uso.domain.entities import Filtro
+from app.modules.llm.domain.entities import Filtro
 
 
 def filtro_de_consulta(
@@ -13,7 +13,7 @@ def filtro_de_consulta(
     ator: str | None = None,
     modelo: str | None = None,
 ) -> Filtro:
-    """Os cinco filtros que `/v1/metricas` e `/v1/eventos` compartilham."""
+    """Os cinco filtros que `/v1/llm/metricas` e `/v1/llm/eventos` compartilham."""
 
     return Filtro(de=de, ate=ate, aplicacao=aplicacao, ator=ator, modelo=modelo)
 

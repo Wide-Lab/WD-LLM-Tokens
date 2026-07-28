@@ -10,8 +10,8 @@ from app.db.base import Base
 
 # Importe aqui os models de cada módulo pra que entrem no autogenerate.
 from app.modules.acesso.infra import models as _acesso_models  # noqa: F401
+from app.modules.llm.infra import models as _llm_models  # noqa: F401
 from app.modules.precos.infra import models as _precos_models  # noqa: F401
-from app.modules.uso.infra import models as _uso_models  # noqa: F401
 
 config = context.config
 

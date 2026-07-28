@@ -1,7 +1,7 @@
 """A expressão SQL do custo — o único lugar do backend que sabe converter token em dinheiro.
 
-Mora no `precos` e é importada pelo `uso` (o único import de módulo a módulo do projeto). A
-alternativa era duplicar a fórmula nas duas consultas do `uso` — a listagem e a agregação — e
+Mora no `precos` e é importada pelo `llm` (o único import de módulo a módulo do projeto). A
+alternativa era duplicar a fórmula nas duas consultas do `llm` — a listagem e a agregação — e
 duas cópias de uma fórmula de dinheiro divergem no dia em que um balde novo aparecer.
 
 O custo **não** é gravado no evento: ele é derivado na leitura, pelo preço vigente na data da

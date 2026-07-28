@@ -44,7 +44,7 @@ def _confere(recebida: str, esperada: str) -> bool:
 
 
 async def aplicacao_autenticada(session: SessionDep, x_api_key: ChaveHeader = None) -> str:
-    """A aplicação dona da chave de escrita. É ela que o `POST /v1/eventos` cobra do payload."""
+    """A aplicação dona da chave de escrita. É ela que o `POST /v1/llm/eventos` cobra do payload."""
 
     if x_api_key:
         for aplicacao, chave in get_config().CHAVES_ESCRITA.items():

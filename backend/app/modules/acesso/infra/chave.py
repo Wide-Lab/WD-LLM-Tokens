@@ -7,8 +7,8 @@ listagem diz *qual* chave é qual; `segredo` de 32 bytes sorteados (`secrets`, n
 **SHA-256 e não Argon2**, ao contrário da senha logo ao lado. A diferença não é descuido: senha é
 escolhida por gente, tem entropia baixa e por isso precisa de um hash caro que torne o dicionário
 inviável. Aqui os 256 bits são sorteados — não existe palpite a encarecer, e o Argon2 só entregaria
-seus ~50ms de propósito a **cada** `POST /v1/eventos`. O que se quer do hash neste caso é só que o
-dump da tabela não devolva a chave, e SHA-256 dá conta disso."""
+seus ~50ms de propósito a **cada** `POST /v1/llm/eventos`. O que se quer do hash neste caso é só
+que o dump da tabela não devolva a chave, e SHA-256 dá conta disso."""
 
 import hashlib
 import secrets

@@ -2,6 +2,12 @@
 
 REST, versionada em `/v1`. JSON em tudo. Datas em ISO 8601 (UTC).
 
+As rotas de LLM vivem sob `/v1/llm/*`. Os mesmos caminhos **sem** o prefixo (`/v1/eventos`,
+`/v1/metricas`, `/v1/aplicacoes`, `/v1/modelos`) continuam valendo e respondem igual: são de
+quando o LLM era a única origem de fato, e há aplicação em produção reportando por eles. Não
+aparecem no `/api/docs` — uma lista com cada rota duplicada é o tipo de ruído que faz ninguém
+mais ler a doc. Integração nova usa o caminho com prefixo.
+
 ## Autenticação
 
 Duas formas, para dois públicos.
@@ -10,7 +16,7 @@ Duas formas, para dois públicos.
 
 | Chave | Onde nasce | Abre |
 |---|---|---|
-| Escrita (uma por aplicação) | `POST /v1/chaves` | `POST /v1/eventos` |
+| Escrita (uma por aplicação) | `POST /v1/chaves` | `POST /v1/llm/eventos` |
 | Leitura | `POST /v1/chaves` | os `GET` |
 | Admin | `CHAVE_ADMIN`, no `.env` | `/v1/chaves`, `/v1/precos`, `/v1/usuarios` |
 
@@ -39,7 +45,7 @@ O cookie carrega apenas o id do usuário: cada requisição relê a linha em `us
 `ativo = false` derruba a sessão no request seguinte, sem esperar o cookie vencer. Para
 derrubar **todas** as sessões de uma vez, troque `SEGREDO_SESSAO`.
 
-Não há CSRF token: tudo que escreve (`POST /v1/eventos`, `/v1/precos`, `/v1/usuarios`,
+Não há CSRF token: tudo que escreve (`POST /v1/llm/eventos`, `/v1/precos`, `/v1/usuarios`,
 `/v1/chaves`) exige
 `X-API-Key`, que o cookie não substitui — não há requisição de escrita que um site de terceiros
 consiga forjar só por o navegador mandar o cookie.
@@ -123,7 +129,7 @@ data, para a pergunta que vem depois ("quem usava a chave que vazou?"). `404` se
 
 ---
 
-## `POST /v1/eventos`
+## `POST /v1/llm/eventos`
 
 Ingestão. Aceita **um** objeto ou **um array** (lote). Idempotente por
 `(aplicacao, id_externo)`.
@@ -167,9 +173,9 @@ não foi inserido de novo. Para lote, devolve um array na mesma ordem.
 
 ---
 
-## `GET /v1/metricas`
+## `GET /v1/llm/metricas`
 
-O coração do painel. Um endpoint flexível cobre todos os gráficos e os KPIs.
+O coração do painel de LLM. Um endpoint flexível cobre todos os gráficos e os KPIs.
 
 **Query params:**
 
@@ -211,7 +217,7 @@ As combinações de `grupo` × `intervalo` resolvem tudo:
 
 ---
 
-## `GET /v1/eventos`
+## `GET /v1/llm/eventos`
 
 Lista crua para auditoria. Paginada.
 
@@ -276,7 +282,7 @@ de leitura vive exposta no browser e esta reescreve a base de todo o custo.
 
 ---
 
-## `GET /v1/aplicacoes`, `GET /v1/modelos`
+## `GET /v1/llm/aplicacoes`, `GET /v1/llm/modelos`
 
 Auxiliares para popular os dropdowns de filtro do painel: devolvem a lista
 distinta de valores já vistos.

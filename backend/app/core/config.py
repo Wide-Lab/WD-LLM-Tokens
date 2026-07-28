@@ -17,7 +17,7 @@ class Config(BaseSettings):
     """Uma chave por aplicação: `{"famossul": "chave-secreta"}`.
 
     O mapa é aplicação → chave (e não o contrário) porque é assim que a chave passa a **dizer
-    quem está reportando**: o `POST /v1/eventos` recusa um evento cuja `aplicacao` não seja a
+    quem está reportando**: o `POST /v1/llm/eventos` recusa um evento cuja `aplicacao` não seja a
     dona da chave. Sem isso, a chave de qualquer app poderia escrever no nome de outro, e o
     painel por aplicação viraria ficção.
 

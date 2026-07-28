@@ -14,11 +14,11 @@ Não há suíte de testes automatizados no projeto.
 
 Serviço genérico de contabilidade de tokens de LLM. Várias aplicações reportam para cá, identificadas pelo campo `aplicacao`.
 
-- **Ingestão append-only:** `POST /api/v1/eventos` fire-and-forget, uma linha por chamada ao LLM. Nunca `UPDATE`, nunca delete. Idempotência por `unique (aplicacao, id_externo)`.
+- **Ingestão append-only:** `POST /api/v1/llm/eventos` fire-and-forget, uma linha por chamada ao LLM. Nunca `UPDATE`, nunca delete. Idempotência por `unique (aplicacao, id_externo)`. Os caminhos sem o prefixo `/llm` continuam valendo como legado.
 - **Custo não vem no evento.** A tabela `preco_modelo` guarda preço com vigência e o custo é calculado **na leitura**, pelo preço válido na data da chamada. A fórmula vive só em `precos/infra/custo.py`.
 - **Métricas por `GROUP BY` em tempo de consulta** — volume baixo, sem rollup nem cache.
 
-Backend em `backend/app/modules/<módulo>/{api,application,domain,infra}`: `uso` (o que aconteceu), `precos` (quanto custa), `acesso` (quem entra). A rota traduz HTTP, o serviço orquestra, o domínio tem as regras, o `infra` fala com o banco. Só dois imports cruzam módulos, ambos documentados em `backend/README.md` — mantenha assim. Módulo novo = uma linha em `app/api/routes.py`.
+Backend em `backend/app/modules/<módulo>/{api,application,domain,infra}`: `llm` (o que aconteceu), `precos` (quanto custa), `acesso` (quem entra). A rota traduz HTTP, o serviço orquestra, o domínio tem as regras, o `infra` fala com o banco. Só dois imports cruzam módulos, ambos documentados em `backend/README.md` — mantenha assim. Módulo novo = uma linha em `app/api/routes.py`.
 
 O prefixo `/api` faz parte das rotas **no FastAPI** (`create_app` monta em `/api/v1`), não é reescrita do nginx. Vale igual no dev local.
 
@@ -30,6 +30,6 @@ Frontend: TanStack Start + React 19 + Tailwind 4 + shadcn/ui. Rotas em `src/rout
 
 ## Documentos
 
-- `.claude/specs/modelo-de-dados.md` — tabelas, os quatro baldes de token (não se sobrepõem), cálculo de custo
-- `.claude/specs/api.md` — contratos, autenticação, erros
+- `.claude/docs/modelo-de-dados.md` — tabelas, os quatro baldes de token (não se sobrepõem), cálculo de custo
+- `.claude/docs/api.md` — contratos, autenticação, erros
 - `backend/README.md` — estrutura, dev local, migrations
