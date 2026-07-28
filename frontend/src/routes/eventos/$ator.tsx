@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
+import { Conversa } from "@/components/conversa";
 import { GlobalFilters } from "@/components/global-filters";
 import { Medidor } from "@/components/medidor";
 import { PainelCard } from "@/components/painel-card";
@@ -19,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { apiGet } from "@/lib/api";
 import { useFilters, filtersToParams } from "@/lib/filters";
 import { formatCurrency, formatDateTime, formatNumber } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { EventosResponse, EventoItem, MetricaBucket } from "@/lib/api-types";
 
 export const Route = createFileRoute("/eventos/$ator")({
@@ -148,7 +150,50 @@ function PorModelo({ baseParams }: { baseParams: Params }) {
   );
 }
 
+type Modo = "tabela" | "conversa";
+
+/**
+ * Duas leituras do mesmo recorte. A tabela responde "quanto custou cada chamada"; a conversa
+ * responde "o que foi dito". Nenhuma substitui a outra, e por isso o alternador fica no
+ * cabeçalho do quadro — é a mesma leitura em outra forma, não outra tela.
+ */
 function Chamadas({ baseParams }: { baseParams: Params }) {
+  const [modo, setModo] = useState<Modo>("tabela");
+  const alternador = <AlternadorDeModo modo={modo} onModo={setModo} />;
+
+  if (modo === "conversa") {
+    return (
+      <PainelCard title="Chamadas" action={alternador} bleed>
+        <Conversa baseParams={baseParams} />
+      </PainelCard>
+    );
+  }
+
+  return <ChamadasTabela baseParams={baseParams} acao={alternador} />;
+}
+
+function AlternadorDeModo({ modo, onModo }: { modo: Modo; onModo: (m: Modo) => void }) {
+  return (
+    <div className="bg-muted flex items-center gap-0.5 rounded-sm p-0.5">
+      {(["tabela", "conversa"] as const).map((m) => (
+        <button
+          key={m}
+          type="button"
+          aria-pressed={modo === m}
+          onClick={() => onModo(m)}
+          className={cn(
+            "etiqueta rounded-[3px] px-2.5 py-1 transition-colors",
+            modo === m ? "bg-card text-foreground shadow-sm" : "hover:text-foreground",
+          )}
+        >
+          {m === "tabela" ? "Tabela" : "Conversa"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ChamadasTabela({ baseParams, acao }: { baseParams: Params; acao: ReactNode }) {
   const [offset, setOffset] = useState(0);
   const [abertos, setAbertos] = useState<Set<string>>(new Set());
 
@@ -182,6 +227,7 @@ function Chamadas({ baseParams }: { baseParams: Params }) {
       <PainelCard
         title="Chamadas"
         hint={total > 0 ? `${formatNumber(total)} no período` : undefined}
+        action={acao}
         bleed
         loading={q.isLoading}
         error={q.error}

@@ -18,7 +18,9 @@ import type { MetricaBucket } from "@/lib/api-types";
  * fatia de token, é o que a soma custou.
  */
 
-const BALDES = [
+/** Exportado porque a conversa desenha a mesma fita por troca: a ordem e as cores dos quatro
+ *  baldes têm que sair daqui, ou os dois desenhos divergem na primeira mexida. */
+export const BALDES = [
   { chave: "tokens_entrada", nome: "Entrada", cor: "var(--balde-entrada)" },
   { chave: "tokens_saida", nome: "Saída", cor: "var(--balde-saida)" },
   {

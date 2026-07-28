@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 export function PainelCard({
   title,
   hint,
+  action,
   children,
   loading,
   error,
@@ -24,6 +25,8 @@ export function PainelCard({
 }: {
   title: string;
   hint?: string;
+  /** Controle que troca o que a leitura mostra — fica no cabeçalho, junto do título. */
+  action?: ReactNode;
   children: ReactNode;
   loading?: boolean;
   error?: unknown;
@@ -35,11 +38,16 @@ export function PainelCard({
 }) {
   return (
     <section className={cn("bg-card flex flex-col rounded-xl border shadow-sm", className)}>
-      <header className="flex items-baseline justify-between gap-3 border-b px-5 py-3">
+      <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b px-5 py-3">
         <h2 className="etiqueta">{title}</h2>
-        {hint && (
-          <span className="text-muted-foreground shrink-0 font-mono text-[0.6875rem]">{hint}</span>
-        )}
+        <div className="flex items-center gap-3">
+          {hint && (
+            <span className="text-muted-foreground shrink-0 font-mono text-[0.6875rem]">
+              {hint}
+            </span>
+          )}
+          {action}
+        </div>
       </header>
       {loading ? (
         <div className="p-4">
