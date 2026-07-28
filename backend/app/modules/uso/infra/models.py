@@ -69,4 +69,12 @@ class RegistroUso(Base):
     id_externo: Mapped[str | None] = mapped_column(Text, nullable=True)
     """O id do provedor (`response.id`). É a chave da idempotência."""
 
+    mensagem: Mapped[str | None] = mapped_column(Text, nullable=True)
+    """O que o ator mandou. Coluna própria, e não uma chave em `metadados`: é o que a tela de
+    detalhe do ator abre em toda linha, e um `jsonb` opaco não deixa isso ser contrato."""
+
+    resposta: Mapped[str | None] = mapped_column(Text, nullable=True)
+    """O que o agente devolveu. `NULL` é "não veio no evento" — inclusive nos eventos gravados
+    antes destas duas colunas existirem —, e não "o agente não respondeu"."""
+
     metadados: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default="{}")

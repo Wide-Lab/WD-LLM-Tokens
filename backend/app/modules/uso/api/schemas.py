@@ -23,6 +23,12 @@ class EventoIn(BaseModel):
     tokens_cache_leitura: int = Field(default=0, ge=0)
     tokens_cache_escrita: int = Field(default=0, ge=0)
     id_externo: str | None = None
+    mensagem: str | None = None
+    """O que o ator mandou nesta chamada."""
+
+    resposta: str | None = None
+    """O que o agente devolveu."""
+
     metadados: dict[str, Any] = Field(default_factory=dict)
 
     def para_dominio(self) -> NovoRegistro:
@@ -37,6 +43,8 @@ class EventoIn(BaseModel):
             tokens_cache_leitura=self.tokens_cache_leitura,
             tokens_cache_escrita=self.tokens_cache_escrita,
             id_externo=self.id_externo,
+            mensagem=self.mensagem,
+            resposta=self.resposta,
             metadados=self.metadados,
         )
 
@@ -101,6 +109,8 @@ class EventoOut(BaseModel):
     custo: float | None
     moeda: str
     id_externo: str | None
+    mensagem: str | None
+    resposta: str | None
     metadados: dict[str, Any]
 
 

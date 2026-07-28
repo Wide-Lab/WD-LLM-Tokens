@@ -97,12 +97,19 @@ Ingestão. Aceita **um** objeto ou **um array** (lote). Idempotente por
   "tokens_cache_leitura": 800,
   "tokens_cache_escrita": 0,
   "id_externo": "resp_abc123",
+  "mensagem": "quanto custa o frete para Joinville?",
+  "resposta": "O frete para Joinville sai por R$ 32,00.",
   "metadados": { "conversa_id": "c-42" }
 }
 ```
 
 Obrigatórios: `aplicacao`, `ator`, `modelo`, e ao menos um campo de token.
-`criado_em` default `now()`. `provedor`, `id_externo`, `metadados` opcionais.
+`criado_em` default `now()`. `provedor`, `id_externo`, `mensagem`, `resposta`, `metadados`
+opcionais.
+
+`mensagem` (o que o ator mandou) e `resposta` (o que o agente devolveu) são o conteúdo da
+chamada, e é o que a tela de detalhe do ator mostra. Omitir dá `null`, que significa "não veio no
+evento" — não "veio vazio".
 
 **Response `201`:**
 
@@ -188,6 +195,8 @@ Lista crua para auditoria. Paginada.
       "custo": 0.05,
       "moeda": "USD",
       "id_externo": "resp_abc123",
+      "mensagem": "quanto custa o frete para Joinville?",
+      "resposta": "O frete para Joinville sai por R$ 32,00.",
       "metadados": { "conversa_id": "c-42" }
     }
   ]

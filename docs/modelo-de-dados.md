@@ -21,7 +21,15 @@ Como é **uma linha por requisição**, o "número de requisições" é só `COU
 | `tokens_cache_leitura` | `int not null default 0` | input servido do cache |
 | `tokens_cache_escrita` | `int not null default 0` | criação de cache |
 | `id_externo` | `text null` | id do provedor (ex.: `response.id`) para idempotência |
+| `mensagem` | `text null` | o que o ator mandou nesta chamada |
+| `resposta` | `text null` | o que o agente devolveu |
 | `metadados` | `jsonb not null default '{}'` | conversa_id, latência, etc. |
+
+`mensagem` e `resposta` são colunas próprias, e não chaves em `metadados`: é o conteúdo que a
+tela de detalhe do ator abre em toda linha, então é contrato, não bagagem livre. As duas são
+nuláveis e sem default — `NULL` quer dizer "não veio no evento" (inclusive nos eventos gravados
+antes das colunas existirem), que é diferente de "o agente respondeu vazio". Quem reporta decide
+se manda; o evento continua valendo pela contagem de token sem elas.
 
 **Restrições e índices:**
 

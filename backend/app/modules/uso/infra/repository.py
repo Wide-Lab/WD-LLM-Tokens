@@ -66,6 +66,8 @@ class RegistroUsoRepository:
             "tokens_cache_leitura": novo.tokens_cache_leitura,
             "tokens_cache_escrita": novo.tokens_cache_escrita,
             "id_externo": novo.id_externo,
+            "mensagem": novo.mensagem,
+            "resposta": novo.resposta,
             "metadados": novo.metadados,
         }
         # Omitido quando o app não manda, para o `server_default` do banco (`now()`) valer.
@@ -117,6 +119,8 @@ class RegistroUsoRepository:
                 RegistroUsoRow.tokens_cache_leitura,
                 RegistroUsoRow.tokens_cache_escrita,
                 RegistroUsoRow.id_externo,
+                RegistroUsoRow.mensagem,
+                RegistroUsoRow.resposta,
                 RegistroUsoRow.metadados,
                 self._custo(preco).label("custo"),
                 func.coalesce(preco.moeda, literal(MOEDA_PADRAO)).label("moeda"),
@@ -151,6 +155,8 @@ class RegistroUsoRepository:
                 custo=linha.custo,
                 moeda=linha.moeda,
                 id_externo=linha.id_externo,
+                mensagem=linha.mensagem,
+                resposta=linha.resposta,
                 metadados=linha.metadados,
             )
             for linha in linhas

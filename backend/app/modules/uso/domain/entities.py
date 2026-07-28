@@ -45,6 +45,14 @@ class NovoRegistro:
     tokens_cache_leitura: int = 0
     tokens_cache_escrita: int = 0
     id_externo: str | None = None
+
+    mensagem: str | None = None
+    """O que o ator mandou. Opcional: quem reporta pode não querer (ou não poder) guardar
+    conteúdo aqui, e o evento continua valendo pela contagem de token."""
+
+    resposta: str | None = None
+    """O que o agente devolveu."""
+
     metadados: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -84,6 +92,8 @@ class RegistroUso:
 
     moeda: str
     id_externo: str | None
+    mensagem: str | None
+    resposta: str | None
     metadados: dict[str, Any]
 
 
