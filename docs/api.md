@@ -6,14 +6,21 @@ REST, versionada em `/v1`. JSON em tudo. Datas em ISO 8601 (UTC).
 
 Duas formas, para dois públicos.
 
-**`X-API-Key`** — máquina falando com máquina. As chaves vivem em variável de ambiente do
-backend; só migrar para uma tabela quando cadastrar app virar rotina.
+**`X-API-Key`** — máquina falando com máquina.
 
-| Chave | Onde vive | Abre |
+| Chave | Onde nasce | Abre |
 |---|---|---|
-| Escrita (uma por aplicação) | no app de IA | `POST /v1/eventos` |
-| Leitura | em quem consome métricas por script | os `GET` |
-| Admin | com quem opera o serviço | `POST /v1/precos`, `GET`/`POST /v1/usuarios` |
+| Escrita (uma por aplicação) | `POST /v1/chaves` | `POST /v1/eventos` |
+| Leitura | `POST /v1/chaves` | os `GET` |
+| Admin | `CHAVE_ADMIN`, no `.env` | `/v1/chaves`, `/v1/precos`, `/v1/usuarios` |
+
+As de escrita e leitura viviam em variável de ambiente (`CHAVES_ESCRITA`, `CHAVE_LEITURA`) e
+**continuam valendo** — o backend confere o ambiente primeiro e o banco depois, para a migração
+acontecer sem virada de chave. Esvaziar as variáveis é o último passo.
+
+A de admin não seguiu para o banco: é ela que emite e revoga as outras, e uma admin criável por
+`POST /v1/chaves` poderia cunhar substitutas para si mesma — quem roubasse uma continuaria
+entrando depois de revogada. Trocá-la exige acesso ao servidor, e é esse o ponto.
 
 **Cookie de sessão** — gente no painel. `POST /v1/sessao` devolve um cookie `HttpOnly`,
 `SameSite=Lax`, `Secure` (configurável), assinado com `SEGREDO_SESSAO` e válido por
@@ -32,7 +39,8 @@ O cookie carrega apenas o id do usuário: cada requisição relê a linha em `us
 `ativo = false` derruba a sessão no request seguinte, sem esperar o cookie vencer. Para
 derrubar **todas** as sessões de uma vez, troque `SEGREDO_SESSAO`.
 
-Não há CSRF token: tudo que escreve (`POST /v1/eventos`, `/v1/precos`, `/v1/usuarios`) exige
+Não há CSRF token: tudo que escreve (`POST /v1/eventos`, `/v1/precos`, `/v1/usuarios`,
+`/v1/chaves`) exige
 `X-API-Key`, que o cookie não substitui — não há requisição de escrita que um site de terceiros
 consiga forjar só por o navegador mandar o cookie.
 
@@ -75,6 +83,43 @@ entre o dashboard e a tela de login, então o `401` aqui é resposta normal, nã
 Cadastro por `CHAVE_ADMIN`, não por tela — é assim que nasce o primeiro login, sem uma tela de
 cadastro aberta ao mundo. `POST` recebe `{"email", "nome", "senha"}` (senha de 12+ caracteres) e
 devolve `201`; e-mail repetido → `409`. A senha sai daqui como hash Argon2id e nunca volta.
+
+---
+
+## `GET /v1/chaves`, `POST /v1/chaves`, `DELETE /v1/chaves/{id}`
+
+Emissão de chave de API, por `CHAVE_ADMIN`.
+
+**`POST`** — `{"nome", "escopo", "aplicacao"}`. `escopo` é `escrita` ou `leitura`; `aplicacao` é
+obrigatória na de escrita (a chave **é** a identidade de quem reporta) e recusada na de leitura
+(os `GET` enxergam tudo). `400` nos dois desencontros.
+
+```json
+{
+  "id": "018f...",
+  "nome": "famossul produção",
+  "escopo": "escrita",
+  "aplicacao": "famossul",
+  "prefixo": "a976245f",
+  "chave": "ltc_a976245f_eQEUEx9OX76QM93xdntp0pYJab6nN1TVp7H8nWzdsqM",
+  "criada_em": "2026-07-28T18:16:25Z",
+  "ultimo_uso_em": null,
+  "revogada_em": null
+}
+```
+
+**O campo `chave` só existe nesta resposta.** O banco guarda o SHA-256 dela, então não há
+endpoint que a mostre de novo: quem perder emite outra e revoga esta. SHA-256 e não Argon2id
+(como a senha) porque os 256 bits do segredo são sorteados — não há dicionário a encarecer, e o
+custo do Argon2 entraria em cada `POST /v1/eventos`.
+
+**`GET`** — as emitidas, ativas primeiro, sem o segredo de nenhuma. `prefixo` é o pedaço em claro
+que serve para reconhecer qual é qual. `ultimo_uso_em` é carimbado no máximo de hora em hora, o
+bastante para responder "isso ainda está em uso?" sem uma escrita a mais por evento ingerido. As
+chaves de variável de ambiente não aparecem aqui.
+
+**`DELETE`** — revoga: a próxima requisição com ela leva `401`. A linha fica na tabela com nome e
+data, para a pergunta que vem depois ("quem usava a chave que vazou?"). `404` se o id não existe.
 
 ---
 
@@ -254,6 +299,7 @@ Formato uniforme:
 - `401` chave ou sessão ausente/inválida — inclui e-mail ou senha errados no login
 - `403` a chave é válida mas não pode fazer isso — na prática, uma chave de escrita tentando
   reportar evento de **outra** `aplicacao`
+- `404` recurso inexistente (revogar uma chave que não está na tabela)
 - `409` conflito (preço já cadastrado para a mesma vigência, e-mail de usuário repetido)
 - `422` validação de tipo (FastAPI)
 - `429` tentativas de login demais para o mesmo par (IP, e-mail)

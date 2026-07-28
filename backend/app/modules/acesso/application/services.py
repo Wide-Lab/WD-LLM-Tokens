@@ -4,8 +4,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import TooManyRequestsError, UnauthorizedError
 from app.modules.acesso.application import limite
-from app.modules.acesso.domain.entities import NovoUsuario, Usuario, normalizar_email
-from app.modules.acesso.infra.repository import UsuarioRepository
+from app.modules.acesso.domain.entities import (
+    ChaveApi,
+    ChaveCriada,
+    EscopoChave,
+    NovaChave,
+    NovoUsuario,
+    Usuario,
+    normalizar_email,
+)
+from app.modules.acesso.infra.repository import ChaveApiRepository, UsuarioRepository
 from app.modules.acesso.infra.senha import confere
 
 
@@ -47,3 +55,43 @@ class AcessoService:
         usuario = await self._usuarios.criar(novo)
         await self._session.commit()
         return usuario
+
+
+class ChaveApiService:
+    """Emissão, listagem, revogação e conferência das chaves de API."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+        self._chaves = ChaveApiRepository(session)
+
+    async def criar(self, nova: NovaChave) -> ChaveCriada:
+        chave, segredo = await self._chaves.criar(nova)
+        await self._session.commit()
+        return ChaveCriada(chave=chave, segredo=segredo)
+
+    async def listar(self) -> list[ChaveApi]:
+        return await self._chaves.listar()
+
+    async def revogar(self, chave_id: uuid.UUID) -> ChaveApi:
+        chave = await self._chaves.revogar(chave_id)
+        await self._session.commit()
+        return chave
+
+    async def autenticar(self, segredo: str, escopo: EscopoChave) -> ChaveApi | None:
+        """A chave por trás daquele texto, se estiver ativa **e** for do escopo pedido.
+
+        Escopo errado devolve `None`, e não um erro próprio: para quem está do lado de fora,
+        "esta chave não abre isto" e "esta chave não existe" precisam ser a mesma resposta — a
+        diferença só serviria para alguém mapear o que tem em mãos.
+
+        O `commit` do `marcar_uso` é próprio de propósito: os `GET` não commitam nada, e sem ele
+        o carimbo iria embora no fim do request."""
+
+        chave = await self._chaves.ativa_por_segredo(segredo)
+        if chave is None or chave.escopo is not escopo:
+            return None
+
+        if await self._chaves.marcar_uso(chave.id):
+            await self._session.commit()
+
+        return chave

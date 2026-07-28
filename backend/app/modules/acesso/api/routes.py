@@ -1,17 +1,26 @@
-"""Login, logout e cadastro de usuário.
+"""Login, logout, cadastro de usuário e emissão de chave de API.
 
 O cookie é `HttpOnly` + `SameSite=Lax`: o painel nunca lê o token em JavaScript, e nenhum site de
 terceiros consegue disparar uma requisição autenticada por ele. Não há CSRF token porque não há
 o que proteger — tudo que escreve neste serviço (`POST /v1/eventos`, `POST /v1/precos`,
 `POST /v1/usuarios`) exige `X-API-Key`, que o cookie não substitui."""
 
+import uuid
+
 from fastapi import APIRouter, Depends, Request, Response, status
 
 from app.api.dependencies import UsuarioDep, requer_admin
 from app.core.config import get_config
 from app.db.session import SessionDep
-from app.modules.acesso.api.schemas import LoginIn, UsuarioIn, UsuarioOut
-from app.modules.acesso.application.services import AcessoService
+from app.modules.acesso.api.schemas import (
+    ChaveCriadaOut,
+    ChaveIn,
+    ChaveOut,
+    LoginIn,
+    UsuarioIn,
+    UsuarioOut,
+)
+from app.modules.acesso.application.services import AcessoService, ChaveApiService
 from app.modules.acesso.infra import sessao
 
 router = APIRouter(tags=["acesso"])
@@ -93,3 +102,37 @@ async def criar_usuario(payload: UsuarioIn, session: SessionDep) -> UsuarioOut:
 
     usuario = await AcessoService(session).criar(payload.para_dominio())
     return UsuarioOut.model_validate(usuario)
+
+
+@router.get("/chaves", dependencies=[Depends(requer_admin)])
+async def listar_chaves(session: SessionDep) -> list[ChaveOut]:
+    """As chaves emitidas — sem o segredo de nenhuma, que não existe mais em lugar nenhum.
+
+    Não lista as de variável de ambiente: elas continuam valendo (ver `api/dependencies.py`),
+    mas quem as conhece é o `.env` do servidor, não esta tabela."""
+
+    chaves = await ChaveApiService(session).listar()
+    return [ChaveOut.model_validate(chave) for chave in chaves]
+
+
+@router.post("/chaves", status_code=status.HTTP_201_CREATED, dependencies=[Depends(requer_admin)])
+async def criar_chave(payload: ChaveIn, session: SessionDep) -> ChaveCriadaOut:
+    """Emite uma chave. **A resposta é a única vez que o segredo aparece** — o banco guarda só o
+    hash, então não há como mostrá-lo de novo.
+
+    Pela `CHAVE_ADMIN`, como o cadastro de usuário e de preço: quem opera o serviço distribui
+    credencial, e a chave que faz isso é a única que não nasce aqui."""
+
+    criada = await ChaveApiService(session).criar(payload.para_dominio())
+    return ChaveCriadaOut.de(criada)
+
+
+@router.delete("/chaves/{chave_id}", dependencies=[Depends(requer_admin)])
+async def revogar_chave(chave_id: uuid.UUID, session: SessionDep) -> ChaveOut:
+    """Desliga a chave na hora — a próxima requisição com ela leva `401`.
+
+    `DELETE` no verbo, carimbo em `revogada_em` no banco: a linha fica, com o nome e a data, para
+    a pergunta que sempre vem depois ("quem tinha essa chave que vazou?")."""
+
+    chave = await ChaveApiService(session).revogar(chave_id)
+    return ChaveOut.model_validate(chave)

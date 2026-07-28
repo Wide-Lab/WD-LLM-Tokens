@@ -1,7 +1,8 @@
 # Modelo de dados
 
-Duas tabelas. Uma guarda o que aconteceu (`registro_uso`), a outra guarda quanto
-custa (`preco_modelo`). O custo nunca é gravado no evento — é derivado.
+Duas tabelas no centro. Uma guarda o que aconteceu (`registro_uso`), a outra guarda quanto
+custa (`preco_modelo`). O custo nunca é gravado no evento — é derivado. Em volta, quem tem
+permissão de chegar perto: `usuario` e `chave_api`.
 
 ## `registro_uso` — uma linha por chamada ao LLM
 
@@ -101,6 +102,27 @@ foi exposto na internet e a chave no `localStorage` deixou de servir de tranca.
 
 Não há tabela de sessões: o cookie é o id do usuário assinado com `SEGREDO_SESSAO`. A revogação
 que uma tabela daria vem de `ativo`, relido a cada requisição.
+
+## `chave_api` — quem fala com a API sem ser gente
+
+Também solta das demais. Nasce em `POST /v1/chaves` (ver `docs/api.md`) e substitui, sem pressa,
+as chaves que viviam em variável de ambiente.
+
+| Coluna | Tipo | Notas |
+|---|---|---|
+| `id` | `uuid` PK | |
+| `nome` | `text not null` | para gente: "famossul produção" |
+| `escopo` | `text not null` | `escrita` ou `leitura`; `text` e não `enum` para escopo novo não virar `ALTER TYPE` |
+| `aplicacao` | `text null` | só nas de escrita — a chave **é** a identidade de quem reporta |
+| `prefixo` | `text not null unique` | o pedaço em claro da chave, para reconhecer qual é qual |
+| `impressao` | `text not null unique` | SHA-256 da chave; é por ele que a autenticação busca |
+| `criada_em` | `timestamptz not null default now()` | |
+| `ultimo_uso_em` | `timestamptz null` | carimbado no máximo de hora em hora |
+| `revogada_em` | `timestamptz null` | `NULL` = ativa; revogar é carimbar, não apagar |
+
+É a única tabela que sofre `UPDATE` fora de `preco_modelo`. O append-only vale para o que é fato
+consumado — um evento aconteceu e não desacontece; credencial é estado, e estado precisa poder
+ser desligado.
 
 ## Cálculo de custo
 

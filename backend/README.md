@@ -13,7 +13,7 @@ app/
   modules/
     uso/      registro_uso: ingestão, listagem e métricas
     precos/   preco_modelo: preço com vigência e a expressão de custo
-    acesso/   usuario: login, sessão e cadastro
+    acesso/   usuario e chave_api: login, sessão, cadastro e emissão de chave
 ```
 
 Cada módulo é `api / application / domain / infra`: a rota traduz HTTP, o serviço orquestra, o
@@ -57,6 +57,25 @@ O login precisa de `SEGREDO_SESSAO` no `.env`, senão responde `503`:
 ```bash
 python -c "import secrets; print(secrets.token_urlsafe(48))"
 ```
+
+## Chaves de API
+
+Escrita e leitura nascem pela `CHAVE_ADMIN`. **A resposta é a única vez que o segredo aparece** —
+o banco guarda só o hash:
+
+```bash
+curl -X POST localhost:8000/api/v1/chaves \
+  -H "X-API-Key: $CHAVE_ADMIN" -H 'Content-Type: application/json' \
+  -d '{"nome":"famossul produção","escopo":"escrita","aplicacao":"famossul"}'
+
+curl -X POST localhost:8000/api/v1/chaves \
+  -H "X-API-Key: $CHAVE_ADMIN" -H 'Content-Type: application/json' \
+  -d '{"nome":"relatório mensal","escopo":"leitura"}'
+```
+
+`GET /api/v1/chaves` lista (sem segredo, ativas primeiro) e `DELETE /api/v1/chaves/{id}` revoga na
+hora. As chaves de `CHAVES_ESCRITA`/`CHAVE_LEITURA` no `.env` continuam valendo em paralelo — dá
+para emitir as novas, apontar cada app e só então esvaziar as variáveis.
 
 ## Preços
 

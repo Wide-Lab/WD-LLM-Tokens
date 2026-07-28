@@ -23,7 +23,9 @@ Backend em `backend/app/modules/<módulo>/{api,application,domain,infra}`: `uso`
 
 O prefixo `/api` faz parte das rotas **no FastAPI** (`create_app` monta em `/api/v1`), não é reescrita do nginx. Vale igual no dev local.
 
-Autenticação em duas vias: `X-API-Key` para máquina (uma chave de escrita por app — recusa evento de `aplicacao` que não seja a dona da chave —, uma de leitura, uma de admin) e cookie `HttpOnly` de sessão para gente. **Nenhum segredo no browser**: o painel não usa API key, chama `/api` na própria origem e o cookie viaja sozinho (`frontend/src/lib/api.ts`). Não existe tela de cadastro — usuário e preço nascem por `CHAVE_ADMIN`.
+Autenticação em duas vias: `X-API-Key` para máquina (uma chave de escrita por app — recusa evento de `aplicacao` que não seja a dona da chave —, uma de leitura, uma de admin) e cookie `HttpOnly` de sessão para gente. **Nenhum segredo no browser**: o painel não usa API key, chama `/api` na própria origem e o cookie viaja sozinho (`frontend/src/lib/api.ts`). Não existe tela de cadastro — usuário, preço e chave nascem por `CHAVE_ADMIN`.
+
+As chaves de escrita e leitura são emitidas em `POST /v1/chaves` e ficam em `chave_api` (só o SHA-256; o segredo aparece uma vez na resposta). As de variável de ambiente continuam valendo em paralelo — ambiente primeiro, banco depois. A `CHAVE_ADMIN` não migrou: é a que emite e revoga as outras.
 
 Frontend: TanStack Start + React 19 + Tailwind 4 + shadcn/ui, gerado no Lovable. Rotas em `src/routes/`, `src/components/ui/` é shadcn (não edite à mão sem motivo). `vite.config.ts` usa `@lovable.dev/vite-tanstack-config`, que já inclui os plugins — adicionar plugin manualmente duplica e quebra o app.
 

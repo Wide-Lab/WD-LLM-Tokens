@@ -1,9 +1,15 @@
 import uuid
+from dataclasses import asdict
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from app.modules.acesso.domain.entities import NovoUsuario
+from app.modules.acesso.domain.entities import (
+    ChaveCriada,
+    EscopoChave,
+    NovaChave,
+    NovoUsuario,
+)
 
 
 class LoginIn(BaseModel):
@@ -30,3 +36,39 @@ class UsuarioOut(BaseModel):
     nome: str
     ativo: bool
     criado_em: datetime
+
+
+class ChaveIn(BaseModel):
+    nome: str = Field(min_length=1, description='Para gente: "famossul produção".')
+    escopo: EscopoChave
+    aplicacao: str | None = Field(
+        default=None, description="Obrigatória no escopo `escrita`, proibida no `leitura`."
+    )
+
+    def para_dominio(self) -> NovaChave:
+        return NovaChave(nome=self.nome, escopo=self.escopo, aplicacao=self.aplicacao)
+
+
+class ChaveOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    nome: str
+    escopo: EscopoChave
+    aplicacao: str | None
+    prefixo: str
+    criada_em: datetime
+    ultimo_uso_em: datetime | None
+    revogada_em: datetime | None
+
+
+class ChaveCriadaOut(ChaveOut):
+    """A resposta da emissão — a única em que o campo `chave` existe."""
+
+    chave: str
+    """A chave em texto puro. **Só aparece aqui.** O banco guarda o hash, então não há endpoint
+    que a mostre de novo: perdeu, emite outra e revoga esta."""
+
+    @classmethod
+    def de(cls, criada: ChaveCriada) -> ChaveCriadaOut:
+        return cls(chave=criada.segredo, **asdict(criada.chave))
