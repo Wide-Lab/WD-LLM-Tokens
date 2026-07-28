@@ -15,12 +15,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Activity, Coins, ArrowDownToLine, ArrowUpFromLine, Database } from "lucide-react";
 
 import { GlobalFilters } from "@/components/global-filters";
-import { ErrorBox, EmptyBox } from "@/components/empty-states";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Medidor } from "@/components/medidor";
+import { PainelCard } from "@/components/painel-card";
+import { eixo, tooltipEstilo } from "@/lib/grafico";
 import { apiGet } from "@/lib/api";
 import { useFilters, filtersToParams } from "@/lib/filters";
 import { formatCompact, formatCurrency, formatNumber } from "@/lib/format";
@@ -44,14 +43,8 @@ export const Route = createFileRoute("/")({
   component: Overview,
 });
 
-const TOKEN_COLORS = {
-  entrada: "var(--chart-1)",
-  saida: "var(--chart-2)",
-  cache_leitura: "var(--chart-3)",
-  cache_escrita: "var(--chart-4)",
-};
-
-const PIE_COLORS = [
+/** A rampa violeta: todo gráfico de dinheiro sai daqui. */
+const RAMPA_CUSTO = [
   "var(--chart-1)",
   "var(--chart-2)",
   "var(--chart-3)",
@@ -74,7 +67,7 @@ function Overview() {
   return (
     <div className="flex flex-col gap-4">
       <GlobalFilters />
-      <KpiCards baseParams={base} />
+      <Leitura baseParams={base} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <CustoTemporal baseParams={base} granularidade={filters.granularidade} />
         <TokensTemporal baseParams={base} granularidade={filters.granularidade} />
@@ -88,98 +81,9 @@ function Overview() {
   );
 }
 
-function KpiCards({ baseParams }: { baseParams: Record<string, string | undefined> }) {
+function Leitura({ baseParams }: { baseParams: Record<string, string | undefined> }) {
   const q = useMetricas(baseParams);
-  const totals = q.data?.[0];
-  const moeda = totals?.moeda ?? "USD";
-
-  const cacheTotal =
-    (totals?.tokens_cache_leitura ?? 0) + (totals?.tokens_cache_escrita ?? 0);
-
-  const kpis = [
-    {
-      label: "Requisições",
-      icon: Activity,
-      value: totals ? formatNumber(totals.requisicoes) : "—",
-    },
-    {
-      label: "Custo total",
-      icon: Coins,
-      value: totals ? formatCurrency(totals.custo, moeda) : "—",
-    },
-    {
-      label: "Tokens de entrada",
-      icon: ArrowDownToLine,
-      value: totals ? formatNumber(totals.tokens_entrada) : "—",
-    },
-    {
-      label: "Tokens de saída",
-      icon: ArrowUpFromLine,
-      value: totals ? formatNumber(totals.tokens_saida) : "—",
-    },
-    {
-      label: "Tokens de cache",
-      icon: Database,
-      value: totals ? formatNumber(cacheTotal) : "—",
-    },
-  ];
-
-  if (q.isError) return <ErrorBox error={q.error} />;
-
-  return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-      {kpis.map((k) => (
-        <Card key={k.label} className="overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">
-              {k.label}
-            </CardTitle>
-            <k.icon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {q.isLoading ? (
-              <Skeleton className="h-8 w-24" />
-            ) : (
-              <div className="truncate text-2xl font-bold tracking-tight">{k.value}</div>
-            )}
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-function ChartCard({
-  title,
-  children,
-  loading,
-  error,
-  empty,
-}: {
-  title: string;
-  children: React.ReactNode;
-  loading?: boolean;
-  error?: unknown;
-  empty?: boolean;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm font-semibold">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <Skeleton className="h-[280px] w-full" />
-        ) : error ? (
-          <ErrorBox error={error} />
-        ) : empty ? (
-          <EmptyBox />
-        ) : (
-          <div className="h-[280px] w-full">{children}</div>
-        )}
-      </CardContent>
-    </Card>
-  );
+  return <Medidor totais={q.data?.[0]} carregando={q.isLoading} erro={q.error} />;
 }
 
 function CustoTemporal({
@@ -193,40 +97,35 @@ function CustoTemporal({
   const data = q.data ?? [];
   const moeda = data[0]?.moeda ?? "USD";
   return (
-    <ChartCard
+    <PainelCard
       title="Custo ao longo do tempo"
+      hint={
+        granularidade === "dia" ? "por dia" : granularidade === "semana" ? "por semana" : "por mês"
+      }
       loading={q.isLoading}
       error={q.error}
       empty={!q.isLoading && data.length === 0}
     >
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-          <XAxis dataKey="periodo" stroke="var(--muted-foreground)" fontSize={12} />
-          <YAxis
-            stroke="var(--muted-foreground)"
-            fontSize={12}
-            tickFormatter={(v) => formatCompact(v)}
-          />
+          <CartesianGrid stroke="var(--border)" vertical={false} />
+          <XAxis dataKey="periodo" {...eixo} />
+          <YAxis {...eixo} tickFormatter={(v) => formatCompact(v)} width={52} />
           <Tooltip
-            contentStyle={{
-              background: "var(--popover)",
-              border: "1px solid var(--border)",
-              borderRadius: 8,
-              color: "var(--popover-foreground)",
-            }}
+            {...tooltipEstilo}
             formatter={(v: number) => [formatCurrency(v, moeda), "Custo"]}
           />
           <Line
             type="monotone"
             dataKey="custo"
-            stroke="var(--chart-1)"
+            stroke="var(--custo)"
             strokeWidth={2}
-            dot={{ r: 3 }}
+            dot={false}
+            activeDot={{ r: 4, strokeWidth: 0 }}
           />
         </LineChart>
       </ResponsiveContainer>
-    </ChartCard>
+    </PainelCard>
   );
 }
 
@@ -240,48 +139,38 @@ function TokensTemporal({
   const q = useMetricas({ ...baseParams, intervalo: granularidade });
   const data = q.data ?? [];
   return (
-    <ChartCard
+    // Sem legenda própria: a fita do medidor, no topo da página, já ensina as quatro cores.
+    <PainelCard
       title="Tokens ao longo do tempo"
+      hint="entrada · saída · cache"
       loading={q.isLoading}
       error={q.error}
       empty={!q.isLoading && data.length === 0}
     >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-          <XAxis dataKey="periodo" stroke="var(--muted-foreground)" fontSize={12} />
-          <YAxis
-            stroke="var(--muted-foreground)"
-            fontSize={12}
-            tickFormatter={(v) => formatCompact(v)}
-          />
-          <Tooltip
-            contentStyle={{
-              background: "var(--popover)",
-              border: "1px solid var(--border)",
-              borderRadius: 8,
-              color: "var(--popover-foreground)",
-            }}
-            formatter={(v: number) => formatNumber(v)}
-          />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
-          <Bar dataKey="tokens_entrada" stackId="t" fill={TOKEN_COLORS.entrada} name="Entrada" />
-          <Bar dataKey="tokens_saida" stackId="t" fill={TOKEN_COLORS.saida} name="Saída" />
+          <CartesianGrid stroke="var(--border)" vertical={false} />
+          <XAxis dataKey="periodo" {...eixo} />
+          <YAxis {...eixo} tickFormatter={(v) => formatCompact(v)} width={52} />
+          <Tooltip {...tooltipEstilo} formatter={(v: number) => formatNumber(v)} />
+          <Bar dataKey="tokens_entrada" stackId="t" fill="var(--balde-entrada)" name="Entrada" />
+          <Bar dataKey="tokens_saida" stackId="t" fill="var(--balde-saida)" name="Saída" />
           <Bar
             dataKey="tokens_cache_leitura"
             stackId="t"
-            fill={TOKEN_COLORS.cache_leitura}
+            fill="var(--balde-cache-leitura)"
             name="Cache leitura"
           />
           <Bar
             dataKey="tokens_cache_escrita"
             stackId="t"
-            fill={TOKEN_COLORS.cache_escrita}
+            fill="var(--balde-cache-escrita)"
             name="Cache escrita"
+            radius={[2, 2, 0, 0]}
           />
         </BarChart>
       </ResponsiveContainer>
-    </ChartCard>
+    </PainelCard>
   );
 }
 
@@ -293,41 +182,37 @@ function CustoPorModelo({ baseParams }: { baseParams: Record<string, string | un
     .slice(0, 8);
   const moeda = data[0]?.moeda ?? "USD";
   return (
-    <ChartCard
+    <PainelCard
       title="Custo por modelo"
+      hint="fatia do gasto"
       loading={q.isLoading}
       error={q.error}
       empty={!q.isLoading && data.length === 0}
+      emptyMessage="Nenhum modelo com custo apurado. Verifique se há preço vigente para o período."
     >
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
-          <Tooltip
-            contentStyle={{
-              background: "var(--popover)",
-              border: "1px solid var(--border)",
-              borderRadius: 8,
-              color: "var(--popover-foreground)",
-            }}
-            formatter={(v: number) => formatCurrency(v, moeda)}
-          />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Tooltip {...tooltipEstilo} formatter={(v: number) => formatCurrency(v, moeda)} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
           <Pie
             data={data}
             dataKey="custo"
             nameKey="grupo"
             cx="50%"
             cy="50%"
-            innerRadius={55}
-            outerRadius={95}
+            innerRadius={58}
+            outerRadius={92}
             paddingAngle={2}
+            stroke="var(--card)"
+            strokeWidth={2}
           >
             {data.map((_, i) => (
-              <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+              <Cell key={i} fill={RAMPA_CUSTO[i % RAMPA_CUSTO.length]} />
             ))}
           </Pie>
         </PieChart>
       </ResponsiveContainer>
-    </ChartCard>
+    </PainelCard>
   );
 }
 
@@ -339,45 +224,27 @@ function TopAtores({ baseParams }: { baseParams: Record<string, string | undefin
     .slice(0, 10);
   const moeda = data[0]?.moeda ?? "USD";
   return (
-    <ChartCard
-      title="Top atores por custo"
+    <PainelCard
+      title="Atores por custo"
+      hint="10 maiores"
       loading={q.isLoading}
       error={q.error}
       empty={!q.isLoading && data.length === 0}
     >
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={data}
-          layout="vertical"
-          margin={{ top: 8, right: 12, left: 12, bottom: 0 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
-          <XAxis
-            type="number"
-            stroke="var(--muted-foreground)"
-            fontSize={12}
-            tickFormatter={(v) => formatCompact(v)}
-          />
-          <YAxis
-            type="category"
-            dataKey="grupo"
-            stroke="var(--muted-foreground)"
-            fontSize={12}
-            width={140}
-          />
+        <BarChart data={data} layout="vertical" margin={{ top: 4, right: 12, left: 4, bottom: 0 }}>
+          <CartesianGrid stroke="var(--border)" horizontal={false} />
+          <XAxis type="number" {...eixo} tickFormatter={(v) => formatCompact(v)} />
+          <YAxis type="category" dataKey="grupo" {...eixo} width={140} />
           <Tooltip
-            contentStyle={{
-              background: "var(--popover)",
-              border: "1px solid var(--border)",
-              borderRadius: 8,
-              color: "var(--popover-foreground)",
-            }}
+            {...tooltipEstilo}
+            cursor={{ fill: "var(--muted)" }}
             formatter={(v: number) => [formatCurrency(v, moeda), "Custo"]}
           />
-          <Bar dataKey="custo" fill="var(--chart-2)" radius={[0, 4, 4, 0]} />
+          <Bar dataKey="custo" fill="var(--custo)" radius={[0, 2, 2, 0]} barSize={14} />
         </BarChart>
       </ResponsiveContainer>
-    </ChartCard>
+    </PainelCard>
   );
 }
 
@@ -389,33 +256,25 @@ function UsoPorAplicacao({ baseParams }: { baseParams: Record<string, string | u
   if (!q.isLoading && data.length <= 1) return null;
 
   return (
-    <ChartCard
-      title="Uso por aplicação"
+    <PainelCard
+      title="Custo por aplicação"
       loading={q.isLoading}
       error={q.error}
       empty={!q.isLoading && data.length === 0}
     >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-          <XAxis dataKey="grupo" stroke="var(--muted-foreground)" fontSize={12} />
-          <YAxis
-            stroke="var(--muted-foreground)"
-            fontSize={12}
-            tickFormatter={(v) => formatCompact(v)}
-          />
+          <CartesianGrid stroke="var(--border)" vertical={false} />
+          <XAxis dataKey="grupo" {...eixo} />
+          <YAxis {...eixo} tickFormatter={(v) => formatCompact(v)} width={52} />
           <Tooltip
-            contentStyle={{
-              background: "var(--popover)",
-              border: "1px solid var(--border)",
-              borderRadius: 8,
-              color: "var(--popover-foreground)",
-            }}
+            {...tooltipEstilo}
+            cursor={{ fill: "var(--muted)" }}
             formatter={(v: number) => [formatCurrency(v, moeda), "Custo"]}
           />
-          <Bar dataKey="custo" fill="var(--chart-3)" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="custo" fill="var(--custo)" radius={[2, 2, 0, 0]} maxBarSize={64} />
         </BarChart>
       </ResponsiveContainer>
-    </ChartCard>
+    </PainelCard>
   );
 }

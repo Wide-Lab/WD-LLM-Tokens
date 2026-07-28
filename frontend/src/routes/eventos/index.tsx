@@ -3,9 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 
 import { GlobalFilters } from "@/components/global-filters";
-import { ErrorBox, EmptyBox } from "@/components/empty-states";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PainelCard } from "@/components/painel-card";
 import {
   Table,
   TableBody,
@@ -59,84 +57,67 @@ function AtoresPage() {
   return (
     <div className="flex flex-col gap-4">
       <GlobalFilters />
-      <Card>
-        <CardContent className="p-0">
-          {q.isLoading ? (
-            <div className="space-y-2 p-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
+      <PainelCard
+        title="Atores"
+        hint={atores.length > 0 ? `${atores.length} no período` : undefined}
+        bleed
+        loading={q.isLoading}
+        error={q.error}
+        empty={!q.isLoading && atores.length === 0}
+        emptyMessage="Nenhum ator registrou chamadas neste período. Amplie as datas ou limpe os filtros."
+      >
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="etiqueta py-3 pl-5">Ator</TableHead>
+                <TableHead className="etiqueta py-3 text-right">Reqs.</TableHead>
+                <TableHead className="etiqueta py-3 text-right">Entrada</TableHead>
+                <TableHead className="etiqueta py-3 text-right">Saída</TableHead>
+                <TableHead className="etiqueta py-3 text-right">Cache L/E</TableHead>
+                <TableHead className="etiqueta py-3 pr-5 text-right">Custo</TableHead>
+                <TableHead className="w-8 pr-4" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {atores.map((a) => (
+                <TableRow key={a.grupo} className="group">
+                  <TableCell className="max-w-[280px] truncate p-0">
+                    {/* O link cobre a célula inteira: linha clicável sem `onClick` num
+                        `<tr>`, que não é focável nem abre em nova aba. */}
+                    <Link
+                      to="/eventos/$ator"
+                      params={{ ator: a.grupo ?? "" }}
+                      className="focus-visible:ring-ring block truncate py-2.5 pl-5 font-medium focus-visible:ring-2 focus-visible:outline-none"
+                      title={a.grupo}
+                    >
+                      {a.grupo}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-xs">
+                    {formatNumber(a.requisicoes)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-xs">
+                    {formatNumber(a.tokens_entrada)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-xs">
+                    {formatNumber(a.tokens_saida)}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-right font-mono text-xs">
+                    {formatNumber(a.tokens_cache_leitura)} / {formatNumber(a.tokens_cache_escrita)}
+                  </TableCell>
+                  <TableCell className="leitura text-custo pr-5 text-right text-sm whitespace-nowrap">
+                    {formatCurrency(a.custo, a.moeda)}
+                  </TableCell>
+                  <TableCell className="pr-4">
+                    <ChevronRight className="text-muted-foreground group-hover:text-foreground h-4 w-4 transition-colors" />
+                  </TableCell>
+                </TableRow>
               ))}
-            </div>
-          ) : q.isError ? (
-            <div className="p-4">
-              <ErrorBox error={q.error} />
-            </div>
-          ) : atores.length === 0 ? (
-            <div className="p-4">
-              <EmptyBox message="Nenhum ator encontrado com esses filtros." />
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Ator</TableHead>
-                    <TableHead className="text-right">Requisições</TableHead>
-                    <TableHead className="text-right">Entrada</TableHead>
-                    <TableHead className="text-right">Saída</TableHead>
-                    <TableHead className="text-right">Cache L/E</TableHead>
-                    <TableHead className="text-right">Custo</TableHead>
-                    <TableHead className="w-8" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {atores.map((a) => (
-                    <TableRow key={a.grupo} className="cursor-pointer">
-                      <TableCell className="max-w-[280px] truncate p-0">
-                        {/* O link cobre a célula inteira: linha clicável sem `onClick` num
-                            `<tr>`, que não é focável nem abre em nova aba. */}
-                        <Link
-                          to="/eventos/$ator"
-                          params={{ ator: a.grupo ?? "" }}
-                          className="block truncate px-4 py-2 font-medium hover:underline"
-                          title={a.grupo}
-                        >
-                          {a.grupo}
-                        </Link>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatNumber(a.requisicoes)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatNumber(a.tokens_entrada)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatNumber(a.tokens_saida)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">
-                        {formatNumber(a.tokens_cache_leitura)} /{" "}
-                        {formatNumber(a.tokens_cache_escrita)}
-                      </TableCell>
-                      <TableCell className="text-right whitespace-nowrap font-medium tabular-nums">
-                        {formatCurrency(a.custo, a.moeda)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        <ChevronRight className="h-4 w-4" />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {atores.length > 0 && (
-        <div className="text-sm text-muted-foreground">
-          {atores.length === 1 ? "1 ator no período" : `${atores.length} atores no período`}
+            </TableBody>
+          </Table>
         </div>
-      )}
+      </PainelCard>
     </div>
   );
 }

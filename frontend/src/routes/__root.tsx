@@ -25,10 +25,12 @@ function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Página não encontrada</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          A página que você procura não existe ou foi movida.
+        <div className="leitura text-custo text-6xl">404</div>
+        <h2 className="text-foreground mt-4 text-xl font-semibold tracking-tight">
+          Página não encontrada
+        </h2>
+        <p className="text-muted-foreground mt-2 text-sm">
+          Este endereço não existe no painel. Volte para a visão geral.
         </p>
         <div className="mt-6">
           <Link
@@ -53,11 +55,12 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+        <div className="etiqueta">Falha</div>
+        <h1 className="text-foreground mt-3 text-xl font-semibold tracking-tight">
           Esta página não carregou
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Algo deu errado. Tente atualizar ou volte para o início.
+        <p className="text-muted-foreground mt-2 text-sm">
+          Tente novamente. Se continuar falhando, o serviço de métricas pode estar fora do ar.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
@@ -95,13 +98,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "Painel LLM — Uso de tokens" },
       {
         property: "og:description",
-        content:
-          "Dashboard para monitorar tokens, custos e eventos de uso de LLMs em tempo real.",
+        content: "Dashboard para monitorar tokens, custos e eventos de uso de LLMs em tempo real.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
+      // Archivo carrega a interface, Spline Sans Mono carrega os números. Vem por <link> e
+      // não por @import no CSS para não bloquear o parse da folha de estilo principal.
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap",
+      },
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
@@ -149,6 +159,14 @@ function Carregando() {
   );
 }
 
+/** O cabeçalho diz onde você está; o nome do produto já está na barra lateral. */
+function tituloDaRota(pathname: string): string {
+  if (pathname === "/") return "Visão geral";
+  if (pathname === "/eventos") return "Eventos";
+  if (pathname.startsWith("/eventos/")) return "Eventos / Ator";
+  return "Painel";
+}
+
 /**
  * Decide entre a tela de login e o painel.
  *
@@ -179,11 +197,9 @@ function Portao() {
         <div className="flex min-h-screen w-full bg-background">
           <AppSidebar />
           <SidebarInset className="flex min-w-0 flex-1 flex-col">
-            <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur">
+            <header className="bg-background/80 sticky top-0 z-30 flex h-14 items-center gap-3 border-b px-4 backdrop-blur">
               <SidebarTrigger />
-              <div className="text-sm font-medium text-muted-foreground">
-                Painel de uso de tokens
-              </div>
+              <h1 className="etiqueta truncate">{tituloDaRota(pathname)}</h1>
             </header>
             <main className="flex-1 p-4 md:p-6">
               <Outlet />

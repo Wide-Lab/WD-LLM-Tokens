@@ -1,23 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
-import {
-  Activity,
-  ArrowDownToLine,
-  ArrowLeft,
-  ArrowUpFromLine,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Coins,
-  Database,
-} from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { GlobalFilters } from "@/components/global-filters";
-import { ErrorBox, EmptyBox } from "@/components/empty-states";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Medidor } from "@/components/medidor";
+import { PainelCard } from "@/components/painel-card";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -62,20 +51,20 @@ function AtorPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/eventos" className="gap-2">
+      <div className="flex min-w-0 flex-wrap items-center gap-3">
+        <Button variant="ghost" size="sm" asChild className="-ml-2 gap-1.5">
+          <Link to="/eventos">
             <ArrowLeft className="h-4 w-4" />
             Atores
           </Link>
         </Button>
-        <h1 className="min-w-0 truncate text-lg font-semibold" title={ator}>
+        <h2 className="min-w-0 truncate font-mono text-lg font-medium" title={ator}>
           {ator}
-        </h1>
+        </h2>
       </div>
 
       <GlobalFilters />
-      <KpiCards baseParams={base} />
+      <Leitura baseParams={base} />
       <PorModelo baseParams={base} />
       <Chamadas baseParams={base} />
     </div>
@@ -84,60 +73,19 @@ function AtorPage() {
 
 type Params = Record<string, string | undefined>;
 
-function KpiCards({ baseParams }: { baseParams: Params }) {
+function Leitura({ baseParams }: { baseParams: Params }) {
   const q = useQuery({
     queryKey: ["metricas", baseParams],
     queryFn: () => apiGet<MetricaBucket[]>("/v1/metricas", baseParams),
   });
 
-  const totais = q.data?.[0];
-  const moeda = totais?.moeda ?? "USD";
-  const cache = (totais?.tokens_cache_leitura ?? 0) + (totais?.tokens_cache_escrita ?? 0);
-
-  const kpis = [
-    {
-      label: "Requisições",
-      icon: Activity,
-      value: totais ? formatNumber(totais.requisicoes) : "—",
-    },
-    {
-      label: "Custo total",
-      icon: Coins,
-      value: totais ? formatCurrency(totais.custo, moeda) : "—",
-    },
-    {
-      label: "Tokens de entrada",
-      icon: ArrowDownToLine,
-      value: totais ? formatNumber(totais.tokens_entrada) : "—",
-    },
-    {
-      label: "Tokens de saída",
-      icon: ArrowUpFromLine,
-      value: totais ? formatNumber(totais.tokens_saida) : "—",
-    },
-    { label: "Tokens de cache", icon: Database, value: totais ? formatNumber(cache) : "—" },
-  ];
-
-  if (q.isError) return <ErrorBox error={q.error} />;
-
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-      {kpis.map((k) => (
-        <Card key={k.label} className="overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">{k.label}</CardTitle>
-            <k.icon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {q.isLoading ? (
-              <Skeleton className="h-8 w-24" />
-            ) : (
-              <div className="truncate text-2xl font-bold tracking-tight">{k.value}</div>
-            )}
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+    <Medidor
+      totais={q.data?.[0]}
+      carregando={q.isLoading}
+      erro={q.error}
+      titulo="Gasto deste ator"
+    />
   );
 }
 
@@ -151,66 +99,52 @@ function PorModelo({ baseParams }: { baseParams: Params }) {
   const modelos = (q.data ?? []).slice().sort((a, b) => (b.custo ?? 0) - (a.custo ?? 0));
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm font-semibold">Uso por modelo</CardTitle>
-      </CardHeader>
-      <CardContent className="p-0">
-        {q.isLoading ? (
-          <div className="space-y-2 p-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-8 w-full" />
+    <PainelCard
+      title="Modelos usados"
+      hint={modelos.length > 0 ? `${modelos.length} no período` : undefined}
+      bleed
+      loading={q.isLoading}
+      error={q.error}
+      empty={!q.isLoading && modelos.length === 0}
+      emptyMessage="Este ator não chamou nenhum modelo no período."
+    >
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="etiqueta py-3 pl-5">Modelo</TableHead>
+              <TableHead className="etiqueta py-3 text-right">Reqs.</TableHead>
+              <TableHead className="etiqueta py-3 text-right">Entrada</TableHead>
+              <TableHead className="etiqueta py-3 text-right">Saída</TableHead>
+              <TableHead className="etiqueta py-3 text-right">Cache L/E</TableHead>
+              <TableHead className="etiqueta py-3 pr-5 text-right">Custo</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {modelos.map((m) => (
+              <TableRow key={m.grupo}>
+                <TableCell className="pl-5 font-mono text-xs font-medium">{m.grupo}</TableCell>
+                <TableCell className="text-right font-mono text-xs">
+                  {formatNumber(m.requisicoes)}
+                </TableCell>
+                <TableCell className="text-right font-mono text-xs">
+                  {formatNumber(m.tokens_entrada)}
+                </TableCell>
+                <TableCell className="text-right font-mono text-xs">
+                  {formatNumber(m.tokens_saida)}
+                </TableCell>
+                <TableCell className="text-muted-foreground text-right font-mono text-xs">
+                  {formatNumber(m.tokens_cache_leitura)} / {formatNumber(m.tokens_cache_escrita)}
+                </TableCell>
+                <TableCell className="leitura text-custo pr-5 text-right text-sm whitespace-nowrap">
+                  {formatCurrency(m.custo, m.moeda)}
+                </TableCell>
+              </TableRow>
             ))}
-          </div>
-        ) : q.isError ? (
-          <div className="p-4">
-            <ErrorBox error={q.error} />
-          </div>
-        ) : modelos.length === 0 ? (
-          <div className="p-4">
-            <EmptyBox message="Nenhum modelo usado no período." />
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Modelo</TableHead>
-                  <TableHead className="text-right">Requisições</TableHead>
-                  <TableHead className="text-right">Entrada</TableHead>
-                  <TableHead className="text-right">Saída</TableHead>
-                  <TableHead className="text-right">Cache L/E</TableHead>
-                  <TableHead className="text-right">Custo</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {modelos.map((m) => (
-                  <TableRow key={m.grupo}>
-                    <TableCell className="font-medium">{m.grupo}</TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatNumber(m.requisicoes)}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatNumber(m.tokens_entrada)}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatNumber(m.tokens_saida)}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums text-muted-foreground">
-                      {formatNumber(m.tokens_cache_leitura)} /{" "}
-                      {formatNumber(m.tokens_cache_escrita)}
-                    </TableCell>
-                    <TableCell className="text-right whitespace-nowrap font-medium tabular-nums">
-                      {formatCurrency(m.custo, m.moeda)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          </TableBody>
+        </Table>
+      </div>
+    </PainelCard>
   );
 }
 
@@ -245,65 +179,47 @@ function Chamadas({ baseParams }: { baseParams: Params }) {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold">Chamadas</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {q.isLoading ? (
-            <div className="space-y-2 p-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
+      <PainelCard
+        title="Chamadas"
+        hint={total > 0 ? `${formatNumber(total)} no período` : undefined}
+        bleed
+        loading={q.isLoading}
+        error={q.error}
+        empty={!q.isLoading && (!data || data.itens.length === 0)}
+        emptyMessage="Este ator não fez chamadas no período selecionado."
+      >
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-8 pl-3" />
+                <TableHead className="etiqueta py-3">Data/hora</TableHead>
+                <TableHead className="etiqueta py-3">Aplicação</TableHead>
+                <TableHead className="etiqueta py-3">Modelo</TableHead>
+                <TableHead className="etiqueta py-3 text-right">Entrada</TableHead>
+                <TableHead className="etiqueta py-3 text-right">Saída</TableHead>
+                <TableHead className="etiqueta py-3 text-right">Cache L/E</TableHead>
+                <TableHead className="etiqueta py-3 pr-5 text-right">Custo</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(data?.itens ?? []).map((e) => (
+                <Chamada key={e.id} evento={e} aberto={abertos.has(e.id)} onAlternar={alternar} />
               ))}
-            </div>
-          ) : q.isError ? (
-            <div className="p-4">
-              <ErrorBox error={q.error} />
-            </div>
-          ) : !data || data.itens.length === 0 ? (
-            <div className="p-4">
-              <EmptyBox message="Nenhuma chamada deste ator no período." />
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-8" />
-                    <TableHead>Data/hora</TableHead>
-                    <TableHead>Aplicação</TableHead>
-                    <TableHead>Modelo</TableHead>
-                    <TableHead className="text-right">Entrada</TableHead>
-                    <TableHead className="text-right">Saída</TableHead>
-                    <TableHead className="text-right">Cache L/E</TableHead>
-                    <TableHead className="text-right">Custo</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.itens.map((e) => (
-                    <Chamada
-                      key={e.id}
-                      evento={e}
-                      aberto={abertos.has(e.id)}
-                      onAlternar={alternar}
-                    />
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </TableBody>
+          </Table>
+        </div>
+      </PainelCard>
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-sm text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="text-muted-foreground font-mono text-xs">
           {total > 0
-            ? `Mostrando ${offset + 1}–${Math.min(offset + PAGE_SIZE, total)} de ${formatNumber(
-                total,
-              )}`
+            ? `${formatNumber(offset + 1)}–${formatNumber(
+                Math.min(offset + PAGE_SIZE, total),
+              )} de ${formatNumber(total)}`
             : "Nenhum resultado"}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Button
             variant="outline"
             size="sm"
@@ -313,8 +229,8 @@ function Chamadas({ baseParams }: { baseParams: Params }) {
             <ChevronLeft className="h-4 w-4" />
             Anterior
           </Button>
-          <div className="text-sm text-muted-foreground">
-            Página {pagina} de {paginas}
+          <div className="etiqueta">
+            {pagina} / {paginas}
           </div>
           <Button
             variant="outline"
@@ -344,8 +260,8 @@ function Chamada({
 
   return (
     <>
-      <TableRow>
-        <TableCell className="p-1">
+      <TableRow className={aberto ? "border-b-0" : undefined}>
+        <TableCell className="p-1 pl-3">
           {temConteudo && (
             <Button
               variant="ghost"
@@ -361,35 +277,49 @@ function Chamada({
             </Button>
           )}
         </TableCell>
-        <TableCell className="whitespace-nowrap font-mono text-xs">
+        <TableCell className="text-muted-foreground font-mono text-xs whitespace-nowrap">
           {formatDateTime(evento.criado_em)}
         </TableCell>
         <TableCell>
-          <Badge variant="secondary">{evento.aplicacao}</Badge>
+          <Badge variant="secondary" className="font-mono text-[0.6875rem] font-normal">
+            {evento.aplicacao}
+          </Badge>
         </TableCell>
         <TableCell className="whitespace-nowrap">
-          <div className="text-sm">{evento.modelo}</div>
-          <div className="text-xs text-muted-foreground">{evento.provedor}</div>
+          <div className="font-mono text-xs font-medium">{evento.modelo}</div>
+          {evento.provedor && (
+            <div className="text-muted-foreground text-[0.6875rem]">{evento.provedor}</div>
+          )}
         </TableCell>
-        <TableCell className="text-right tabular-nums">
+        <TableCell className="text-right font-mono text-xs">
           {formatNumber(evento.tokens_entrada)}
         </TableCell>
-        <TableCell className="text-right tabular-nums">
+        <TableCell className="text-right font-mono text-xs">
           {formatNumber(evento.tokens_saida)}
         </TableCell>
-        <TableCell className="text-right tabular-nums text-muted-foreground">
+        <TableCell className="text-muted-foreground text-right font-mono text-xs">
           {formatNumber(evento.tokens_cache_leitura)} / {formatNumber(evento.tokens_cache_escrita)}
         </TableCell>
-        <TableCell className="text-right whitespace-nowrap font-medium tabular-nums">
+        <TableCell className="leitura text-custo pr-5 text-right text-sm whitespace-nowrap">
           {formatCurrency(evento.custo, evento.moeda)}
         </TableCell>
       </TableRow>
       {aberto && (
         <TableRow className="hover:bg-transparent">
-          <TableCell colSpan={8} className="bg-muted/40 p-4">
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-              <Conteudo titulo="Mensagem do ator" texto={evento.mensagem} />
-              <Conteudo titulo="Resposta do agente" texto={evento.resposta} />
+          <TableCell colSpan={8} className="bg-muted/50 px-5 pt-1 pb-5">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {/* A borda de cada painel usa a cor do balde correspondente: o que o ator mandou
+                  virou token de entrada, o que o agente devolveu virou token de saída. */}
+              <Conteudo
+                titulo="Mensagem do ator"
+                texto={evento.mensagem}
+                cor="var(--balde-entrada)"
+              />
+              <Conteudo
+                titulo="Resposta do agente"
+                texto={evento.resposta}
+                cor="var(--balde-saida)"
+              />
             </div>
           </TableCell>
         </TableRow>
@@ -398,18 +328,21 @@ function Chamada({
   );
 }
 
-function Conteudo({ titulo, texto }: { titulo: string; texto: string | null }) {
+function Conteudo({ titulo, texto, cor }: { titulo: string; texto: string | null; cor: string }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1">
-      <div className="text-xs font-medium text-muted-foreground">{titulo}</div>
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <div className="etiqueta">{titulo}</div>
       {texto ? (
         // `whitespace-pre-wrap` porque prompt e resposta vêm com quebra de linha, e a altura é
         // limitada para uma resposta longa não empurrar a tabela inteira para fora da tela.
-        <div className="max-h-64 overflow-y-auto rounded-md border bg-background p-3 text-sm break-words whitespace-pre-wrap">
+        <div
+          className="bg-card max-h-64 overflow-y-auto rounded-sm border border-l-2 p-3 text-sm break-words whitespace-pre-wrap"
+          style={{ borderLeftColor: cor }}
+        >
           {texto}
         </div>
       ) : (
-        <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+        <div className="text-muted-foreground rounded-sm border border-dashed p-3 text-sm">
           Não informado
         </div>
       )}

@@ -1,4 +1,4 @@
-import { AlertCircle, Inbox } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export function ErrorBox({ error }: { error: unknown }) {
@@ -6,17 +6,25 @@ export function ErrorBox({ error }: { error: unknown }) {
   return (
     <Alert variant="destructive">
       <AlertCircle className="h-4 w-4" />
-      <AlertTitle>Falha ao carregar</AlertTitle>
-      <AlertDescription>{msg}</AlertDescription>
+      <AlertTitle>Não foi possível carregar</AlertTitle>
+      <AlertDescription className="font-mono text-xs">{msg}</AlertDescription>
     </Alert>
   );
 }
 
-export function EmptyBox({ message = "Nenhum dado no período selecionado." }: { message?: string }) {
+/**
+ * Vazio é um estado do instrumento, não uma falha: a agulha em zero. Por isso a moldura
+ * tracejada mantém a altura da leitura que estaria ali, e o texto diz o que fazer em seguida.
+ */
+export function EmptyBox({
+  message = "Nenhum evento neste período. Amplie as datas ou limpe os filtros.",
+}: {
+  message?: string;
+}) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-      <Inbox className="h-6 w-6" />
-      <span>{message}</span>
+    <div className="border-border flex flex-col items-center justify-center gap-2 rounded-sm border border-dashed px-6 py-10 text-center">
+      <div className="etiqueta">Sem leitura</div>
+      <p className="text-muted-foreground max-w-xs text-sm">{message}</p>
     </div>
   );
 }

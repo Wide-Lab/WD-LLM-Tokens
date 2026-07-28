@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import { Eye, EyeOff, Loader2, Sparkles } from "lucide-react";
+import { Eye, EyeOff, Gauge, Loader2 } from "lucide-react";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -44,19 +44,30 @@ function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="items-center text-center">
-          <div className="mx-auto grid h-11 w-11 place-items-center rounded-lg bg-primary text-primary-foreground">
-            <Sparkles className="h-6 w-6" />
+    <div className="bg-background flex min-h-screen items-center justify-center px-4 py-10">
+      <Card className="w-full max-w-sm overflow-hidden">
+        {/* A fita dos quatro baldes fecha a borda de cima: a mesma assinatura que abre o painel
+            do outro lado da porta. */}
+        <div className="flex h-1 w-full" aria-hidden="true">
+          <span className="bg-balde-entrada flex-1" />
+          <span className="bg-balde-saida flex-1" />
+          <span className="bg-balde-cache-leitura flex-1" />
+          <span className="bg-balde-cache-escrita flex-1" />
+        </div>
+        <CardContent className="p-6 pt-6">
+          <div className="bg-primary text-primary-foreground grid h-10 w-10 place-items-center rounded-md">
+            <Gauge className="h-5 w-5" />
           </div>
-          <CardTitle className="mt-3">Painel LLM</CardTitle>
-          <CardDescription>Entre para ver o uso e os custos.</CardDescription>
-        </CardHeader>
-        <CardContent>
+          <h1 className="mt-4 text-xl font-semibold tracking-tight">Painel LLM</h1>
+          <p className="text-muted-foreground mt-1 mb-6 text-sm">
+            Entre para ver quanto cada aplicação consumiu e quanto isso custou.
+          </p>
+
           <form onSubmit={enviar} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">E-mail</Label>
+              <Label htmlFor="email" className="etiqueta">
+                E-mail
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -69,7 +80,9 @@ function Login() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="senha">Senha</Label>
+              <Label htmlFor="senha" className="etiqueta">
+                Senha
+              </Label>
               <div className="relative">
                 <Input
                   id="senha"

@@ -7,25 +7,39 @@
 /*
  * Design system definition.
  *
- * The @theme inline block maps CSS custom properties to Tailwind utility
- * classes (e.g. --color-primary -> bg-primary, text-primary).
+ * O painel é um **medidor**: mede quanto passou pelo modelo e quanto isso custou.
+ * A paleta separa as duas substâncias e nunca as mistura:
  *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
+ * - **Dinheiro é violeta** (`--custo`). Nenhum dado usa esse tom — quando aparece violeta
+ *   num número, num gráfico ou numa barra, é dinheiro. Por isso o `--primary` é tinta, não
+ *   violeta: botão primário violeta gastaria o sinal em coisa que não é custo. A única
+ *   exceção é o `--ring`, que é afordância de foco e ninguém lê como valor.
+ * - **Token é petróleo** (`--balde-*`), uma rampa de um tom só porque os quatro baldes
+ *   são partes de um mesmo todo (nunca se sobrepõem — ver `docs/modelo-de-dados.md`).
+ *   Os dois baldes de cache são de propósito os mais apagados da rampa: cache é a faixa
+ *   com desconto, e a cor carrega essa hierarquia de preço.
  *
- * To add a new semantic color:
- * 1. Add the variable to :root (light value) and .dark (dark value)
- * 2. Register it in @theme inline as --color-<name>: var(--<name>)
+ * O @theme inline mapeia as custom properties para utilitários Tailwind
+ * (ex.: --color-custo -> bg-custo, text-custo).
+ *
+ * As cores vivem em :root (claro) e .dark (escuro), sempre em oklch.
+ *
+ * Para adicionar uma cor semântica:
+ * 1. Declare a variável em :root e em .dark
+ * 2. Registre em @theme inline como --color-<nome>: var(--<nome>)
  */
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --font-sans: "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Spline Sans Mono", ui-monospace, "SFMono-Regular", "Menlo", monospace;
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: calc(var(--radius) - 1px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
+  --radius-xl: calc(var(--radius) + 2px);
+  --radius-2xl: calc(var(--radius) + 6px);
+  --radius-3xl: calc(var(--radius) + 10px);
+  --radius-4xl: calc(var(--radius) + 14px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -46,6 +60,12 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-ring-offset-background: var(--background);
+  --color-custo: var(--custo);
+  --color-custo-suave: var(--custo-suave);
+  --color-balde-entrada: var(--balde-entrada);
+  --color-balde-saida: var(--balde-saida);
+  --color-balde-cache-leitura: var(--balde-cache-leitura);
+  --color-balde-cache-escrita: var(--balde-cache-escrita);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -62,74 +82,101 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
+  --radius: 0.25rem;
+
+  --background: oklch(0.948 0.008 286.246);
+  --foreground: oklch(0.199 0.022 292.624);
+  --card: oklch(0.992 0.003 286.352);
+  --card-foreground: oklch(0.199 0.022 292.624);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
+  --popover-foreground: oklch(0.199 0.022 292.624);
+  --primary: oklch(0.233 0.031 292.456);
+  --primary-foreground: oklch(0.977 0.004 286.326);
+  --secondary: oklch(0.919 0.012 291.275);
+  --secondary-foreground: oklch(0.233 0.031 292.456);
+  --muted: oklch(0.928 0.011 291.943);
+  --muted-foreground: oklch(0.509 0.038 292.641);
+  --accent: oklch(0.906 0.016 293.728);
+  --accent-foreground: oklch(0.233 0.031 292.456);
+  --destructive: oklch(0.501 0.178 28.705);
+  --destructive-foreground: oklch(0.978 0.011 24.318);
+  --border: oklch(0.893 0.015 294.441);
+  --input: oklch(0.893 0.015 294.441);
+  --ring: oklch(0.478 0.258 277.989);
+
+  /* Dinheiro. Só dinheiro. */
+  --custo: oklch(0.478 0.258 277.989);
+  --custo-suave: oklch(0.925 0.037 294.166);
+
+  /* Os quatro baldes de token, do mais caro ao mais barato. */
+  --balde-entrada: oklch(0.433 0.072 209.592);
+  --balde-saida: oklch(0.605 0.1 201.822);
+  /* Apagados em relação ao par de cima, mas ainda claramente preenchidos: mais claros que
+     isso e a fita passa a parecer trilho vazio em vez de token contabilizado. */
+  --balde-cache-leitura: oklch(0.699 0.066 198.296);
+  --balde-cache-escrita: oklch(0.797 0.047 187.678);
+
+  /* Gráficos de custo: rampa do violeta, porque todo gráfico com --chart-* é de dinheiro. */
+  --chart-1: oklch(0.407 0.227 277.481);
+  --chart-2: oklch(0.518 0.249 280.842);
+  --chart-3: oklch(0.603 0.207 286.056);
+  --chart-4: oklch(0.709 0.149 288.164);
+  --chart-5: oklch(0.819 0.091 290.588);
+
+  --sidebar: oklch(0.922 0.011 291.941);
+  --sidebar-foreground: oklch(0.199 0.022 292.624);
+  --sidebar-primary: oklch(0.233 0.031 292.456);
+  --sidebar-primary-foreground: oklch(0.977 0.004 286.326);
+  --sidebar-accent: oklch(0.885 0.018 293.103);
+  --sidebar-accent-foreground: oklch(0.199 0.022 292.624);
+  --sidebar-border: oklch(0.872 0.018 293.096);
+  --sidebar-ring: oklch(0.478 0.258 277.989);
 }
 
 .dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
+  --background: oklch(0.173 0.014 291.359);
+  --foreground: oklch(0.931 0.011 291.943);
+  --card: oklch(0.215 0.02 289.224);
+  --card-foreground: oklch(0.931 0.011 291.943);
+  --popover: oklch(0.233 0.021 288.812);
+  --popover-foreground: oklch(0.931 0.011 291.943);
+  --primary: oklch(0.931 0.011 291.943);
+  --primary-foreground: oklch(0.199 0.022 292.624);
+  --secondary: oklch(0.272 0.026 287.824);
+  --secondary-foreground: oklch(0.931 0.011 291.943);
+  --muted: oklch(0.258 0.022 288.544);
+  --muted-foreground: oklch(0.684 0.034 293.466);
+  --accent: oklch(0.293 0.029 287.333);
+  --accent-foreground: oklch(0.931 0.011 291.943);
+  --destructive: oklch(0.701 0.156 26.019);
+  --destructive-foreground: oklch(0.183 0.019 24.897);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.652 0.196 286.676);
+
+  --custo: oklch(0.69 0.174 288.907);
+  --custo-suave: oklch(0.261 0.055 289.67);
+
+  /* No escuro "apagado" é escuro, não claro: o cache continua sendo o par de baixo contraste. */
+  --balde-entrada: oklch(0.646 0.104 203.996);
+  --balde-saida: oklch(0.801 0.116 189.53);
+  --balde-cache-leitura: oklch(0.54 0.058 201.782);
+  --balde-cache-escrita: oklch(0.437 0.046 205.955);
+
+  --chart-1: oklch(0.69 0.174 288.907);
+  --chart-2: oklch(0.773 0.126 291.413);
+  --chart-3: oklch(0.597 0.207 285.93);
+  --chart-4: oklch(0.506 0.213 282.474);
+  --chart-5: oklch(0.853 0.079 291.87);
+
+  --sidebar: oklch(0.195 0.026 287.243);
+  --sidebar-foreground: oklch(0.931 0.011 291.943);
+  --sidebar-primary: oklch(0.931 0.011 291.943);
+  --sidebar-primary-foreground: oklch(0.199 0.022 292.624);
+  --sidebar-accent: oklch(0.288 0.025 287.963);
+  --sidebar-accent-foreground: oklch(0.931 0.011 291.943);
+  --sidebar-border: oklch(0.281 0.027 287.544);
+  --sidebar-ring: oklch(0.652 0.196 286.676);
 }
 
 @layer base {
@@ -140,5 +187,78 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
   }
+
+  /* Números são o conteúdo deste app: sempre no mono, sempre alinhados na coluna. */
+  :where(table) {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* O ícone do seletor de data é um glifo escuro fixo do navegador: no tema escuro ele
+     some contra o campo. Inverter é a única forma de recolori-lo. */
+  .dark input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.65;
+  }
+}
+
+@layer components {
+  /*
+   * Etiqueta de instrumento. Marca o que uma leitura é, sem competir com a leitura:
+   * mono, caixa alta, entrelinha larga, tamanho pequeno.
+   */
+  .etiqueta {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-muted-foreground);
+  }
+
+  /* Leitura do medidor: o número em si. */
+  .leitura {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    font-weight: 500;
+  }
+}
+
+/*
+ * A fita cresce da esquerda uma vez, na montagem, para que a proporção entre os quatro
+ * baldes seja lida como um movimento e não como um bloco pronto. É a única animação de
+ * conteúdo do painel.
+ */
+@keyframes fita-crescer {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.fita-segmento {
+  transform-origin: left center;
+  animation: fita-crescer 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fita-segmento {
+    animation: none;
+  }
+}
+
+/*
+ * Foco de teclado, fora de qualquer @layer de propósito: vários componentes do shadcn trazem
+ * `focus-visible:outline-none` e só um anel de 1px, e regra sem camada vence utilitário em
+ * camada. Aqui todo controle focado ganha o mesmo contorno de 2px, visível nos dois temas.
+ */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
 }

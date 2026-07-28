@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, ListOrdered, LogOut, Moon, Sun, Sparkles } from "lucide-react";
+import { Gauge, LayoutDashboard, ListOrdered, LogOut, Moon, Sun } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -29,24 +29,28 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-3">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
-            <Sparkles className="h-5 w-5" />
+        <div className="flex items-center gap-2.5 px-2 py-3">
+          <div className="bg-primary text-primary-foreground grid h-9 w-9 shrink-0 place-items-center rounded-md">
+            <Gauge className="h-5 w-5" />
           </div>
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <div className="truncate text-sm font-semibold">Painel LLM</div>
-            <div className="truncate text-xs text-muted-foreground">Uso e custos</div>
+            <div className="truncate text-sm font-semibold tracking-tight">Painel LLM</div>
+            <div className="etiqueta mt-1 truncate">Tokens e custo</div>
           </div>
         </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navegação</SidebarGroupLabel>
+          <SidebarGroupLabel className="etiqueta">Navegação</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
                 <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton asChild isActive={currentPath === item.url} tooltip={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={currentPath === item.url}
+                    tooltip={item.title}
+                  >
                     <Link to={item.url} className="flex items-center gap-2">
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
@@ -60,17 +64,12 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="gap-2">
         {usuario && (
-          <div className="min-w-0 px-2 group-data-[collapsible=icon]:hidden">
+          <div className="border-sidebar-border min-w-0 border-t px-2 pt-3 group-data-[collapsible=icon]:hidden">
             <div className="truncate text-sm font-medium">{usuario.nome}</div>
-            <div className="truncate text-xs text-muted-foreground">{usuario.email}</div>
+            <div className="text-muted-foreground truncate font-mono text-xs">{usuario.email}</div>
           </div>
         )}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={toggle}
-          className="w-full justify-start gap-2"
-        >
+        <Button variant="outline" size="sm" onClick={toggle} className="w-full justify-start gap-2">
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           <span className="group-data-[collapsible=icon]:hidden">
             {theme === "dark" ? "Tema claro" : "Tema escuro"}
