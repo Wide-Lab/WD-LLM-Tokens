@@ -30,6 +30,6 @@ Frontend: TanStack Start + React 19 + Tailwind 4 + shadcn/ui. Rotas em `src/rout
 
 ## Documentos
 
-- `docs/modelo-de-dados.md` — tabelas, os quatro baldes de token (não se sobrepõem), cálculo de custo
-- `docs/api.md` — contratos, autenticação, erros
+- `.claude/specs/modelo-de-dados.md` — tabelas, os quatro baldes de token (não se sobrepõem), cálculo de custo
+- `.claude/specs/api.md` — contratos, autenticação, erros
 - `backend/README.md` — estrutura, dev local, migrations

@@ -1,7 +1,7 @@
 # Backend — Controle de Tokens
 
 FastAPI + SQLAlchemy async + Alembic + Postgres, gerenciado com `uv`. Contratos em
-[`../docs/api.md`](../docs/api.md) e [`../docs/modelo-de-dados.md`](../docs/modelo-de-dados.md).
+[`../.claude/specs/api.md`](../.claude/specs/api.md) e [`../.claude/specs/modelo-de-dados.md`](../.claude/specs/modelo-de-dados.md).
 
 ## Estrutura
 
