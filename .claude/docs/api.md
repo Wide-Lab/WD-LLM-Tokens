@@ -2,11 +2,18 @@
 
 REST, versionada em `/v1`. JSON em tudo. Datas em ISO 8601 (UTC).
 
-As rotas de LLM vivem sob `/v1/llm/*`. Os mesmos caminhos **sem** o prefixo (`/v1/eventos`,
-`/v1/metricas`, `/v1/aplicacoes`, `/v1/modelos`) continuam valendo e respondem igual: são de
-quando o LLM era a única origem de fato, e há aplicação em produção reportando por eles. Não
-aparecem no `/api/docs` — uma lista com cada rota duplicada é o tipo de ruído que faz ninguém
-mais ler a doc. Integração nova usa o caminho com prefixo.
+As rotas de LLM vivem sob `/v1/llm/*` e as de WhatsApp sob `/v1/whatsapp/*` — uma origem de fato,
+um prefixo. Os caminhos de LLM **sem** o prefixo (`/v1/eventos`, `/v1/metricas`, `/v1/aplicacoes`,
+`/v1/modelos`) continuam valendo e respondem igual: são de quando o LLM era a única origem de
+fato, e há aplicação em produção reportando por eles. Não aparecem no `/api/docs` — uma lista com
+cada rota duplicada é o tipo de ruído que faz ninguém mais ler a doc. Integração nova usa o
+caminho com prefixo. O WhatsApp nasceu com prefixo e não tem alias.
+
+> **`ator` é o mesmo texto nos dois lados.** E.164 só dígitos, sem `+`, sem espaço, sem
+> pontuação: `5547999999999`. É o único acoplamento entre as duas origens e não há constraint que
+> o garanta — se o agente reportar num formato e o webhook noutro, qualquer visão por ator produz
+> duas meias-verdades sem erro nenhum. `pais` é ISO-3166 alfa-2 (`BR`, `US`, `PT`) e sobe para
+> maiúsculas na entrada.
 
 ## Autenticação
 
@@ -16,9 +23,12 @@ Duas formas, para dois públicos.
 
 | Chave | Onde nasce | Abre |
 |---|---|---|
-| Escrita (uma por aplicação) | `POST /v1/chaves` | `POST /v1/llm/eventos` |
+| Escrita (uma por aplicação) | `POST /v1/chaves` | `POST /v1/llm/eventos`, `POST /v1/whatsapp/mensagens` |
 | Leitura | `POST /v1/chaves` | os `GET` |
 | Admin | `CHAVE_ADMIN`, no `.env` | `/v1/chaves`, `/v1/precos`, `/v1/usuarios` |
+
+A mesma chave de escrita ingere os dois tipos de fato: ela é a identidade de **quem reporta**, não
+do que se reporta. Reportar `aplicacao` que não é a dona dela dá `403` nas duas rotas.
 
 As de escrita e leitura viviam em variável de ambiente (`CHAVES_ESCRITA`, `CHAVE_LEITURA`) e
 **continuam valendo** — o backend confere o ambiente primeiro e o banco depois, para a migração
@@ -45,8 +55,8 @@ O cookie carrega apenas o id do usuário: cada requisição relê a linha em `us
 `ativo = false` derruba a sessão no request seguinte, sem esperar o cookie vencer. Para
 derrubar **todas** as sessões de uma vez, troque `SEGREDO_SESSAO`.
 
-Não há CSRF token: tudo que escreve (`POST /v1/llm/eventos`, `/v1/precos`, `/v1/usuarios`,
-`/v1/chaves`) exige
+Não há CSRF token: tudo que escreve (`POST /v1/llm/eventos`, `/v1/whatsapp/mensagens`,
+`/v1/precos`, `/v1/usuarios`, `/v1/chaves`) exige
 `X-API-Key`, que o cookie não substitui — não há requisição de escrita que um site de terceiros
 consiga forjar só por o navegador mandar o cookie.
 
@@ -256,6 +266,147 @@ Lista crua para auditoria. Paginada.
 
 ---
 
+## `POST /v1/whatsapp/mensagens`
+
+Ingestão de mensagem. Aceita **um** objeto ou **um array**, com a **mesma** chave de escrita da
+aplicação. Idempotente por `(aplicacao, id_externo)`, com o `wamid` no `id_externo`.
+
+**Request:**
+
+```json
+{
+  "aplicacao": "famossul",
+  "ator": "5547999999999",
+  "direcao": "enviada",
+  "categoria": "utility",
+  "pais": "BR",
+  "cobravel": true,
+  "criado_em": "2026-07-28T14:00:00Z",
+  "id_externo": "wamid.HBgNNTU0Nzk5OTk5OTk5ORUCABEYEjc...",
+  "conteudo": "Seu pedido #4312 saiu para entrega.",
+  "metadados": {
+    "pricing": { "billable": true, "category": "utility", "pricing_model": "PMP" },
+    "conversa_id": "d1f2...",
+    "template": "pedido_em_transito"
+  }
+}
+```
+
+Obrigatórios: `aplicacao`, `ator`, `direcao` (`enviada` \| `recebida`) e `pais`. `categoria` é
+`marketing`, `utility`, `authentication` ou `service`. `criado_em` default `now()`; o resto é
+opcional.
+
+> **`categoria` e `cobravel` vêm da Meta, não de regra nossa.** São cópias de `pricing.category` e
+> `pricing.billable` do webhook de status, que já leva em conta janela de atendimento aberta, free
+> entry point e as isenções que ela foi criando. Este serviço **não** reimplementa nada disso:
+> recalcular a regra de cobrança de outra empresa é errar em silêncio no dia em que ela mudar.
+> Mande o que ela mandou, inclusive quando contrariar o que a gente acha que ela cobra — e mande o
+> objeto `pricing` cru inteiro em `metadados`, para que qualquer conferência futura seja uma
+> consulta e não uma migration.
+
+**Quem reporta ingere no status que traz o `pricing`** (o `sent`). O mapeamento webhook → este
+contrato é de quem reporta, e vale conferir os nomes dos campos na doc atual da Meta: o contrato
+estável é o **daqui**. Mensagem `failed` não deve ser reportada — a Meta não cobra, e a tabela é
+append-only.
+
+Duas recusas, e só duas, com `400`:
+
+| Regra | Motivo |
+|---|---|
+| `direcao: "recebida"` com `cobravel: true` | a Meta não cobra entrada, em hipótese nenhuma |
+| `cobravel: true` sem `categoria` | sem categoria não há linha de preço para casar |
+
+Nada além disso: `service` cobrável entra, combinação estranha entra. Se a Meta disse que cobra,
+quem está errado é a nossa suposição.
+
+**Response `201`:** igual à do LLM — `{"id": "018f...", "duplicado": false}`, array para lote, na
+mesma ordem. `duplicado: true` quando o `wamid` já existia: mandar `sent`, `delivered` e `read`
+não conta a mensagem três vezes.
+
+---
+
+## `GET /v1/whatsapp/metricas`
+
+O coração do painel de WhatsApp, com a mesma mecânica de `grupo` × `intervalo` do LLM.
+
+**Query params:**
+
+| Param | Valores | Efeito |
+|---|---|---|
+| `grupo` | `categoria` \| `ator` \| `aplicacao` \| `pais` \| `direcao` | dimensão do agrupamento |
+| `intervalo` | `dia` \| `semana` \| `mes` | bucket temporal |
+| `de` / `ate` | data ISO | período, os dois extremos inteiros |
+| `aplicacao`, `ator`, `categoria`, `pais`, `direcao` | texto | filtros |
+
+```json
+[
+  {
+    "grupo": "utility",
+    "periodo": "2026-07-28",
+    "mensagens": 120,
+    "cobraveis": 84,
+    "custo": 0.672,
+    "moeda": "USD"
+  }
+]
+```
+
+`cobraveis` é quantas das `mensagens` foram pagas — a diferença entre as duas é o que a janela de
+atendimento e as isenções da Meta pouparam. `custo: null` continua sendo "não sei quanto custou"
+(cobrável sem preço cadastrado para o país), distinto de `0`, "não custou nada".
+
+Em `grupo=categoria`, as recebidas caem num balde `"sem categoria"` — elas não têm uma, e um
+`grupo: null` no meio de uma lista de totais por categoria seria indistinguível de um total geral.
+
+---
+
+## `GET /v1/whatsapp/mensagens`
+
+A lista crua, paginada, com os mesmos filtros mais `limite` (default 50, máx 500) e `offset`.
+
+Com `conteudo` e `direcao`, ela é um registro de conversa, e não só uma auditoria de contagem:
+uma linha por fala, e `direcao` diz de quem.
+
+```json
+{
+  "total": 137,
+  "limite": 50,
+  "offset": 0,
+  "itens": [
+    {
+      "id": "018f...",
+      "criado_em": "2026-07-28T14:00:00Z",
+      "aplicacao": "famossul",
+      "ator": "5547999999999",
+      "direcao": "enviada",
+      "categoria": "utility",
+      "pais": "BR",
+      "cobravel": true,
+      "custo": 0.008,
+      "moeda": "USD",
+      "id_externo": "wamid.HBgNNTU0Nzk5OTk5OTk5ORUCABEYEjc...",
+      "conteudo": "Seu pedido #4312 saiu para entrega.",
+      "metadados": { "pricing": { "billable": true, "category": "utility" } }
+    }
+  ]
+}
+```
+
+---
+
+## `GET /v1/whatsapp/paises`
+
+Popula o dropdown de filtro: os países que já apareceram em alguma mensagem.
+
+```json
+["BR", "US"]
+```
+
+Não há `/v1/whatsapp/categorias` ao lado: a lista é fixa em quatro valores e cabe no frontend. Um
+endpoint para isso seria uma ida ao banco para descobrir o que já se sabe.
+
+---
+
 ## `GET /v1/precos`, `POST /v1/precos`
 
 Cadastro de preço. **Não faz parte do contrato original** — entrou na implementação porque
@@ -333,10 +484,10 @@ Formato uniforme:
 { "erro": "mensagem legível", "detalhe": { } }
 ```
 
-- `400` payload inválido (ex.: nenhum campo de token)
+- `400` payload inválido (nenhum campo de token; mensagem recebida marcada como cobrável)
 - `401` chave ou sessão ausente/inválida — inclui e-mail ou senha errados no login
 - `403` a chave é válida mas não pode fazer isso — na prática, uma chave de escrita tentando
-  reportar evento de **outra** `aplicacao`
+  reportar evento ou mensagem de **outra** `aplicacao`
 - `404` recurso inexistente (revogar uma chave que não está na tabela)
 - `409` conflito (preço já cadastrado para a mesma vigência, e-mail de usuário repetido)
 - `422` validação de tipo (FastAPI)

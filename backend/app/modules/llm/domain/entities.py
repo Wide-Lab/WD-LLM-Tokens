@@ -9,19 +9,15 @@ from app.core.exceptions import ValidationAppError
 
 
 class Grupo(StrEnum):
-    """A dimensão do `GROUP BY` do painel. Ausente = agrega tudo."""
+    """A dimensão do `GROUP BY` do painel. Ausente = agrega tudo.
+
+    Fica aqui, e não no `core`, porque as dimensões são as deste módulo — o WhatsApp agrupa por
+    `categoria`, `pais` e `direcao`, que não existem numa chamada de LLM. Quem subiu para
+    `app.core.periodo` foi só o `Intervalo`, que é idêntico nos dois."""
 
     MODELO = "modelo"
     ATOR = "ator"
     APLICACAO = "aplicacao"
-
-
-class Intervalo(StrEnum):
-    """O balde temporal. Ausente = sem série temporal, só o total do período."""
-
-    DIA = "dia"
-    SEMANA = "semana"
-    MES = "mes"
 
 
 @dataclass(frozen=True, slots=True)

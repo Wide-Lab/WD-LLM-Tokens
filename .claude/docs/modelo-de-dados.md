@@ -1,8 +1,12 @@
 # Modelo de dados
 
-No centro, o que aconteceu (`registro_llm`) e quanto custa (`preco_modelo`, `preco_mensagem`).
-O custo nunca é gravado no evento — é derivado. Em volta, quem tem permissão de chegar perto:
-`usuario` e `chave_api`.
+No centro, o que aconteceu (`registro_llm`, `registro_mensagem`) e quanto custa (`preco_modelo`,
+`preco_mensagem`). O custo nunca é gravado no fato — é derivado. Em volta, quem tem permissão de
+chegar perto: `usuario` e `chave_api`.
+
+São **duas tabelas de fato**, e não uma com `tipo`: uma linha de LLM tem quatro baldes de token e
+um modelo, uma de WhatsApp tem categoria, país e direção. As duas se encontram no `ator`, que é o
+mesmo texto dos dois lados (ver `docs/api.md`).
 
 As duas tabelas de preço moram juntas de propósito: **dinheiro mora num lugar só**. São duas, e
 não uma com `tipo`, porque a chave do preço é diferente em cada — `preco_modelo` casa por
@@ -69,6 +73,61 @@ normaliza **antes** do `POST`:
 | `tokens_saida` | `output_tokens` | `completion_tokens` |
 
 Sem isso o custo infla silenciosamente (o mesmo token é cobrado duas vezes).
+
+## `registro_mensagem` — uma linha por mensagem de WhatsApp
+
+Mesma natureza de `registro_llm`: append-only, `COUNT(*)` = mensagens, sem custo gravado.
+
+| Coluna | Tipo | Notas |
+|---|---|---|
+| `id` | `uuid` PK | |
+| `criado_em` | `timestamptz not null default now()` | a hora da mensagem |
+| `recebido_em` | `timestamptz not null default now()` | a hora em que o servidor recebeu |
+| `aplicacao` | `text not null` | |
+| `ator` | `text not null` | o `wa_id` do cliente, E.164 só dígitos |
+| `direcao` | `text not null` | `enviada` \| `recebida` |
+| `categoria` | `text null` | `marketing` \| `utility` \| `authentication` \| `service`; `null` em `recebida` |
+| `pais` | `text not null` | ISO-3166 alfa-2 maiúsculo do destinatário |
+| `cobravel` | `bool not null default false` | de `pricing.billable`, da Meta |
+| `id_externo` | `text null` | o `wamid` |
+| `conteudo` | `text null` | o texto da mensagem |
+| `metadados` | `jsonb not null default '{}'` | o objeto `pricing` cru, id da conversa, nome do template |
+
+```sql
+unique (aplicacao, id_externo)                  -- só quando id_externo não é nulo (partial index)
+index (aplicacao, criado_em)
+index (aplicacao, ator, criado_em)
+index (aplicacao, categoria, criado_em)
+```
+
+O `unique` sobre o `wamid` faz mais trabalho que o do LLM: o webhook manda `sent`, depois
+`delivered`, depois `read` para o mesmo id, e quem reporta pode repassar os três sem pensar — do
+segundo em diante a resposta é `duplicado: true`.
+
+`direcao` e `categoria` são `text` e não `enum` do banco, pelo mesmo motivo de `chave_api.escopo`:
+categoria nova da Meta vira uma linha num `StrEnum` do domínio, e não um `ALTER TYPE` numa janela
+de manutenção.
+
+**`conteudo` é um campo só, não `mensagem` + `resposta`.** No LLM uma linha é uma troca; aqui é
+uma fala, e `direcao` diz de quem. É o que torna a lista de WhatsApp um registro de conversa mais
+fiel que a do LLM — e a razão de valer a pena gravar a mensagem recebida, que não custa nada.
+
+### `ator` é o mesmo texto dos dois lados
+
+E.164 só dígitos, sem `+`, sem espaço, sem pontuação: `5547999999999`. É o único acoplamento real
+entre os dois módulos e **não há constraint que o garanta** — se o agente reportar num formato e o
+webhook noutro, qualquer visão por ator produz duas meias-verdades sem erro nenhum. Normalizar é
+responsabilidade de quem reporta.
+
+O `pais`, esse sim, é normalizado na entrada (sobe para maiúsculas), porque ele casa por igualdade
+de texto com `preco_mensagem`: receber `br` e ter `BR` cadastrado não daria erro, daria custo
+`null` para sempre num país que alguém jura ter cadastrado.
+
+### Mensagem que falhou não vira evento
+
+Status `failed` não é reportado: a Meta não cobra, e um evento gravado que depois deixasse de
+valer exigiria `UPDATE` numa tabela append-only. Quem reporta ingere no status que traz o
+`pricing` (o `sent`).
 
 ## `preco_modelo` — preço com vigência
 
@@ -196,6 +255,11 @@ As três saídas precisam ser distinguíveis:
 O terceiro caso é o que faz o painel gritar que falta cadastrar um país, em vez de somar zero e
 mostrar um total confortável e errado. É a mesma convenção do LLM: `null` é "não sei quanto
 custou", `0` é "não custou nada" — e as duas nunca viram o mesmo número.
+
+Na agregação, `SUM` ignora `NULL`: as não-cobráveis entram com `0` e **não** zeram o balde, as
+cobráveis sem preço não entram, e o balde só sai `null` quando nenhuma linha dele soube dizer
+quanto custou. Ao lado do total vem `cobraveis` (`count(*) filter (where cobravel)`), que responde
+"quantas das N foram pagas" sem uma segunda consulta.
 
 **Moeda:** todas as linhas de preço, das duas tabelas, na mesma moeda (USD) no v1. Misturar
 moedas numa mesma agregação é o único jeito de o número sair errado. Conversão

@@ -5,31 +5,26 @@ era repetir a fórmula do dinheiro na listagem e na agregação — ver o docstr
 `precos/infra/custo.py`."""
 
 import uuid
-from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 
-from sqlalchemy import Date, Select, cast, func, literal, select, true
+from sqlalchemy import Select, func, literal, select, true
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.sql import ColumnElement
 
 from app.core.exceptions import ConflictError
+from app.core.periodo import Intervalo, janela, truncar
 from app.modules.llm.domain.entities import (
     Balde,
     Filtro,
     Grupo,
     Ingestao,
-    Intervalo,
     NovoRegistro,
     RegistroLlm,
 )
 from app.modules.llm.infra.models import RegistroLlm as RegistroLlmRow
 from app.modules.precos.infra.custo import MOEDA_PADRAO, PrecoVigente, preco_vigente_para
-
-_UNIDADE = {Intervalo.DIA: "day", Intervalo.SEMANA: "week", Intervalo.MES: "month"}
-"""`Intervalo` → argumento do `date_trunc`. O enum não guarda o termo SQL porque `dia`/`semana`/
-`mes` é o vocabulário do contrato público, e `day`/`week`/`month` é detalhe do Postgres."""
 
 _COLUNA_GRUPO: dict[Grupo, InstrumentedAttribute[str]] = {
     Grupo.MODELO: RegistroLlmRow.modelo,
@@ -37,10 +32,6 @@ _COLUNA_GRUPO: dict[Grupo, InstrumentedAttribute[str]] = {
     Grupo.APLICACAO: RegistroLlmRow.aplicacao,
 }
 """O mapa fechado é o que impede um `grupo` vindo da query string de virar coluna arbitrária."""
-
-
-def _meia_noite(dia: date) -> datetime:
-    return datetime.combine(dia, time.min, tzinfo=UTC)
 
 
 class RegistroLlmRepository:
@@ -183,12 +174,7 @@ class RegistroLlmRepository:
         if grupo is not None:
             chaves.append(_COLUNA_GRUPO[grupo].label("grupo"))
         if intervalo is not None:
-            chaves.append(
-                cast(
-                    func.date_trunc(_UNIDADE[intervalo], RegistroLlmRow.criado_em),
-                    Date,
-                ).label("periodo")
-            )
+            chaves.append(truncar(intervalo, RegistroLlmRow.criado_em).label("periodo"))
 
         stmt = self._filtrar(
             select(
@@ -251,15 +237,11 @@ class RegistroLlmRepository:
     def _filtrar(stmt: Select[Any], filtro: Filtro) -> Select[Any]:
         """Os mesmos filtros na listagem, na contagem e na agregação.
 
-        `ate` é **inclusive o dia inteiro**: o painel manda datas (`2026-07-23`), e um `<=` sobre
-        a meia-noite cortaria fora quase todo o último dia do período."""
+        O recorte de período vem de `app.core.periodo.janela` — `ate` é o dia inteiro, e a regra
+        é a mesma no WhatsApp de propósito."""
 
-        if filtro.de is not None:
-            stmt = stmt.where(RegistroLlmRow.criado_em >= _meia_noite(filtro.de))
-        if filtro.ate is not None:
-            stmt = stmt.where(
-                RegistroLlmRow.criado_em < _meia_noite(filtro.ate + timedelta(days=1))
-            )
+        stmt = stmt.where(*janela(RegistroLlmRow.criado_em, filtro.de, filtro.ate))
+
         if filtro.aplicacao:
             stmt = stmt.where(RegistroLlmRow.aplicacao == filtro.aplicacao)
         if filtro.ator:

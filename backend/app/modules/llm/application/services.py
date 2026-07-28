@@ -1,12 +1,12 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenError
+from app.core.periodo import Intervalo
 from app.modules.llm.domain.entities import (
     Balde,
     Filtro,
     Grupo,
     Ingestao,
-    Intervalo,
     NovoRegistro,
     Pagina,
 )

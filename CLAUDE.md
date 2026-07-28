@@ -14,11 +14,11 @@ Não há suíte de testes automatizados no projeto.
 
 Serviço genérico de contabilidade de tokens de LLM. Várias aplicações reportam para cá, identificadas pelo campo `aplicacao`.
 
-- **Ingestão append-only:** `POST /api/v1/llm/eventos` fire-and-forget, uma linha por chamada ao LLM. Nunca `UPDATE`, nunca delete. Idempotência por `unique (aplicacao, id_externo)`. Os caminhos sem o prefixo `/llm` continuam valendo como legado.
-- **Custo não vem no evento.** A tabela `preco_modelo` guarda preço com vigência e o custo é calculado **na leitura**, pelo preço válido na data da chamada. A fórmula vive só em `precos/infra/custo.py`.
+- **Ingestão append-only:** `POST /api/v1/llm/eventos` (uma linha por chamada ao LLM) e `POST /api/v1/whatsapp/mensagens` (uma linha por mensagem), fire-and-forget. Nunca `UPDATE`, nunca delete. Idempotência por `unique (aplicacao, id_externo)` — no WhatsApp o `id_externo` é o `wamid`. Os caminhos de LLM sem o prefixo `/llm` continuam valendo como legado.
+- **Custo não vem no evento.** `preco_modelo` e `preco_mensagem` guardam preço com vigência e o custo é calculado **na leitura**, pelo preço válido na data. As fórmulas vivem só em `precos/infra/custo.py` e `precos/infra/custo_mensagem.py`. No WhatsApp, quem decide se a mensagem é cobrável é a Meta (`pricing.billable`): a gente copia, não recalcula.
 - **Métricas por `GROUP BY` em tempo de consulta** — volume baixo, sem rollup nem cache.
 
-Backend em `backend/app/modules/<módulo>/{api,application,domain,infra}`: `llm` (o que aconteceu), `precos` (quanto custa), `acesso` (quem entra). A rota traduz HTTP, o serviço orquestra, o domínio tem as regras, o `infra` fala com o banco. Só dois imports cruzam módulos, ambos documentados em `backend/README.md` — mantenha assim. Módulo novo = uma linha em `app/api/routes.py`.
+Backend em `backend/app/modules/<módulo>/{api,application,domain,infra}`: `llm` e `whatsapp` (o que aconteceu), `precos` (quanto custa), `acesso` (quem entra). A rota traduz HTTP, o serviço orquestra, o domínio tem as regras, o `infra` fala com o banco. Só três imports cruzam módulos, todos documentados em `backend/README.md` — mantenha assim. O que os dois módulos de fato compartilham de vocabulário de período (`Intervalo`, janela de datas) mora em `app/core/periodo.py`; `core` não conta como import cruzado. Módulo novo = uma linha em `app/api/routes.py`.
 
 O prefixo `/api` faz parte das rotas **no FastAPI** (`create_app` monta em `/api/v1`), não é reescrita do nginx. Vale igual no dev local.
 

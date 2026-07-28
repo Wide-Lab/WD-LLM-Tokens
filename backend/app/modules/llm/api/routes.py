@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 
 from app.api.dependencies import AplicacaoDep, requer_leitura
+from app.core.periodo import Intervalo
 from app.db.session import SessionDep
 from app.modules.llm.api.dependencies import FiltroDep
 from app.modules.llm.api.schemas import (
@@ -13,7 +14,7 @@ from app.modules.llm.api.schemas import (
     MetricaOut,
 )
 from app.modules.llm.application.services import LlmService
-from app.modules.llm.domain.entities import Grupo, Intervalo
+from app.modules.llm.domain.entities import Grupo
 
 router = APIRouter(tags=["llm"])
 

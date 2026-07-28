@@ -25,7 +25,14 @@ from sqlalchemy import (
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.sql.selectable import LateralFromClause
 
+from app.modules.precos.infra.custo import MOEDA_PADRAO
 from app.modules.precos.infra.models import PrecoMensagem
+
+__all__ = ["MOEDA_PADRAO", "PrecoMensagemVigente", "preco_vigente_de_mensagem"]
+"""`MOEDA_PADRAO` é re-exportada, e não redefinida: a moeda é a mesma nas duas fórmulas (é o que
+faz as duas somas caírem no mesmo consolidado), e duas constantes com o mesmo valor são duas
+constantes que um dia discordam. Sai daqui para o módulo de mensagem ter **um** import para o
+`precos` — o mesmo arquivo que dá a fórmula dá a moeda."""
 
 
 @dataclass(frozen=True, slots=True)

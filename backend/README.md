@@ -8,24 +8,33 @@ FastAPI + SQLAlchemy async + Alembic + Postgres, gerenciado com `uv`. Contratos 
 ```
 app/
   api/        router raiz (/v1) e as dependencies de autenticação
-  core/       config, exceções, logging
+  core/       config, exceções, logging, período
   db/         Base declarativa, engine e sessão
   modules/
-    llm/      registro_llm: ingestão, listagem e métricas de chamada ao LLM
-    precos/   preco_modelo e preco_mensagem: preço com vigência e as expressões de custo
-    acesso/   usuario e chave_api: login, sessão, cadastro e emissão de chave
+    llm/        registro_llm: ingestão, listagem e métricas de chamada ao LLM
+    whatsapp/   registro_mensagem: ingestão, listagem e métricas de mensagem
+    precos/     preco_modelo e preco_mensagem: preço com vigência e as expressões de custo
+    acesso/     usuario e chave_api: login, sessão, cadastro e emissão de chave
 ```
 
 Cada módulo é `api / application / domain / infra`: a rota traduz HTTP, o serviço orquestra, o
 domínio guarda as regras e o `infra` fala com o banco.
 
-Import de módulo a módulo, só dois:
+Import de módulo a módulo, só três:
 
 - `llm/infra/repository.py` → `precos/infra/custo.py` — a fórmula do custo vive num lugar só, e
   é usada tanto na listagem quanto na agregação.
+- `whatsapp/infra/repository.py` → `precos/infra/custo_mensagem.py` — o mesmo motivo, a outra
+  fórmula. Dinheiro mora no `precos`, e não dentro de cada módulo de fato.
 - `api/dependencies.py` → `acesso/{infra,application,domain}` — autenticação é transversal e já
   morava ali. Depende do `acesso` por dentro (sessão, serviço, entidade) e nunca pela `api`
   dele, que é justamente quem importa `api/dependencies.py` de volta.
+
+`core/periodo.py` não conta como import de módulo a módulo: `core` é a casa do transversal, e é
+onde moram o `Intervalo` (`dia`/`semana`/`mes`) e a janela de datas que os dois módulos de fato
+precisam acertar **igual** — `ate` é o dia inteiro, e duas cópias dessa regra divergiriam no dia
+em que alguém mexesse numa. O `Filtro` de cada módulo continua no módulo: o do LLM tem `modelo`, o
+do WhatsApp tem `categoria`, `pais` e `direcao`.
 
 ## Dev local
 
@@ -100,6 +109,28 @@ curl -X POST localhost:8000/api/v1/precos/mensagem \
 `categoria` é `marketing`, `utility` ou `authentication` — `service` é recusada com `400`, porque
 mensagem de serviço não é cobrada e isso entra como `cobravel = false` no evento. Cobrável sem
 preço cadastrado sai com custo `null`, não zero: é assim que o painel avisa que falta um país.
+
+## Mensagens de WhatsApp
+
+Quem reporta manda uma linha por mensagem, com a **mesma** chave de escrita da aplicação — a
+chave é a identidade de quem reporta, não do tipo de fato:
+
+```bash
+curl -X POST localhost:8000/api/v1/whatsapp/mensagens \
+  -H "X-API-Key: $CHAVE_ESCRITA" -H 'Content-Type: application/json' \
+  -d '{"aplicacao":"famossul","ator":"5547999999999","direcao":"enviada","categoria":"utility",
+       "pais":"BR","cobravel":true,"id_externo":"wamid.HBgNNTU0Nzk...",
+       "conteudo":"Seu pedido #4312 saiu para entrega.",
+       "metadados":{"pricing":{"billable":true,"category":"utility"}}}'
+```
+
+`categoria` e `cobravel` são cópias do objeto `pricing` do webhook de status da Meta — não são
+regra nossa e não são recalculadas aqui (ver `docs/api.md`). O `id_externo` é o `wamid`: reenviar
+o mesmo devolve `duplicado: true`, que é o que deixa repassar `sent`, `delivered` e `read` sem
+contar a mensagem três vezes.
+
+Leitura em `GET /v1/whatsapp/metricas`, `GET /v1/whatsapp/mensagens` e `GET /v1/whatsapp/paises`,
+com a chave de leitura ou a sessão do painel.
 
 ## Migrations
 
