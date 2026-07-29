@@ -28,6 +28,48 @@ export interface ConsolidadoBucket {
   moeda: string;
 }
 
+/**
+ * Um balde de `/v1/whatsapp/metricas`.
+ *
+ * `mensagens` e `cobraveis` são o par que o painel mais usa: a diferença entre os dois é quanto do
+ * atendimento caiu fora da janela gratuita. Ficam aqui e não no `ConsolidadoBucket` pela mesma
+ * razão que os `tokens_*` ficam no do LLM — mensagem não soma com token.
+ */
+export interface MensagemBucket {
+  grupo?: string;
+  periodo?: string;
+  mensagens: number;
+  cobraveis: number;
+  custo: number | null;
+  moeda: string;
+}
+
+export interface MensagemItem {
+  id: string;
+  criado_em: string;
+  aplicacao: string;
+  ator: string;
+  direcao: "enviada" | "recebida";
+  /** `null` nas recebidas: a Meta categoriza o que sai, não o que entra. */
+  categoria: "marketing" | "utility" | "authentication" | "service" | null;
+  pais: string;
+  cobravel: boolean;
+  /** `0` quando não é cobrável, `null` quando é cobrável e falta preço para `(categoria, país)`. */
+  custo: number | null;
+  moeda: string;
+  id_externo: string | null;
+  /** O texto da mensagem — um campo só; `direcao` diz de quem é. `null` = não veio no evento. */
+  conteudo: string | null;
+  metadados: Record<string, unknown>;
+}
+
+export interface MensagensResponse {
+  total: number;
+  limite: number;
+  offset: number;
+  itens: MensagemItem[];
+}
+
 export interface EventoItem {
   id: string;
   criado_em: string;

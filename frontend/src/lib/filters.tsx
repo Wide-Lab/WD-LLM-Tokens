@@ -10,6 +10,10 @@ export interface GlobalFilters {
   modelo: string; // "" = todos
   ator: string;
   granularidade: Granularidade;
+  /** Só do WhatsApp, como o `modelo` é só do LLM. "" = todas. */
+  categoria: string;
+  /** Só do WhatsApp. "" = as duas. */
+  direcao: string;
 }
 
 interface FiltersContextValue {
@@ -31,6 +35,8 @@ function defaultFilters(): GlobalFilters {
     modelo: "",
     ator: "",
     granularidade: "dia",
+    categoria: "",
+    direcao: "",
   };
 }
 
@@ -72,11 +78,12 @@ export function useFilters() {
 /**
  * O que as três telas têm em comum — e só isso.
  *
- * `modelo` ficou de fora de propósito: ele não existe no consolidado nem no WhatsApp, e mandar
- * `modelo=` para um endpoint que o ignora é um controle que parece filtrar e não filtra. Quem o
- * manda é só o painel de LLM, somando-o a esta base.
+ * `modelo`, `categoria` e `direcao` ficaram de fora de propósito: nenhum dos três existe nas três
+ * telas, e mandar `categoria=` para um endpoint que o ignora é um controle que parece filtrar e não
+ * filtra. Quem os manda é o painel dono de cada um, somando-os a esta base — `modelo` no `/llm`,
+ * `categoria` e `direcao` no `/whatsapp` (ver `whatsappToParams`).
  *
- * No estado do contexto ele continua, porque é conveniente que a escolha sobreviva à ida ao
+ * No estado do contexto os três continuam, porque é conveniente que a escolha sobreviva à ida ao
  * consolidado e à volta.
  */
 export function filtersToParams(f: GlobalFilters) {
@@ -85,5 +92,20 @@ export function filtersToParams(f: GlobalFilters) {
     ate: f.ate || undefined,
     aplicacao: f.aplicacao || undefined,
     ator: f.ator || undefined,
+  };
+}
+
+/**
+ * A base mais os dois filtros do WhatsApp.
+ *
+ * Existe como função, e não repetida no topo de cada tela, porque as duas telas de `/whatsapp`
+ * precisam recortar igual: um filtro que vale no painel e não vale na lista faz o total da tabela
+ * discordar do card sem nenhum erro visível.
+ */
+export function whatsappToParams(f: GlobalFilters) {
+  return {
+    ...filtersToParams(f),
+    categoria: f.categoria || undefined,
+    direcao: f.direcao || undefined,
   };
 }

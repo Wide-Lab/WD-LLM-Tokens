@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, type ReactNode } from "react";
 import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
+import { Conteudo } from "@/components/conteudo";
 import { Conversa } from "@/components/conversa";
 import { FiltroModelo } from "@/components/filtro-modelo";
 import { GlobalFilters } from "@/components/global-filters";
@@ -377,27 +378,5 @@ function Chamada({
         </TableRow>
       )}
     </>
-  );
-}
-
-function Conteudo({ titulo, texto, cor }: { titulo: string; texto: string | null; cor: string }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <div className="etiqueta">{titulo}</div>
-      {texto ? (
-        // `whitespace-pre-wrap` porque prompt e resposta vêm com quebra de linha, e a altura é
-        // limitada para uma resposta longa não empurrar a tabela inteira para fora da tela.
-        <div
-          className="bg-card max-h-64 overflow-y-auto rounded-sm border border-l-2 p-3 text-sm break-words whitespace-pre-wrap"
-          style={{ borderLeftColor: cor }}
-        >
-          {texto}
-        </div>
-      ) : (
-        <div className="text-muted-foreground rounded-sm border border-dashed p-3 text-sm">
-          Não informado
-        </div>
-      )}
-    </div>
   );
 }

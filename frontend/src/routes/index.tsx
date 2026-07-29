@@ -11,9 +11,9 @@ import {
   YAxis,
 } from "recharts";
 
+import { Cartao } from "@/components/cartao";
 import { GlobalFilters } from "@/components/global-filters";
 import { PainelCard } from "@/components/painel-card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorBox } from "@/components/empty-states";
 import { ORIGENS, eixo, pivotarPorGrupo, tooltipEstilo, totalDaLinha } from "@/lib/grafico";
 import { apiGet } from "@/lib/api";
@@ -130,47 +130,6 @@ function Cartoes({ baseParams }: { baseParams: Params }) {
   );
 }
 
-function Cartao({
-  rotulo,
-  valor,
-  nota,
-  cor,
-  destaque,
-  carregando,
-}: {
-  rotulo: string;
-  valor: string;
-  nota?: string;
-  /** Filete lateral na cor da origem — a mesma dos três gráficos. */
-  cor?: string;
-  destaque?: boolean;
-  carregando?: boolean;
-}) {
-  return (
-    <section
-      className="bg-card flex flex-col justify-center gap-1.5 rounded-xl border p-5 shadow-sm"
-      style={cor ? { borderLeftColor: cor, borderLeftWidth: 2 } : undefined}
-    >
-      <div className="etiqueta">{rotulo}</div>
-      {carregando ? (
-        <Skeleton className="h-8 w-32" />
-      ) : (
-        <div
-          className={
-            destaque
-              ? "leitura text-custo overflow-hidden text-2xl leading-none text-ellipsis whitespace-nowrap sm:text-[1.75rem]"
-              : "leitura overflow-hidden text-xl leading-none text-ellipsis whitespace-nowrap"
-          }
-        >
-          {valor}
-        </div>
-      )}
-      {nota && !carregando && <div className="text-muted-foreground text-xs">{nota}</div>}
-      {nota && carregando && <Skeleton className="h-4 w-24" />}
-    </section>
-  );
-}
-
 /* ----------------------------------------------------------------- gráficos */
 
 /**
@@ -203,7 +162,7 @@ function CustoTemporal({
   granularidade: string;
 }) {
   const q = useConsolidado({ ...baseParams, grupo: "origem", intervalo: granularidade });
-  const dados = pivotarPorGrupo(q.data ?? [], "periodo");
+  const dados = pivotarPorGrupo(q.data ?? [], "periodo", "grupo", (b) => b.custo);
   const moeda = q.data?.[0]?.moeda ?? "USD";
 
   return (
@@ -236,7 +195,7 @@ function CustoTemporal({
 
 function CustoPorAplicacao({ baseParams }: { baseParams: Params }) {
   const q = useConsolidado({ ...baseParams, grupo: "aplicacao", por_origem: "true" });
-  const dados = pivotarPorGrupo(q.data ?? [], "grupo", "origem").sort(
+  const dados = pivotarPorGrupo(q.data ?? [], "grupo", "origem", (b) => b.custo).sort(
     (a, b) => totalDaLinha(b, "grupo") - totalDaLinha(a, "grupo"),
   );
   const moeda = q.data?.[0]?.moeda ?? "USD";
@@ -269,7 +228,7 @@ function CustoPorAplicacao({ baseParams }: { baseParams: Params }) {
 
 function TopAtores({ baseParams }: { baseParams: Params }) {
   const q = useConsolidado({ ...baseParams, grupo: "ator", por_origem: "true" });
-  const dados = pivotarPorGrupo(q.data ?? [], "grupo", "origem")
+  const dados = pivotarPorGrupo(q.data ?? [], "grupo", "origem", (b) => b.custo)
     .sort((a, b) => totalDaLinha(b, "grupo") - totalDaLinha(a, "grupo"))
     .slice(0, 10);
   const moeda = q.data?.[0]?.moeda ?? "USD";
