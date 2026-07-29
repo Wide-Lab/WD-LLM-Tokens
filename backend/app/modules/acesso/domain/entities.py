@@ -6,7 +6,7 @@ from enum import StrEnum
 from app.core.exceptions import ValidationAppError
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Usuario:
     """Quem entra no painel.
 
@@ -21,7 +21,7 @@ class Usuario:
     criado_em: datetime
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class NovoUsuario:
     email: str
     nome: str
@@ -40,7 +40,7 @@ class EscopoChave(StrEnum):
     LEITURA = "leitura"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class NovaChave:
     """O pedido de emissão. O segredo não entra aqui: quem o sorteia é o `infra`."""
 
@@ -63,7 +63,7 @@ class NovaChave:
             raise ValidationAppError("Chave de leitura não é de uma aplicação: os GET veem tudo.")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ChaveApi:
     """Uma chave emitida, do jeito que dá para falar dela depois.
 
@@ -84,7 +84,7 @@ class ChaveApi:
         return self.revogada_em is None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ChaveCriada:
     """A emissão: a chave e o segredo em texto puro, na única vez em que ele existe.
 

@@ -63,7 +63,7 @@ class UsuarioRepository:
         e a escrita cabe outro cadastro."""
 
         linha = UsuarioRow(
-            id=uuid.uuid4(),
+            id=uuid.uuid7(),
             email=normalizar_email(novo.email),
             nome=novo.nome.strip(),
             senha_hash=gerar_hash(novo.senha),
@@ -109,7 +109,7 @@ class ChaveApiRepository:
         segredo, prefixo = chave_infra.gerar()
 
         linha = ChaveApiRow(
-            id=uuid.uuid4(),
+            id=uuid.uuid7(),
             nome=nova.nome.strip(),
             escopo=nova.escopo.value,
             aplicacao=nova.aplicacao.strip() if nova.aplicacao else None,

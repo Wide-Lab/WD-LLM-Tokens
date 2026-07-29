@@ -51,7 +51,7 @@ class PrecoRepository:
         entre a leitura e a escrita cabe outro cadastro."""
 
         linha = PrecoModeloRow(
-            id=uuid.uuid4(),
+            id=uuid.uuid7(),
             provedor=novo.provedor,
             modelo=novo.modelo,
             vigencia_inicio=novo.vigencia_inicio,
@@ -110,7 +110,7 @@ class PrecoMensagemRepository:
         vigencia_inicio)`: entre um `SELECT` de conferência e a escrita cabe outro cadastro."""
 
         linha = PrecoMensagemRow(
-            id=uuid.uuid4(),
+            id=uuid.uuid7(),
             categoria=novo.categoria,
             pais=novo.pais,
             vigencia_inicio=novo.vigencia_inicio,

@@ -68,7 +68,7 @@ class RegistroLlmRepository:
         do provedor abriu mão da idempotência, e isso é escolha de quem reporta."""
 
         valores: dict[str, Any] = {
-            "id": uuid.uuid4(),
+            "id": uuid.uuid7(),
             "aplicacao": novo.aplicacao,
             "ator": novo.ator,
             "modelo": novo.modelo,

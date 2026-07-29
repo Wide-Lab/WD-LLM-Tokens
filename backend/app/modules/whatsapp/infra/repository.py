@@ -76,7 +76,7 @@ class RegistroMensagemRepository:
         voltam `duplicado: true`."""
 
         valores: dict[str, Any] = {
-            "id": uuid.uuid4(),
+            "id": uuid.uuid7(),
             "aplicacao": nova.aplicacao,
             "ator": nova.ator,
             "direcao": nova.direcao.value,

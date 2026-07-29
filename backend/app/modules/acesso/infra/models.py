@@ -13,7 +13,7 @@ class Usuario(Base):
 
     __tablename__ = "usuario"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid7)
 
     email: Mapped[str] = mapped_column(Text, unique=True)
     """Guardado sempre em minúsculas (ver `normalizar_email`) — o `UNIQUE` do Postgres é
@@ -38,7 +38,7 @@ class ChaveApi(Base):
 
     __tablename__ = "chave_api"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid7)
 
     nome: Mapped[str] = mapped_column(Text)
     """Para gente: "famossul produção", "script de relatório". É o que aparece na listagem junto

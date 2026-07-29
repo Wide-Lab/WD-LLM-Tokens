@@ -18,7 +18,7 @@ class PrecoModelo(Base):
         UniqueConstraint("modelo", "vigencia_inicio", name="uq_preco_modelo_vigencia"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid7)
 
     provedor: Mapped[str | None] = mapped_column(Text, nullable=True)
     modelo: Mapped[str] = mapped_column(Text)
@@ -49,7 +49,7 @@ class PrecoMensagem(Base):
         Index("ix_preco_mensagem_busca", "categoria", "pais", text("vigencia_inicio DESC")),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid7)
 
     categoria: Mapped[str] = mapped_column(Text)
     """`marketing`, `utility` ou `authentication`. `text` e não `enum` do banco: categoria nova da
