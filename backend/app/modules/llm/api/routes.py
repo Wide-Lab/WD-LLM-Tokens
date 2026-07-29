@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query, status
 
 from app.api.dependencies import AplicacaoDep, requer_leitura
 from app.core.periodo import Intervalo
-from app.db.session import SessionDep
+from app.db.uow import UowDep
 from app.modules.llm.api.dependencies import FiltroDep
 from app.modules.llm.api.schemas import (
     EventoIn,
@@ -23,7 +23,7 @@ router = APIRouter(tags=["llm"])
 async def ingerir_eventos(
     payload: EventoIn | list[EventoIn],
     aplicacao: AplicacaoDep,
-    session: SessionDep,
+    uow: UowDep,
 ) -> IngestaoOut | list[IngestaoOut]:
     """Ingestão. Aceita um objeto ou um array, e responde na mesma forma que recebeu.
 
@@ -31,7 +31,7 @@ async def ingerir_eventos(
     linha original, em vez de contar a mesma chamada duas vezes."""
 
     lote = payload if isinstance(payload, list) else [payload]
-    resultados = await LlmService(session).ingerir(
+    resultados = await LlmService(uow).ingerir(
         [evento.para_dominio() for evento in lote],
         aplicacao,
     )
@@ -42,7 +42,7 @@ async def ingerir_eventos(
 
 @router.get("/metricas", dependencies=[Depends(requer_leitura)])
 async def metricas(
-    session: SessionDep,
+    uow: UowDep,
     filtro: FiltroDep,
     grupo: Annotated[Grupo | None, Query(description="Dimensão do agrupamento.")] = None,
     intervalo: Annotated[Intervalo | None, Query(description="Balde temporal.")] = None,
@@ -50,7 +50,7 @@ async def metricas(
     """O coração do painel: as quatro combinações de `grupo` × `intervalo` cobrem os KPIs, a
     série temporal, o total por dimensão e a série por dimensão."""
 
-    baldes = await LlmService(session).metricas(filtro, grupo, intervalo)
+    baldes = await LlmService(uow).metricas(filtro, grupo, intervalo)
     return [
         MetricaOut(
             grupo=balde.grupo,
@@ -69,14 +69,14 @@ async def metricas(
 
 @router.get("/eventos", dependencies=[Depends(requer_leitura)])
 async def listar_eventos(
-    session: SessionDep,
+    uow: UowDep,
     filtro: FiltroDep,
     limite: Annotated[int, Query(ge=1, le=500)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> EventosOut:
     """A lista crua, para auditoria."""
 
-    pagina = await LlmService(session).listar(filtro, limite, offset)
+    pagina = await LlmService(uow).listar(filtro, limite, offset)
     return EventosOut(
         total=pagina.total,
         limite=pagina.limite,
@@ -86,10 +86,10 @@ async def listar_eventos(
 
 
 @router.get("/modelos", dependencies=[Depends(requer_leitura)])
-async def listar_modelos(session: SessionDep) -> list[str]:
+async def listar_modelos(uow: UowDep) -> list[str]:
     """Popula o dropdown de modelo. Fica aqui porque modelo é dimensão de uma origem só.
 
     A lista de **aplicações** mudou de dono e virou `GET /v1/aplicacoes`, no consolidado: uma
     aplicação que só reportou WhatsApp também precisa aparecer no dropdown do painel."""
 
-    return await LlmService(session).distintos(Grupo.MODELO)
+    return await LlmService(uow).distintos(Grupo.MODELO)

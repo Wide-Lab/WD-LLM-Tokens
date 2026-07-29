@@ -10,7 +10,7 @@ mora no browser."""
 from fastapi import APIRouter, Depends, status
 
 from app.api.dependencies import requer_admin, requer_leitura
-from app.db.session import SessionDep
+from app.db.uow import UowDep
 from app.modules.precos.api.schemas import (
     PrecoIn,
     PrecoMensagemIn,
@@ -23,14 +23,14 @@ router = APIRouter(prefix="/precos", tags=["precos"])
 
 
 @router.get("", dependencies=[Depends(requer_leitura)])
-async def listar_precos(session: SessionDep, modelo: str | None = None) -> list[PrecoOut]:
-    precos = await PrecoService(session).listar(modelo)
+async def listar_precos(uow: UowDep, modelo: str | None = None) -> list[PrecoOut]:
+    precos = await PrecoService(uow).listar(modelo)
     return [PrecoOut.model_validate(preco) for preco in precos]
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(requer_admin)])
-async def criar_preco(payload: PrecoIn, session: SessionDep) -> PrecoOut:
-    preco = await PrecoService(session).criar(payload.para_dominio())
+async def criar_preco(payload: PrecoIn, uow: UowDep) -> PrecoOut:
+    preco = await PrecoService(uow).criar(payload.para_dominio())
     return PrecoOut.model_validate(preco)
 
 
@@ -40,15 +40,17 @@ async def criar_preco(payload: PrecoIn, session: SessionDep) -> PrecoOut:
 
 @router.get("/mensagem", dependencies=[Depends(requer_leitura)])
 async def listar_precos_de_mensagem(
-    session: SessionDep, categoria: str | None = None, pais: str | None = None
+    uow: UowDep, categoria: str | None = None, pais: str | None = None
 ) -> list[PrecoMensagemOut]:
-    precos = await PrecoMensagemService(session).listar(categoria, pais)
+    precos = await PrecoMensagemService(uow).listar(categoria, pais)
     return [PrecoMensagemOut.model_validate(preco) for preco in precos]
 
 
-@router.post("/mensagem", status_code=status.HTTP_201_CREATED, dependencies=[Depends(requer_admin)])
-async def criar_preco_de_mensagem(
-    payload: PrecoMensagemIn, session: SessionDep
-) -> PrecoMensagemOut:
-    preco = await PrecoMensagemService(session).criar(payload.para_dominio())
+@router.post(
+    "/mensagem",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(requer_admin)],
+)
+async def criar_preco_de_mensagem(payload: PrecoMensagemIn, uow: UowDep) -> PrecoMensagemOut:
+    preco = await PrecoMensagemService(uow).criar(payload.para_dominio())
     return PrecoMensagemOut.model_validate(preco)

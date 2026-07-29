@@ -1,7 +1,6 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.core.lancamento import FiltroComum
 from app.core.periodo import Intervalo
+from app.db.uow import UnitOfWork
 from app.modules.consolidado.domain.entities import Balde, Grupo
 from app.modules.consolidado.infra.repository import ConsolidadoRepository
 
@@ -13,8 +12,8 @@ class ConsolidadoService:
     para a rota continuar falando com um serviço, como as outras, e para o dia em que a soma
     precisar de algo que o banco não faz."""
 
-    def __init__(self, session: AsyncSession) -> None:
-        self._lancamentos = ConsolidadoRepository(session)
+    def __init__(self, uow: UnitOfWork) -> None:
+        self._lancamentos = ConsolidadoRepository(uow.session)
 
     async def metricas(
         self,

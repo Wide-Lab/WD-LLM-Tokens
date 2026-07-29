@@ -27,7 +27,7 @@ from fastapi import Cookie, Depends, Header
 
 from app.core.config import get_config
 from app.core.exceptions import UnauthorizedError
-from app.db.session import SessionDep
+from app.db.uow import UowDep
 from app.modules.acesso.application.services import AcessoService, ChaveApiService
 from app.modules.acesso.domain.entities import EscopoChave, Usuario
 from app.modules.acesso.infra import sessao
@@ -43,7 +43,7 @@ def _confere(recebida: str, esperada: str) -> bool:
     return bool(esperada) and hmac.compare_digest(recebida, esperada)
 
 
-async def aplicacao_autenticada(session: SessionDep, x_api_key: ChaveHeader = None) -> str:
+async def aplicacao_autenticada(uow: UowDep, x_api_key: ChaveHeader = None) -> str:
     """A aplicação dona da chave de escrita. É ela que o `POST /v1/llm/eventos` cobra do payload."""
 
     if x_api_key:
@@ -51,7 +51,7 @@ async def aplicacao_autenticada(session: SessionDep, x_api_key: ChaveHeader = No
             if _confere(x_api_key, chave):
                 return aplicacao
 
-        emitida = await ChaveApiService(session).autenticar(x_api_key, EscopoChave.ESCRITA)
+        emitida = await ChaveApiService(uow).autenticar(x_api_key, EscopoChave.ESCRITA)
         if emitida is not None and emitida.aplicacao:
             return emitida.aplicacao
 
@@ -59,7 +59,7 @@ async def aplicacao_autenticada(session: SessionDep, x_api_key: ChaveHeader = No
 
 
 async def usuario_da_sessao(
-    session: SessionDep,
+    uow: UowDep,
     sessao_cookie: CookieSessao = None,
 ) -> Usuario | None:
     """O dono do cookie, ou `None` — cookie ausente, forjado, vencido ou de usuário desativado.
@@ -74,10 +74,12 @@ async def usuario_da_sessao(
     if usuario_id is None:
         return None
 
-    return await AcessoService(session).por_id(usuario_id)
+    return await AcessoService(uow).por_id(usuario_id)
 
 
-async def requer_sessao(usuario: Annotated[Usuario | None, Depends(usuario_da_sessao)]) -> Usuario:
+async def requer_sessao(
+    usuario: Annotated[Usuario | None, Depends(usuario_da_sessao)],
+) -> Usuario:
     if usuario is None:
         raise UnauthorizedError("Sessão ausente ou expirada.")
 
@@ -85,7 +87,7 @@ async def requer_sessao(usuario: Annotated[Usuario | None, Depends(usuario_da_se
 
 
 async def requer_leitura(
-    session: SessionDep,
+    uow: UowDep,
     usuario: Annotated[Usuario | None, Depends(usuario_da_sessao)],
     x_api_key: ChaveHeader = None,
 ) -> None:
@@ -103,7 +105,7 @@ async def requer_leitura(
     if _confere(x_api_key, get_config().CHAVE_LEITURA):
         return
 
-    if await ChaveApiService(session).autenticar(x_api_key, EscopoChave.LEITURA) is None:
+    if await ChaveApiService(uow).autenticar(x_api_key, EscopoChave.LEITURA) is None:
         raise UnauthorizedError()
 
 

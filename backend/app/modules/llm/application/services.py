@@ -1,7 +1,6 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.core.exceptions import ForbiddenError
 from app.core.periodo import Intervalo
+from app.db.uow import UnitOfWork
 from app.modules.llm.domain.entities import (
     Balde,
     Filtro,
@@ -14,16 +13,16 @@ from app.modules.llm.infra.repository import RegistroLlmRepository
 
 
 class LlmService:
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
-        self._registros = RegistroLlmRepository(session)
+    def __init__(self, uow: UnitOfWork) -> None:
+        self._registros = RegistroLlmRepository(uow.session)
 
     async def ingerir(self, novos: list[NovoRegistro], aplicacao: str) -> list[Ingestao]:
         """Grava o lote e devolve um resultado por evento, **na mesma ordem**.
 
-        Um commit no fim, e não um por evento: o app dispara isto fire-and-forget depois de cada
-        chamada ao LLM, e um lote que grava metade seria pior que um que não grava nada — o
-        retry reenviaria o lote inteiro e a idempotência já cobre a repetição.
+        O lote inteiro cabe na transação do request, e é isso que faz dele tudo-ou-nada: o app
+        dispara isto fire-and-forget depois de cada chamada ao LLM, e um lote que gravasse metade
+        seria pior que um que não grava nada — o retry reenvia o lote inteiro e a idempotência já
+        cobre a repetição.
 
         Insere um a um em vez de um `INSERT ... VALUES (...), (...)`: com ~50 eventos por dia o
         ganho de um insert em lote é zero, e o `ON CONFLICT` por linha é o que permite dizer
@@ -35,9 +34,7 @@ class LlmService:
                     f"Esta chave só pode reportar eventos da aplicação '{aplicacao}'."
                 )
 
-        resultados = [await self._registros.inserir(novo) for novo in novos]
-        await self._session.commit()
-        return resultados
+        return [await self._registros.inserir(novo) for novo in novos]
 
     async def metricas(
         self,

@@ -1,9 +1,9 @@
-import logging
-from collections.abc import AsyncGenerator
-from functools import lru_cache
-from typing import Annotated
+"""O engine e a fábrica de sessões. Quem abre sessão é a `UnitOfWork` (`app/db/uow.py`) — é ela
+que sabe quando commitar, e é por ela que as rotas e os serviços pedem transação."""
 
-from fastapi import Depends
+import logging
+from functools import lru_cache
+
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -29,13 +29,3 @@ def get_session_maker() -> async_sessionmaker[AsyncSession]:
 
 async def dispose_engine() -> None:
     await get_engine().dispose()
-
-
-async def get_session() -> AsyncGenerator[AsyncSession]:
-    """Uma sessão por request, fechada no fim."""
-
-    async with get_session_maker()() as session:
-        yield session
-
-
-SessionDep = Annotated[AsyncSession, Depends(get_session)]

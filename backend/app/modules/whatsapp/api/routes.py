@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query, status
 
 from app.api.dependencies import AplicacaoDep, requer_leitura
 from app.core.periodo import Intervalo
-from app.db.session import SessionDep
+from app.db.uow import UowDep
 from app.modules.whatsapp.api.dependencies import FiltroDep
 from app.modules.whatsapp.api.schemas import (
     IngestaoOut,
@@ -23,7 +23,7 @@ router = APIRouter(tags=["whatsapp"])
 async def ingerir_mensagens(
     payload: MensagemIn | list[MensagemIn],
     aplicacao: AplicacaoDep,
-    session: SessionDep,
+    uow: UowDep,
 ) -> IngestaoOut | list[IngestaoOut]:
     """Ingestão. Aceita um objeto ou um array, e responde na mesma forma que recebeu.
 
@@ -35,7 +35,7 @@ async def ingerir_mensagens(
     segundo e no terceiro em vez de contar a mensagem três vezes."""
 
     lote = payload if isinstance(payload, list) else [payload]
-    resultados = await WhatsappService(session).ingerir(
+    resultados = await WhatsappService(uow).ingerir(
         [mensagem.para_dominio() for mensagem in lote],
         aplicacao,
     )
@@ -46,7 +46,7 @@ async def ingerir_mensagens(
 
 @router.get("/metricas", dependencies=[Depends(requer_leitura)])
 async def metricas(
-    session: SessionDep,
+    uow: UowDep,
     filtro: FiltroDep,
     grupo: Annotated[Grupo | None, Query(description="Dimensão do agrupamento.")] = None,
     intervalo: Annotated[Intervalo | None, Query(description="Balde temporal.")] = None,
@@ -54,7 +54,7 @@ async def metricas(
     """As mesmas quatro combinações de `grupo` × `intervalo` do LLM: KPI, série temporal, total
     por dimensão e série por dimensão."""
 
-    baldes = await WhatsappService(session).metricas(filtro, grupo, intervalo)
+    baldes = await WhatsappService(uow).metricas(filtro, grupo, intervalo)
     return [
         MetricaOut(
             grupo=balde.grupo,
@@ -70,7 +70,7 @@ async def metricas(
 
 @router.get("/mensagens", dependencies=[Depends(requer_leitura)])
 async def listar_mensagens(
-    session: SessionDep,
+    uow: UowDep,
     filtro: FiltroDep,
     limite: Annotated[int, Query(ge=1, le=500)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
@@ -78,7 +78,7 @@ async def listar_mensagens(
     """A lista crua. Com `conteudo` e `direcao`, ela é um registro de conversa — não só uma
     auditoria de contagem."""
 
-    pagina = await WhatsappService(session).listar(filtro, limite, offset)
+    pagina = await WhatsappService(uow).listar(filtro, limite, offset)
     return MensagensOut(
         total=pagina.total,
         limite=pagina.limite,
@@ -88,10 +88,10 @@ async def listar_mensagens(
 
 
 @router.get("/paises", dependencies=[Depends(requer_leitura)])
-async def listar_paises(session: SessionDep) -> list[str]:
+async def listar_paises(uow: UowDep) -> list[str]:
     """Popula o dropdown de filtro: os países que já apareceram em alguma mensagem.
 
     Não há `/v1/whatsapp/categorias` ao lado: a lista é fixa em quatro valores e cabe no
     frontend. Um endpoint para isso seria uma ida ao banco para descobrir o que já se sabe."""
 
-    return await WhatsappService(session).distintos(Grupo.PAIS)
+    return await WhatsappService(uow).distintos(Grupo.PAIS)

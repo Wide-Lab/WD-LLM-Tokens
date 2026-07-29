@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Request, Response, status
 
 from app.api.dependencies import UsuarioDep, requer_admin
 from app.core.config import get_config
-from app.db.session import SessionDep
+from app.db.uow import UowDep
 from app.modules.acesso.api.schemas import (
     ChaveCriadaOut,
     ChaveIn,
@@ -46,9 +46,9 @@ async def entrar(
     payload: LoginIn,
     request: Request,
     response: Response,
-    session: SessionDep,
+    uow: UowDep,
 ) -> UsuarioOut:
-    usuario = await AcessoService(session).autenticar(
+    usuario = await AcessoService(uow).autenticar(
         str(payload.email), payload.senha, _origem(request)
     )
 
@@ -83,8 +83,8 @@ async def sair(response: Response) -> None:
 
 
 @router.get("/usuarios", dependencies=[Depends(requer_admin)])
-async def listar_usuarios(session: SessionDep) -> list[UsuarioOut]:
-    usuarios = await AcessoService(session).listar()
+async def listar_usuarios(uow: UowDep) -> list[UsuarioOut]:
+    usuarios = await AcessoService(uow).listar()
     return [UsuarioOut.model_validate(usuario) for usuario in usuarios]
 
 
@@ -93,46 +93,46 @@ async def listar_usuarios(session: SessionDep) -> list[UsuarioOut]:
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(requer_admin)],
 )
-async def criar_usuario(payload: UsuarioIn, session: SessionDep) -> UsuarioOut:
+async def criar_usuario(payload: UsuarioIn, uow: UowDep) -> UsuarioOut:
     """Cadastro pela `CHAVE_ADMIN`, não por tela.
 
     É assim que nasce o primeiro usuário — sem o problema do ovo e da galinha de uma tela de
     cadastro aberta, e sem seed mágico no boot. Com um punhado de pessoas no painel, um `curl`
     por pessoa é mais barato que uma tela de gestão de usuários."""
 
-    usuario = await AcessoService(session).criar(payload.para_dominio())
+    usuario = await AcessoService(uow).criar(payload.para_dominio())
     return UsuarioOut.model_validate(usuario)
 
 
 @router.get("/chaves", dependencies=[Depends(requer_admin)])
-async def listar_chaves(session: SessionDep) -> list[ChaveOut]:
+async def listar_chaves(uow: UowDep) -> list[ChaveOut]:
     """As chaves emitidas — sem o segredo de nenhuma, que não existe mais em lugar nenhum.
 
     Não lista as de variável de ambiente: elas continuam valendo (ver `api/dependencies.py`),
     mas quem as conhece é o `.env` do servidor, não esta tabela."""
 
-    chaves = await ChaveApiService(session).listar()
+    chaves = await ChaveApiService(uow).listar()
     return [ChaveOut.model_validate(chave) for chave in chaves]
 
 
 @router.post("/chaves", status_code=status.HTTP_201_CREATED, dependencies=[Depends(requer_admin)])
-async def criar_chave(payload: ChaveIn, session: SessionDep) -> ChaveCriadaOut:
+async def criar_chave(payload: ChaveIn, uow: UowDep) -> ChaveCriadaOut:
     """Emite uma chave. **A resposta é a única vez que o segredo aparece** — o banco guarda só o
     hash, então não há como mostrá-lo de novo.
 
     Pela `CHAVE_ADMIN`, como o cadastro de usuário e de preço: quem opera o serviço distribui
     credencial, e a chave que faz isso é a única que não nasce aqui."""
 
-    criada = await ChaveApiService(session).criar(payload.para_dominio())
+    criada = await ChaveApiService(uow).criar(payload.para_dominio())
     return ChaveCriadaOut.de(criada)
 
 
 @router.delete("/chaves/{chave_id}", dependencies=[Depends(requer_admin)])
-async def revogar_chave(chave_id: uuid.UUID, session: SessionDep) -> ChaveOut:
+async def revogar_chave(chave_id: uuid.UUID, uow: UowDep) -> ChaveOut:
     """Desliga a chave na hora — a próxima requisição com ela leva `401`.
 
     `DELETE` no verbo, carimbo em `revogada_em` no banco: a linha fica, com o nome e a data, para
     a pergunta que sempre vem depois ("quem tinha essa chave que vazou?")."""
 
-    chave = await ChaveApiService(session).revogar(chave_id)
+    chave = await ChaveApiService(uow).revogar(chave_id)
     return ChaveOut.model_validate(chave)

@@ -9,7 +9,7 @@ FastAPI + SQLAlchemy async + Alembic + Postgres, gerenciado com `uv`. Contratos 
 app/
   api/        router raiz (/v1) e as dependencies de autenticação
   core/       config, exceções, logging, período
-  db/         Base declarativa, engine e sessão
+  db/         Base declarativa, engine, sessão e a UnitOfWork (a transação do request)
   modules/
     llm/          registro_llm: ingestão, listagem e métricas de chamada ao LLM
     whatsapp/     registro_mensagem: ingestão, listagem e métricas de mensagem
@@ -51,6 +51,24 @@ módulos precisam acertar **igual**.
 O `Filtro` de cada módulo continua no módulo: o do LLM tem `modelo`, o do WhatsApp tem `categoria`,
 `pais` e `direcao` — e nenhum dos dois atravessa para o consolidado, porque um filtro que só existe
 de um lado, aplicado à soma dos dois, produz um total que parece completo e não é.
+
+## Transações
+
+Uma transação por request, na `UnitOfWork` de `db/uow.py`. A rota recebe `UowDep`, monta o serviço
+com ela, e **ninguém chama `commit`**: sai limpo, o `__aexit__` grava; sobe exceção, ele desfaz.
+Antes eram oito `session.commit()` espalhados pelos serviços, e cada operação nova tinha que
+lembrar de repetir.
+
+Os repositórios continuam recebendo `AsyncSession` (`Repo(uow.session)`) — quem fala com o banco
+não precisa saber quando a transação fecha.
+
+A UoW **não guarda repositório**. A versão de manual expõe `uow.usuarios`, `uow.precos`, e isso
+faria de `db/uow.py` o lugar que importa todos os módulos de uma vez, justo aqui onde os imports
+que cruzam módulo são contados a dedo.
+
+Uma exceção, em `ChaveApiService.autenticar`: o carimbo de `ultimo_uso_em` abre a própria
+`UnitOfWork()`. Ele é fato sobre a chave, não sobre a operação que ela autorizou — na transação do
+request, um `GET` que terminasse em `404` levaria o carimbo junto no rollback.
 
 ## Dev local
 

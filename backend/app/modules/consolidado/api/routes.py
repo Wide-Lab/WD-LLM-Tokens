@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 
 from app.api.dependencies import requer_leitura
 from app.core.periodo import Intervalo
-from app.db.session import SessionDep
+from app.db.uow import UowDep
 from app.modules.consolidado.api.dependencies import FiltroDep
 from app.modules.consolidado.api.schemas import MetricaOut
 from app.modules.consolidado.application.services import ConsolidadoService
@@ -19,7 +19,7 @@ responde."""
 
 @router.get("/consolidado/metricas", dependencies=[Depends(requer_leitura)])
 async def metricas(
-    session: SessionDep,
+    uow: UowDep,
     filtro: FiltroDep,
     grupo: Annotated[Grupo | None, Query(description="Dimensão do agrupamento.")] = None,
     intervalo: Annotated[Intervalo | None, Query(description="Balde temporal.")] = None,
@@ -35,7 +35,7 @@ async def metricas(
     "custo por aplicação **repartido** entre LLM e WhatsApp". `grupo=origem` continua respondendo a
     pergunta sem recorte, e é a forma certa quando origem é a pergunta inteira."""
 
-    baldes = await ConsolidadoService(session).metricas(filtro, grupo, intervalo, por_origem)
+    baldes = await ConsolidadoService(uow).metricas(filtro, grupo, intervalo, por_origem)
     return [
         MetricaOut(
             grupo=balde.grupo,
@@ -50,11 +50,11 @@ async def metricas(
 
 
 @router.get("/aplicacoes", dependencies=[Depends(requer_leitura)])
-async def listar_aplicacoes(session: SessionDep) -> list[str]:
+async def listar_aplicacoes(uow: UowDep) -> list[str]:
     """Popula o dropdown de filtro: as aplicações que já reportaram alguma coisa.
 
     Mora aqui, e não no `llm`, porque a lista é das duas origens — uma aplicação que só reportou
     WhatsApp precisa aparecer. O caminho é o mesmo de sempre e `/v1/llm/aplicacoes` deixou de
     existir: manter os dois seria manter duas listas de aplicação divergindo em silêncio."""
 
-    return await ConsolidadoService(session).aplicacoes()
+    return await ConsolidadoService(uow).aplicacoes()

@@ -1,8 +1,7 @@
 import uuid
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.core.exceptions import TooManyRequestsError, UnauthorizedError
+from app.db.uow import UnitOfWork
 from app.modules.acesso.application import limite
 from app.modules.acesso.domain.entities import (
     ChaveApi,
@@ -18,9 +17,8 @@ from app.modules.acesso.infra.senha import confere
 
 
 class AcessoService:
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
-        self._usuarios = UsuarioRepository(session)
+    def __init__(self, uow: UnitOfWork) -> None:
+        self._usuarios = UsuarioRepository(uow.session)
 
     async def autenticar(self, email: str, senha: str, origem: str) -> Usuario:
         """O login. `origem` é o IP de quem tentou — entra na chave do freio junto com o e-mail
@@ -52,30 +50,24 @@ class AcessoService:
         return await self._usuarios.listar()
 
     async def criar(self, novo: NovoUsuario) -> Usuario:
-        usuario = await self._usuarios.criar(novo)
-        await self._session.commit()
-        return usuario
+        return await self._usuarios.criar(novo)
 
 
 class ChaveApiService:
     """Emissão, listagem, revogação e conferência das chaves de API."""
 
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
-        self._chaves = ChaveApiRepository(session)
+    def __init__(self, uow: UnitOfWork) -> None:
+        self._chaves = ChaveApiRepository(uow.session)
 
     async def criar(self, nova: NovaChave) -> ChaveCriada:
         chave, segredo = await self._chaves.criar(nova)
-        await self._session.commit()
         return ChaveCriada(chave=chave, segredo=segredo)
 
     async def listar(self) -> list[ChaveApi]:
         return await self._chaves.listar()
 
     async def revogar(self, chave_id: uuid.UUID) -> ChaveApi:
-        chave = await self._chaves.revogar(chave_id)
-        await self._session.commit()
-        return chave
+        return await self._chaves.revogar(chave_id)
 
     async def autenticar(self, segredo: str, escopo: EscopoChave) -> ChaveApi | None:
         """A chave por trás daquele texto, se estiver ativa **e** for do escopo pedido.
@@ -84,14 +76,15 @@ class ChaveApiService:
         "esta chave não abre isto" e "esta chave não existe" precisam ser a mesma resposta — a
         diferença só serviria para alguém mapear o que tem em mãos.
 
-        O `commit` do `marcar_uso` é próprio de propósito: os `GET` não commitam nada, e sem ele
-        o carimbo iria embora no fim do request."""
+        O carimbo de uso vai numa transação própria, e não na do request: ele é fato sobre a
+        chave, não sobre a operação que ela autorizou. Um `GET` que termina em `404` continua
+        sendo um uso — na transação do request, o rollback do `404` levaria o carimbo junto."""
 
         chave = await self._chaves.ativa_por_segredo(segredo)
         if chave is None or chave.escopo is not escopo:
             return None
 
-        if await self._chaves.marcar_uso(chave.id):
-            await self._session.commit()
+        async with UnitOfWork() as uow:
+            await ChaveApiRepository(uow.session).marcar_uso(chave.id)
 
         return chave
