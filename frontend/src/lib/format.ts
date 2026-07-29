@@ -25,6 +25,27 @@ export function formatCurrency(value: number | null | undefined, currency: strin
   }
 }
 
+/**
+ * Uma tarifa cadastrada — o preço em si, não um total gasto.
+ *
+ * Vai a seis casas, e `formatCurrency` para em quatro, porque as duas respondem perguntas
+ * diferentes: um total em quatro casas já é precisão de sobra, mas uma tarifa de cache lido
+ * arredondada some justamente no dígito que a distingue de zero. Aqui o número é o dado, e cortá-lo
+ * seria mostrar um preço que ninguém cadastrou.
+ */
+export function formatTarifa(valor: number, moeda: string = "USD"): string {
+  try {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: moeda,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 6,
+    }).format(valor);
+  } catch {
+    return `${valor} ${moeda}`;
+  }
+}
+
 export function formatDateTime(iso: string): string {
   try {
     return new Intl.DateTimeFormat("pt-BR", {
@@ -52,6 +73,19 @@ export function formatDayLabel(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+/**
+ * Uma data ISO **sem hora** (`2026-01-01`), do jeito que se lê em pt-BR.
+ *
+ * Não passa por `new Date(iso)` de propósito: a string sem hora é lida como meia-noite **UTC**, e
+ * em qualquer fuso a oeste de Greenwich isso volta um dia. Uma vigência que começa no dia 1º
+ * apareceria como o dia 31 do mês anterior — justo o campo em que um dia de diferença muda o
+ * custo de um evento.
+ */
+export function formatDateOnly(iso: string): string {
+  const [ano, mes, dia] = iso.split("-");
+  return ano && mes && dia ? `${dia}/${mes}/${ano}` : iso;
 }
 
 export function toISODate(d: Date): string {

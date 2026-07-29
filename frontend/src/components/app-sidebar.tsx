@@ -7,6 +7,7 @@ import {
   MessageSquare,
   Moon,
   Sun,
+  Tags,
 } from "lucide-react";
 import {
   Sidebar,
@@ -49,6 +50,13 @@ const GRUPOS = [
       { title: "Painel", url: "/whatsapp", icon: MessageSquare },
       { title: "Mensagens", url: "/whatsapp/mensagens", icon: ListOrdered },
     ],
+  },
+  // Sozinha no fim e sem rótulo: preço não é uma quarta origem de custo — é a régua com que as
+  // outras duas viram dinheiro. Um grupo "Configurações" com um item só nomearia uma gaveta que
+  // ainda não existe.
+  {
+    rotulo: null,
+    itens: [{ title: "Preços", url: "/precos", icon: Tags }],
   },
 ];
 

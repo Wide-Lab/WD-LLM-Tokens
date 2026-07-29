@@ -97,3 +97,38 @@ export interface EventosResponse {
   offset: number;
   itens: EventoItem[];
 }
+
+/**
+ * Uma linha de `preco_modelo` — a tarifa de um modelo **a partir de** uma data.
+ *
+ * `vigencia_inicio` sem par: não existe `vigencia_fim`. Uma vigência vale até a próxima começar, e
+ * a última vale para sempre. É por isso que o custo do painel é derivado na leitura e não gravado
+ * no evento — o preço de março continua valendo para março depois que o de abril entra.
+ */
+export interface PrecoModelo {
+  id: string;
+  provedor: string | null;
+  modelo: string;
+  vigencia_inicio: string;
+  moeda: string;
+  entrada_por_milhao: number;
+  saida_por_milhao: number;
+  cache_leitura_por_milhao: number;
+  cache_escrita_por_milhao: number;
+}
+
+/**
+ * Uma linha de `preco_mensagem`. Mesma vigência do preço de modelo, outra chave: aqui quem
+ * identifica a tarifa é o par `(categoria, pais)`.
+ *
+ * `service` não aparece nem pode ser cadastrada — mensagem de serviço não é cobrada, e quem diz
+ * isso é o `cobravel` do evento.
+ */
+export interface PrecoMensagem {
+  id: string;
+  categoria: "marketing" | "utility" | "authentication";
+  pais: string;
+  vigencia_inicio: string;
+  moeda: string;
+  por_mensagem: number;
+}

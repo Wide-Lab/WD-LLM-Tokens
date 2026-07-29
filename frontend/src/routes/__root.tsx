@@ -163,6 +163,7 @@ function tituloDaRota(pathname: string): string {
   if (pathname.startsWith("/llm/eventos/")) return "LLM / Eventos / Ator";
   if (pathname === "/whatsapp") return "WhatsApp";
   if (pathname === "/whatsapp/mensagens") return "WhatsApp / Mensagens";
+  if (pathname === "/precos") return "Preços";
   return "Painel";
 }
 
