@@ -47,10 +47,6 @@ async def aplicacao_autenticada(uow: UowDep, x_api_key: ChaveHeader = None) -> s
     """A aplicação dona da chave de escrita. É ela que o `POST /v1/llm/eventos` cobra do payload."""
 
     if x_api_key:
-        for aplicacao, chave in get_config().CHAVES_ESCRITA.items():
-            if _confere(x_api_key, chave):
-                return aplicacao
-
         emitida = await ChaveApiService(uow).autenticar(x_api_key, EscopoChave.ESCRITA)
         if emitida is not None and emitida.aplicacao:
             return emitida.aplicacao
@@ -102,10 +98,12 @@ async def requer_leitura(
     if not x_api_key:
         raise UnauthorizedError()
 
-    if _confere(x_api_key, get_config().CHAVE_LEITURA):
-        return
-
-    if await ChaveApiService(uow).autenticar(x_api_key, EscopoChave.LEITURA) is None:
+    service = ChaveApiService(uow)
+    chave_api = await service.autenticar(
+        segredo=x_api_key,
+        escopo=EscopoChave.LEITURA,
+    )
+    if chave_api is None:
         raise UnauthorizedError()
 
 

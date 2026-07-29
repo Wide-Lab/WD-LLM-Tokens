@@ -13,24 +13,6 @@ class Config(BaseSettings):
     """Origens do painel. Atrás do nginx de borda, front e API compartilham a mesma origem e
     isto pode ficar vazio; só um painel servido de outra origem precisa entrar aqui."""
 
-    CHAVES_ESCRITA: dict[str, str] = {}
-    """Uma chave por aplicação: `{"famossul": "chave-secreta"}`.
-
-    O mapa é aplicação → chave (e não o contrário) porque é assim que a chave passa a **dizer
-    quem está reportando**: o `POST /v1/llm/eventos` recusa um evento cuja `aplicacao` não seja a
-    dona da chave. Sem isso, a chave de qualquer app poderia escrever no nome de outro, e o
-    painel por aplicação viraria ficção.
-
-    Hoje as chaves nascem em `POST /v1/chaves`, na tabela `chave_api`. Estas continuam valendo
-    junto com as de lá — para migrar sem derrubar app — e podem ficar vazias quando cada
-    aplicação já estiver com a sua emitida."""
-
-    CHAVE_LEITURA: str = ""
-    """Chave de integração para os `GET`, para quem consome as métricas por script.
-
-    O painel **não** a usa: quem entra nele tem sessão (cookie), e é por isso que a chave saiu
-    do browser. Vazia = só a sessão e as chaves de leitura emitidas abrem os `GET`."""
-
     SEGREDO_SESSAO: str = ""
     """A chave que assina o cookie de sessão. Vazia = login indisponível (`503`).
 

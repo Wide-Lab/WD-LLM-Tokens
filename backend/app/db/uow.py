@@ -57,8 +57,8 @@ class UnitOfWork:
         try:
             if erro is None:
                 await sessao.commit()
-            else:
-                await sessao.rollback()
+                return
+            await sessao.rollback()
         finally:
             await sessao.close()
 
