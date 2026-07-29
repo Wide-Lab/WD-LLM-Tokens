@@ -8,7 +8,10 @@ Duas formas de se identificar convivem aqui, e não por acaso:
   exposto na internet: antes, a chave de leitura morava no `localStorage` do browser e era, na
   prática, a única tranca da porta.
 
-`requer_leitura` aceita os dois. Escrita e admin, só chave — não há tela para eles.
+`requer_leitura` aceita os dois. Escrita de evento e admin, só chave — não há tela para elas. A
+exceção é `requer_gestao_de_precos`, que também aceita a sessão: a tabela de preços é a única
+escrita com tela, porque sem ela o custo do painel é `null` e a chave que a abriria não pode
+morar no browser.
 
 **Duas fontes de chave, nesta ordem: ambiente e depois banco.** As de ambiente vieram primeiro,
 quando uma tabela de chaves seria cerimônia para uma aplicação nova por semestre; hoje existe
@@ -117,6 +120,31 @@ async def requer_admin(x_api_key: ChaveHeader = None) -> None:
 
     if not x_api_key or not _confere(x_api_key, get_config().CHAVE_ADMIN):
         raise UnauthorizedError()
+
+
+async def requer_gestao_de_precos(
+    usuario: Annotated[Usuario | None, Depends(usuario_da_sessao)],
+    x_api_key: ChaveHeader = None,
+) -> None:
+    """Sessão do painel **ou** `CHAVE_ADMIN`. A única escrita do serviço que tem tela.
+
+    E tem tela por necessidade: sem preço cadastrado o `custo` do painel inteiro é `null`, e a
+    porta para preencher a tabela não pode ser a `CHAVE_ADMIN` — ela não desce para o browser,
+    por definição. Quem entra no painel já enxerga o custo de todas as aplicações; a tarifa que
+    produz esse número não é segredo maior que ele.
+
+    **Não há papel de usuário: qualquer sessão válida cadastra preço.** É decisão consciente
+    enquanto o painel é de um time só — o dia em que não for, o lugar de cortar é esta função.
+
+    É também a única escrita que um cookie abre, e portanto a primeira que precisa pensar em
+    CSRF. Quem segura é o `SameSite=Lax` do cookie: o navegador não o envia num `POST` partido de
+    outra origem, então não há formulário de terceiro capaz de cadastrar preço em nome de quem
+    está logado. O `curl` com `CHAVE_ADMIN` continua valendo, e é o caminho de quem automatiza."""
+
+    if usuario is not None:
+        return
+
+    await requer_admin(x_api_key)
 
 
 AplicacaoDep = Annotated[str, Depends(aplicacao_autenticada)]

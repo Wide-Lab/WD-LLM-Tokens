@@ -44,7 +44,8 @@ entrando depois de revogada. Trocá-la exige acesso ao servidor, e é esse o pon
 
 **Cookie de sessão** — gente no painel. `POST /v1/sessao` devolve um cookie `HttpOnly`,
 `SameSite=Lax`, `Secure` (configurável), assinado com `SEGREDO_SESSAO` e válido por
-`SESSAO_DURACAO_HORAS`. Ele abre os mesmos `GET` que a chave de leitura, e nada além disso.
+`SESSAO_DURACAO_HORAS`. Ele abre os mesmos `GET` que a chave de leitura, e uma escrita só:
+`POST /v1/precos` e `POST /v1/precos/mensagem`, que são a tela de preços do painel.
 
 Requisição sem chave nem sessão válida → `401`.
 
@@ -59,10 +60,15 @@ O cookie carrega apenas o id do usuário: cada requisição relê a linha em `us
 `ativo = false` derruba a sessão no request seguinte, sem esperar o cookie vencer. Para
 derrubar **todas** as sessões de uma vez, troque `SEGREDO_SESSAO`.
 
-Não há CSRF token: tudo que escreve (`POST /v1/llm/eventos`, `/v1/whatsapp/mensagens`,
-`/v1/precos`, `/v1/usuarios`, `/v1/chaves`) exige
-`X-API-Key`, que o cookie não substitui — não há requisição de escrita que um site de terceiros
-consiga forjar só por o navegador mandar o cookie.
+Não há CSRF token. Quase tudo que escreve (`POST /v1/llm/eventos`, `/v1/whatsapp/mensagens`,
+`/v1/usuarios`, `/v1/chaves`) exige `X-API-Key`, que o cookie não substitui — para essas, não há
+requisição que um site de terceiros consiga forjar só por o navegador mandar o cookie.
+
+A exceção é `POST /v1/precos` (e `/v1/precos/mensagem`), que o cookie abre. Quem segura ali é o
+`SameSite=Lax`: o navegador não manda o cookie de sessão num `POST` partido de outra origem, então
+o formulário hostil chega sem sessão e leva `401`. É proteção do navegador e não do servidor —
+trocar o cookie para `SameSite=None` (por exemplo, para servir o painel de outro domínio que não o
+da API) derruba essa garantia e aí o token passa a ser necessário.
 
 ## CORS
 
@@ -480,8 +486,18 @@ Cadastro de preço. **Não faz parte do contrato original** — entrou na implem
 `preco_modelo` é de onde sai todo o custo do painel, e sem uma porta para preenchê-la o campo
 `custo` ficaria `null` para sempre.
 
-`GET` usa a chave de leitura; `POST` usa uma terceira chave (`CHAVE_ADMIN`), separada porque a
-de leitura vive exposta no browser e esta reescreve a base de todo o custo.
+`GET` aceita chave de leitura ou sessão. **`POST` aceita sessão do painel ou `CHAVE_ADMIN`** — é
+a única escrita do serviço que um cookie abre, e a única que tem tela (`/precos`, no painel). Ela
+abriu porque a `CHAVE_ADMIN` não desce para o browser por definição, e sem tela a tabela de que
+todo o custo depende só se preencheria por `curl`. Não há papel de usuário: qualquer sessão
+válida cadastra preço.
+
+> **Preço se acrescenta, não se edita — e a vigência é quem decide o estrago.** Não existe `PUT`
+> nem `DELETE` aqui. O custo é derivado na leitura pelo preço com o maior `vigencia_inicio <=`
+> data do evento, então **`vigencia_inicio` no passado recalcula o histórico**: todo evento
+> daquela data em diante passa a valer o preço novo na próxima vez que alguém abrir o painel.
+> Com vigência de hoje em diante, o histórico fica intacto — é esse o caso do reajuste. Uma
+> vigência retroativa cadastrada por engano só sai com `SQL` na mão.
 
 ```json
 {
@@ -502,8 +518,9 @@ de leitura vive exposta no browser e esta reescreve a base de todo o custo.
 
 ## `GET /v1/precos/mensagem`, `POST /v1/precos/mensagem`
 
-A tarifa da mensagem de WhatsApp, com as mesmas duas chaves: `CHAVE_ADMIN` para escrever, chave
-de leitura ou sessão do painel para ler.
+A tarifa da mensagem de WhatsApp, com a mesma autenticação da de modelo: sessão do painel ou
+`CHAVE_ADMIN` para escrever, chave de leitura ou sessão para ler. A ressalva da vigência
+retroativa vale igual aqui.
 
 **Query params do `GET`:** `categoria`, `pais` — os dois opcionais.
 
@@ -527,8 +544,8 @@ assim que o painel denuncia o buraco em vez de somar zero.
 
 `409` quando já existe preço para o mesmo `(categoria, pais, vigencia_inicio)`.
 
-`GET`/`POST /v1/precos` continuam sendo os de **modelo**, sem alias e sem renomeação: são rotas de
-administração usadas por `curl`, e mexer nelas seria churn sem consumidor.
+`GET`/`POST /v1/precos` continuam sendo os de **modelo**, sem alias e sem renomeação: renomear
+agora quebraria o `curl` de quem já cadastra por fora, em troca de simetria.
 
 ---
 
