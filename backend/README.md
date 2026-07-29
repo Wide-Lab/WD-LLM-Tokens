@@ -11,30 +11,46 @@ app/
   core/       config, exceções, logging, período
   db/         Base declarativa, engine e sessão
   modules/
-    llm/        registro_llm: ingestão, listagem e métricas de chamada ao LLM
-    whatsapp/   registro_mensagem: ingestão, listagem e métricas de mensagem
-    precos/     preco_modelo e preco_mensagem: preço com vigência e as expressões de custo
-    acesso/     usuario e chave_api: login, sessão, cadastro e emissão de chave
+    llm/          registro_llm: ingestão, listagem e métricas de chamada ao LLM
+    whatsapp/     registro_mensagem: ingestão, listagem e métricas de mensagem
+    precos/       preco_modelo e preco_mensagem: preço com vigência e as expressões de custo
+    consolidado/  modelo de leitura: soma o custo das duas origens (nenhuma tabela é dele)
+    acesso/       usuario e chave_api: login, sessão, cadastro e emissão de chave
 ```
 
 Cada módulo é `api / application / domain / infra`: a rota traduz HTTP, o serviço orquestra, o
 domínio guarda as regras e o `infra` fala com o banco.
 
-Import de módulo a módulo, só três:
+Import de módulo a módulo, só quatro, todos na mesma direção:
 
-- `llm/infra/repository.py` → `precos/infra/custo.py` — a fórmula do custo vive num lugar só, e
-  é usada tanto na listagem quanto na agregação.
-- `whatsapp/infra/repository.py` → `precos/infra/custo_mensagem.py` — o mesmo motivo, a outra
-  fórmula. Dinheiro mora no `precos`, e não dentro de cada módulo de fato.
+- `llm/infra/{repository,projecao}.py` → `precos/infra/custo.py` — a fórmula do custo vive num
+  lugar só, e é usada na listagem, na agregação e na projeção.
+- `whatsapp/infra/{repository,projecao}.py` → `precos/infra/custo_mensagem.py` — o mesmo motivo, a
+  outra fórmula. Dinheiro mora no `precos`, e não dentro de cada módulo de fato.
+- `consolidado/infra/repository.py` → `llm/infra/projecao.py`, `whatsapp/infra/projecao.py` — uma
+  função por origem, e é toda a superfície que a soma enxerga. (Ele também pega a `MOEDA_PADRAO`
+  no `precos`: é a mesma constante que as duas origens já usam, e é justamente isso que torna as
+  duas somas somáveis.)
 - `api/dependencies.py` → `acesso/{infra,application,domain}` — autenticação é transversal e já
   morava ali. Depende do `acesso` por dentro (sessão, serviço, entidade) e nunca pela `api`
   dele, que é justamente quem importa `api/dependencies.py` de volta.
 
-`core/periodo.py` não conta como import de módulo a módulo: `core` é a casa do transversal, e é
-onde moram o `Intervalo` (`dia`/`semana`/`mes`) e a janela de datas que os dois módulos de fato
-precisam acertar **igual** — `ate` é o dia inteiro, e duas cópias dessa regra divergiriam no dia
-em que alguém mexesse numa. O `Filtro` de cada módulo continua no módulo: o do LLM tem `modelo`, o
-do WhatsApp tem `categoria`, `pais` e `direcao`.
+**Ninguém importa o `consolidado`.** Ele é folha do grafo, e é isso que impede a soma de virar
+dependência de quem produz os números — dá para deletá-lo sem mexer em nada. Uma terceira origem
+(transcrição, TTS) é um `projecao.py` a mais, e não uma reescrita do painel.
+
+`core/` não conta como import de módulo a módulo: é a casa do transversal, e é onde mora o que os
+módulos precisam acertar **igual**.
+
+- `core/periodo.py` — o `Intervalo` (`dia`/`semana`/`mes`) e a janela de datas: `ate` é o dia
+  inteiro, e duas cópias dessa regra divergiriam no dia em que alguém mexesse numa. O sintoma
+  seria um total que não bate por um dia, que é o tipo de erro que ninguém vê.
+- `core/lancamento.py` — o vocabulário do lançamento: as colunas fixas que as duas projeções
+  devolvem e o `FiltroComum` (`de`, `ate`, `aplicacao`, `ator`) que vai igual para as duas.
+
+O `Filtro` de cada módulo continua no módulo: o do LLM tem `modelo`, o do WhatsApp tem `categoria`,
+`pais` e `direcao` — e nenhum dos dois atravessa para o consolidado, porque um filtro que só existe
+de um lado, aplicado à soma dos dois, produz um total que parece completo e não é.
 
 ## Dev local
 
@@ -131,6 +147,22 @@ contar a mensagem três vezes.
 
 Leitura em `GET /v1/whatsapp/metricas`, `GET /v1/whatsapp/mensagens` e `GET /v1/whatsapp/paises`,
 com a chave de leitura ou a sessão do painel.
+
+## Consolidado
+
+O custo das duas origens somado, no banco:
+
+```bash
+curl -H "X-API-Key: $CHAVE_LEITURA" \
+  'localhost:8000/api/v1/consolidado/metricas?grupo=origem&intervalo=dia&de=2026-07-01&ate=2026-07-28'
+```
+
+`grupo` é `origem`, `aplicacao` ou `ator` — só as três dimensões que existem dos dois lados. A
+resposta tem `lancamentos`, `custo` e `moeda`, e mais nada: token não soma com mensagem, então
+volume fica em cada painel de origem.
+
+`GET /v1/aplicacoes` sai daqui também, unindo as duas tabelas: uma aplicação que só reportou
+WhatsApp precisa aparecer no dropdown do painel. `GET /v1/llm/aplicacoes` deixou de existir.
 
 ## Migrations
 

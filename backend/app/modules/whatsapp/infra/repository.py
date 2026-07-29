@@ -48,6 +48,21 @@ _COLUNA_GRUPO: dict[Grupo, ColumnElement[str] | InstrumentedAttribute[str]] = {
 """O mapa fechado é o que impede um `grupo` vindo da query string de virar coluna arbitrária."""
 
 
+def custo_vigente() -> tuple[PrecoMensagemVigente, ColumnElement[Any]]:
+    """A tarifa válida em cada mensagem e a expressão do custo dela, ligadas às colunas da tabela.
+
+    O irmão do `custo_vigente` do LLM, e público pelo mesmo motivo: `projecao.py` usa exatamente
+    isto. A fórmula (e a decisão de que `cobravel = false` custa `0`, não `null`) mora no `precos`;
+    aqui mora só **qual coluna** casa a mensagem com a linha de preço."""
+
+    preco = preco_vigente_de_mensagem(
+        RegistroMensagemRow.categoria,
+        RegistroMensagemRow.pais,
+        RegistroMensagemRow.criado_em,
+    )
+    return preco, preco.custo(cobravel=RegistroMensagemRow.cobravel)
+
+
 class RegistroMensagemRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -106,7 +121,7 @@ class RegistroMensagemRepository:
     async def listar(
         self, filtro: Filtro, limite: int, offset: int
     ) -> tuple[list[RegistroMensagem], int]:
-        preco = self._preco()
+        preco, custo = custo_vigente()
 
         stmt = self._filtrar(
             select(
@@ -121,7 +136,7 @@ class RegistroMensagemRepository:
                 RegistroMensagemRow.id_externo,
                 RegistroMensagemRow.conteudo,
                 RegistroMensagemRow.metadados,
-                preco.custo(cobravel=RegistroMensagemRow.cobravel).label("custo"),
+                custo.label("custo"),
                 func.coalesce(preco.moeda, literal(MOEDA_PADRAO)).label("moeda"),
             )
             .select_from(RegistroMensagemRow)
@@ -167,7 +182,7 @@ class RegistroMensagemRepository:
     ) -> list[Balde]:
         """As mesmas quatro combinações de `grupo` × `intervalo` do LLM, numa consulta só."""
 
-        preco = self._preco()
+        preco, custo = custo_vigente()
 
         chaves: list[ColumnElement[Any]] = []
         if grupo is not None:
@@ -186,7 +201,7 @@ class RegistroMensagemRepository:
                 # `SUM` ignora `NULL`: as não-cobráveis entram com `0` e não zeram o total, as
                 # cobráveis sem preço cadastrado não entram, e o balde só sai `NULL` quando
                 # nenhuma linha dele soube dizer quanto custou.
-                func.sum(preco.custo(cobravel=RegistroMensagemRow.cobravel)).label("custo"),
+                func.sum(custo).label("custo"),
                 func.coalesce(func.max(preco.moeda), literal(MOEDA_PADRAO)).label("moeda"),
             )
             .select_from(RegistroMensagemRow)
@@ -214,14 +229,6 @@ class RegistroMensagemRepository:
 
         coluna = _COLUNA_GRUPO[grupo]
         return list(await self._session.scalars(select(coluna).distinct().order_by(coluna)))
-
-    @staticmethod
-    def _preco() -> PrecoMensagemVigente:
-        return preco_vigente_de_mensagem(
-            RegistroMensagemRow.categoria,
-            RegistroMensagemRow.pais,
-            RegistroMensagemRow.criado_em,
-        )
 
     @staticmethod
     def _filtrar(stmt: Select[Any], filtro: Filtro) -> Select[Any]:

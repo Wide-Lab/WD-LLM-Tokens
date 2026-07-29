@@ -3,11 +3,15 @@
 REST, versionada em `/v1`. JSON em tudo. Datas em ISO 8601 (UTC).
 
 As rotas de LLM vivem sob `/v1/llm/*` e as de WhatsApp sob `/v1/whatsapp/*` — uma origem de fato,
-um prefixo. Os caminhos de LLM **sem** o prefixo (`/v1/eventos`, `/v1/metricas`, `/v1/aplicacoes`,
-`/v1/modelos`) continuam valendo e respondem igual: são de quando o LLM era a única origem de
-fato, e há aplicação em produção reportando por eles. Não aparecem no `/api/docs` — uma lista com
-cada rota duplicada é o tipo de ruído que faz ninguém mais ler a doc. Integração nova usa o
-caminho com prefixo. O WhatsApp nasceu com prefixo e não tem alias.
+um prefixo. A soma das duas vive sob `/v1/consolidado/*`. Os caminhos de LLM **sem** o prefixo
+(`/v1/eventos`, `/v1/metricas`, `/v1/modelos`) continuam valendo e respondem igual: são de quando
+o LLM era a única origem de fato, e há aplicação em produção reportando por eles. Não aparecem no
+`/api/docs` — uma lista com cada rota duplicada é o tipo de ruído que faz ninguém mais ler a doc.
+Integração nova usa o caminho com prefixo. O WhatsApp nasceu com prefixo e não tem alias.
+
+`/v1/aplicacoes` é a exceção que **não** é alias: ele mudou de dono, saiu do `llm` e virou rota do
+consolidado. O caminho é o mesmo de sempre (é o que o painel chama), e o que mudou é que a lista
+agora vem das duas origens. `/v1/llm/aplicacoes` responde `404`.
 
 > **`ator` é o mesmo texto nos dois lados.** E.164 só dígitos, sem `+`, sem espaço, sem
 > pontuação: `5547999999999`. É o único acoplamento entre as duas origens e não há constraint que
@@ -407,6 +411,52 @@ endpoint para isso seria uma ida ao banco para descobrir o que já se sabe.
 
 ---
 
+## `GET /v1/consolidado/metricas`
+
+O custo das duas origens somado — a resposta inteira para "quanto custou atender este cliente".
+
+**Query params:**
+
+| Param | Valores | Efeito |
+|---|---|---|
+| `grupo` | `origem` \| `aplicacao` \| `ator` | dimensão do agrupamento; se omitido, agrega tudo |
+| `intervalo` | `dia` \| `semana` \| `mes` | bucket temporal; se omitido, sem série temporal |
+| `de` / `ate` | data ISO | período, os dois extremos inteiros |
+| `aplicacao`, `ator` | texto | filtros |
+
+```json
+[
+  { "grupo": "llm", "periodo": "2026-07-28", "lancamentos": 42, "custo": 1.23, "moeda": "USD" },
+  { "grupo": "whatsapp", "periodo": "2026-07-28", "lancamentos": 120, "custo": 0.67, "moeda": "USD" }
+]
+```
+
+> **O consolidado fala só dinheiro, tempo e quem.** Sem `tokens_*`, sem `mensagens`, sem
+> `requisicoes`: volume tem unidade, e as unidades não se somam — um `requisicoes` somado a um
+> `mensagens` é um número sem significado, e um painel que mostra um número sem significado ensina
+> o leitor a desconfiar dos outros. Token fica em `/v1/llm/metricas`, mensagem em
+> `/v1/whatsapp/metricas`.
+
+`lancamentos` é a contagem dos fatos que entraram na soma. Serve para responder "está chegando
+dado?" e, de propósito, não tem pretensão de ser indicador de volume.
+
+Os filtros e os agrupamentos são só os que existem **nos dois lados**. Não há `modelo` nem
+`categoria`, e a ausência é o contrato: um filtro de uma origem só, aplicado à soma das duas,
+devolveria um total que parece completo e não é. Quem quer recortar por modelo está perguntando
+sobre LLM, e a pergunta tem endereço.
+
+`custo: null` num balde significa que **nenhuma** linha dele tinha preço cadastrado — uma origem
+sem preço não zera o total da outra, porque a soma ignora o `null` em vez de tratá-lo como zero. E
+como um dos agrupamentos é por `ator`, o número só é verdade se `ator` for o mesmo texto nas duas
+origens: ver a nota no topo desta página.
+
+A soma acontece no banco, e não no browser, porque ela tem semântica: `custo: null` não pode virar
+zero ao encontrar um número, as moedas precisam concordar antes de somar e o período precisa ser
+recortado igual dos dois lados. As três regras já existem uma vez no backend, e a segunda cópia
+seria a que ninguém lembraria de atualizar.
+
+---
+
 ## `GET /v1/precos`, `POST /v1/precos`
 
 Cadastro de preço. **Não faz parte do contrato original** — entrou na implementação porque
@@ -465,7 +515,7 @@ administração usadas por `curl`, e mexer nelas seria churn sem consumidor.
 
 ---
 
-## `GET /v1/llm/aplicacoes`, `GET /v1/llm/modelos`
+## `GET /v1/aplicacoes`, `GET /v1/llm/modelos`
 
 Auxiliares para popular os dropdowns de filtro do painel: devolvem a lista
 distinta de valores já vistos.
@@ -473,6 +523,14 @@ distinta de valores já vistos.
 ```json
 ["famossul", "outro-app"]
 ```
+
+`/v1/aplicacoes` é do **consolidado** e une as duas origens — uma aplicação que só reportou
+WhatsApp precisa aparecer no dropdown. Era rota do `llm`, e **`/v1/llm/aplicacoes` deixou de
+existir** (`404`). Não virou alias de propósito: dois caminhos para a lista de aplicações seriam
+duas listas divergindo em silêncio.
+
+`/v1/llm/modelos` fica onde está, com o alias legado `/v1/modelos`: modelo é dimensão de uma
+origem só.
 
 ---
 

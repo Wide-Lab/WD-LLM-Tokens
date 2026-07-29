@@ -1,8 +1,9 @@
 """O repositório de `registro_llm`: ingestão idempotente, listagem crua e agregação.
 
-É o único arquivo que importa outro módulo (`precos`, pela expressão de custo). A alternativa
-era repetir a fórmula do dinheiro na listagem e na agregação — ver o docstring de
-`precos/infra/custo.py`."""
+Importa `precos` pela expressão de custo — a alternativa era repetir a fórmula do dinheiro na
+listagem e na agregação, ver o docstring de `precos/infra/custo.py`. Quem liga essa fórmula às
+colunas daqui é o `custo_vigente` logo abaixo, e é ele que `projecao.py` também usa: o custo do
+consolidado é o mesmo desta listagem, por construção."""
 
 import uuid
 from typing import Any
@@ -32,6 +33,26 @@ _COLUNA_GRUPO: dict[Grupo, InstrumentedAttribute[str]] = {
     Grupo.APLICACAO: RegistroLlmRow.aplicacao,
 }
 """O mapa fechado é o que impede um `grupo` vindo da query string de virar coluna arbitrária."""
+
+
+def custo_vigente() -> tuple[PrecoVigente, ColumnElement[Any]]:
+    """O preço válido em cada linha e a expressão do custo dela, ligados às colunas desta tabela.
+
+    Os dois juntos porque saem do mesmo `LEFT JOIN LATERAL` e porque quem soma custo também
+    precisa nomear a moeda (`preco.moeda`).
+
+    Público e fora da classe porque `projecao.py` usa exatamente isto: a **fórmula** mora no
+    `precos`, e **qual coluna entra em qual balde** mora aqui — uma vez só, valendo para a
+    listagem, para a agregação e para o consolidado. Um balde de token novo se resolve nestes dois
+    lugares, e não em três."""
+
+    preco = preco_vigente_para(RegistroLlmRow.modelo, RegistroLlmRow.criado_em)
+    return preco, preco.custo(
+        entrada=RegistroLlmRow.tokens_entrada,
+        saida=RegistroLlmRow.tokens_saida,
+        cache_leitura=RegistroLlmRow.tokens_cache_leitura,
+        cache_escrita=RegistroLlmRow.tokens_cache_escrita,
+    )
 
 
 class RegistroLlmRepository:
@@ -95,7 +116,7 @@ class RegistroLlmRepository:
     async def listar(
         self, filtro: Filtro, limite: int, offset: int
     ) -> tuple[list[RegistroLlm], int]:
-        preco = preco_vigente_para(RegistroLlmRow.modelo, RegistroLlmRow.criado_em)
+        preco, custo = custo_vigente()
 
         stmt = self._filtrar(
             select(
@@ -113,7 +134,7 @@ class RegistroLlmRepository:
                 RegistroLlmRow.mensagem,
                 RegistroLlmRow.resposta,
                 RegistroLlmRow.metadados,
-                self._custo(preco).label("custo"),
+                custo.label("custo"),
                 func.coalesce(preco.moeda, literal(MOEDA_PADRAO)).label("moeda"),
             )
             .select_from(RegistroLlmRow)
@@ -168,7 +189,7 @@ class RegistroLlmRepository:
         Com ~50 req/dia, isto roda em tempo de consulta sem rollup nem cache. O dia em que não
         rodar mais é o dia de materializar — e não antes."""
 
-        preco = preco_vigente_para(RegistroLlmRow.modelo, RegistroLlmRow.criado_em)
+        preco, custo = custo_vigente()
 
         chaves: list[ColumnElement[Any]] = []
         if grupo is not None:
@@ -192,7 +213,7 @@ class RegistroLlmRepository:
                 # `SUM` ignora `NULL`, então o balde soma o custo dos eventos que **têm** preço e
                 # sai `NULL` só quando nenhum tem. É o comportamento que o painel quer: os tokens
                 # aparecem desde sempre, o custo aparece quando o preço entra.
-                func.sum(self._custo(preco)).label("custo"),
+                func.sum(custo).label("custo"),
                 func.coalesce(func.max(preco.moeda), literal(MOEDA_PADRAO)).label("moeda"),
             )
             .select_from(RegistroLlmRow)
@@ -223,15 +244,6 @@ class RegistroLlmRepository:
 
         coluna = _COLUNA_GRUPO[grupo]
         return list(await self._session.scalars(select(coluna).distinct().order_by(coluna)))
-
-    @staticmethod
-    def _custo(preco: PrecoVigente) -> ColumnElement[Any]:
-        return preco.custo(
-            entrada=RegistroLlmRow.tokens_entrada,
-            saida=RegistroLlmRow.tokens_saida,
-            cache_leitura=RegistroLlmRow.tokens_cache_leitura,
-            cache_escrita=RegistroLlmRow.tokens_cache_escrita,
-        )
 
     @staticmethod
     def _filtrar(stmt: Select[Any], filtro: Filtro) -> Select[Any]:

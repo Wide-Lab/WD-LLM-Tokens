@@ -85,13 +85,11 @@ async def listar_eventos(
     )
 
 
-@router.get("/aplicacoes", dependencies=[Depends(requer_leitura)])
-async def listar_aplicacoes(session: SessionDep) -> list[str]:
-    """Popula o dropdown de filtro: as aplicações que já reportaram alguma coisa."""
-
-    return await LlmService(session).distintos(Grupo.APLICACAO)
-
-
 @router.get("/modelos", dependencies=[Depends(requer_leitura)])
 async def listar_modelos(session: SessionDep) -> list[str]:
+    """Popula o dropdown de modelo. Fica aqui porque modelo é dimensão de uma origem só.
+
+    A lista de **aplicações** mudou de dono e virou `GET /v1/aplicacoes`, no consolidado: uma
+    aplicação que só reportou WhatsApp também precisa aparecer no dropdown do painel."""
+
     return await LlmService(session).distintos(Grupo.MODELO)
