@@ -85,16 +85,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Painel LLM — Uso de tokens" },
+      { title: "Painel de custos — LLM e WhatsApp" },
       {
         name: "description",
-        content:
-          "Painel de controle para acompanhar consumo, custos e métricas de uso de modelos de linguagem.",
+        content: "Painel de controle para acompanhar consumo, custos e métricas de LLM e WhatsApp.",
       },
-      { property: "og:title", content: "Painel LLM — Uso de tokens" },
+      { property: "og:title", content: "Painel de custos — LLM e WhatsApp" },
       {
         property: "og:description",
-        content: "Dashboard para monitorar tokens, custos e eventos de uso de LLMs em tempo real.",
+        content:
+          "Dashboard para monitorar tokens, mensagens e custo das duas origens em tempo real.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -158,8 +158,11 @@ function Carregando() {
 /** O cabeçalho diz onde você está; o nome do produto já está na barra lateral. */
 function tituloDaRota(pathname: string): string {
   if (pathname === "/") return "Visão geral";
-  if (pathname === "/eventos") return "Eventos";
-  if (pathname.startsWith("/eventos/")) return "Eventos / Ator";
+  if (pathname === "/llm") return "LLM";
+  if (pathname === "/llm/eventos") return "LLM / Eventos";
+  if (pathname.startsWith("/llm/eventos/")) return "LLM / Eventos / Ator";
+  if (pathname === "/whatsapp") return "WhatsApp";
+  if (pathname === "/whatsapp/mensagens") return "WhatsApp / Mensagens";
   return "Painel";
 }
 

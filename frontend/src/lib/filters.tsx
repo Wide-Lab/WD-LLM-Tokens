@@ -69,12 +69,21 @@ export function useFilters() {
   return ctx;
 }
 
+/**
+ * O que as três telas têm em comum — e só isso.
+ *
+ * `modelo` ficou de fora de propósito: ele não existe no consolidado nem no WhatsApp, e mandar
+ * `modelo=` para um endpoint que o ignora é um controle que parece filtrar e não filtra. Quem o
+ * manda é só o painel de LLM, somando-o a esta base.
+ *
+ * No estado do contexto ele continua, porque é conveniente que a escolha sobreviva à ida ao
+ * consolidado e à volta.
+ */
 export function filtersToParams(f: GlobalFilters) {
   return {
     de: f.de || undefined,
     ate: f.ate || undefined,
     aplicacao: f.aplicacao || undefined,
-    modelo: f.modelo || undefined,
     ator: f.ator || undefined,
   };
 }

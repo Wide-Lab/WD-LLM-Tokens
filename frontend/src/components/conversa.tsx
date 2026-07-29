@@ -33,7 +33,7 @@ export function Conversa({ baseParams }: { baseParams: Params }) {
   const q = useInfiniteQuery({
     queryKey: ["conversa", baseParams],
     queryFn: ({ pageParam }) =>
-      apiGet<EventosResponse>("/v1/eventos", {
+      apiGet<EventosResponse>("/v1/llm/eventos", {
         ...baseParams,
         limite: PAGINA,
         offset: pageParam,

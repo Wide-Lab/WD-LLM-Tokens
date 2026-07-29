@@ -27,7 +27,9 @@ Autenticação em duas vias: `X-API-Key` para máquina (uma chave de escrita por
 
 As chaves de escrita e leitura são emitidas em `POST /v1/chaves` e ficam em `chave_api` (só o SHA-256; o segredo aparece uma vez na resposta). As de variável de ambiente continuam valendo em paralelo — ambiente primeiro, banco depois. A `CHAVE_ADMIN` não migrou: é a que emite e revoga as outras.
 
-Frontend: TanStack Start + React 19 + Tailwind 4 + shadcn/ui. Rotas em `src/routes/`, `src/components/ui/` é shadcn (não edite à mão sem motivo). O `vite.config.ts` lista os plugins na mão (tailwind, tsconfig-paths, tanstackStart, nitro no build, react) — o nitro só entra no `build` e sai com preset `node-server`, que é o que o container roda.
+Frontend: TanStack Start + React 19 + Tailwind 4 + shadcn/ui. Rotas em `src/routes/`, `src/components/ui/` é shadcn (não edite à mão sem motivo).
+
+O painel tem três seções, uma por origem de custo mais a soma: `/` é o consolidado (só dinheiro, e as duas origens sempre nas cores de `ORIGENS`, em `src/lib/grafico.ts`), `/llm/*` e `/whatsapp/*` são os painéis de cada origem — é onde token e mensagem podem aparecer, porque lá a unidade é uma só. `filtersToParams` carrega só o que as três telas têm em comum; filtro de uma seção só (`modelo` no LLM) entra por `children` do `<GlobalFilters>` e é somado aos parâmetros no próprio painel. O `vite.config.ts` lista os plugins na mão (tailwind, tsconfig-paths, tanstackStart, nitro no build, react) — o nitro só entra no `build` e sai com preset `node-server`, que é o que o container roda.
 
 ## Documentos
 

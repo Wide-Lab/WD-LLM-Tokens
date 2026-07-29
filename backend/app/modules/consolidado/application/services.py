@@ -21,8 +21,9 @@ class ConsolidadoService:
         filtro: FiltroComum,
         grupo: Grupo | None,
         intervalo: Intervalo | None,
+        por_origem: bool = False,
     ) -> list[Balde]:
-        return await self._lancamentos.agregar(filtro, grupo, intervalo)
+        return await self._lancamentos.agregar(filtro, grupo, intervalo, por_origem)
 
     async def aplicacoes(self) -> list[str]:
         return await self._lancamentos.aplicacoes()

@@ -8,13 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ApiError } from "@/lib/api";
+import { ORIGENS } from "@/lib/grafico";
 import { useSessao } from "@/lib/sessao";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "Entrar — Painel LLM" },
-      { name: "description", content: "Acesso ao painel de uso de tokens." },
+      { title: "Entrar — Painel de custos" },
+      { name: "description", content: "Acesso ao painel de custos de LLM e WhatsApp." },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -46,19 +47,19 @@ function Login() {
   return (
     <div className="bg-background flex min-h-screen items-center justify-center px-4 py-10">
       <Card className="w-full max-w-sm overflow-hidden">
-        {/* A fita dos quatro baldes fecha a borda de cima: a mesma assinatura que abre o painel
-            do outro lado da porta. */}
+        {/* A fita fecha a borda de cima com as duas origens, na mesma ordem e nas mesmas cores da
+            visão geral: é a assinatura do que abre do outro lado da porta. Era a dos quatro baldes
+            de token, de quando o painel tinha uma origem só. */}
         <div className="flex h-1 w-full" aria-hidden="true">
-          <span className="bg-balde-entrada flex-1" />
-          <span className="bg-balde-saida flex-1" />
-          <span className="bg-balde-cache-leitura flex-1" />
-          <span className="bg-balde-cache-escrita flex-1" />
+          {ORIGENS.map((o) => (
+            <span key={o.chave} className="flex-1" style={{ background: o.cor }} />
+          ))}
         </div>
         <CardContent className="p-6 pt-6">
           <div className="bg-primary text-primary-foreground grid h-10 w-10 place-items-center rounded-md">
             <Gauge className="h-5 w-5" />
           </div>
-          <h1 className="mt-4 text-xl font-semibold tracking-tight">Painel LLM</h1>
+          <h1 className="mt-4 text-xl font-semibold tracking-tight">Painel de custos</h1>
           <p className="text-muted-foreground mt-1 mb-6 text-sm">
             Entre para ver quanto cada aplicação consumiu e quanto isso custou.
           </p>

@@ -4,6 +4,7 @@ import { useState, useEffect, type ReactNode } from "react";
 import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Conversa } from "@/components/conversa";
+import { FiltroModelo } from "@/components/filtro-modelo";
 import { GlobalFilters } from "@/components/global-filters";
 import { Medidor } from "@/components/medidor";
 import { PainelCard } from "@/components/painel-card";
@@ -23,15 +24,18 @@ import { formatCurrency, formatDateTime, formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { EventosResponse, EventoItem, MetricaBucket } from "@/lib/api-types";
 
-export const Route = createFileRoute("/eventos/$ator")({
+export const Route = createFileRoute("/llm/eventos/$ator")({
   head: ({ params }) => ({
     meta: [
-      { title: `${params.ator} — Eventos — Painel LLM` },
+      { title: `${params.ator} — Eventos de LLM — Painel de custos` },
       {
         name: "description",
         content: `Detalhe de uso de tokens, custo e conteúdo das chamadas do ator ${params.ator}.`,
       },
-      { property: "og:title", content: `${params.ator} — Eventos — Painel LLM` },
+      {
+        property: "og:title",
+        content: `${params.ator} — Eventos de LLM — Painel de custos`,
+      },
       {
         property: "og:description",
         content: "Requisições, tokens, custo e conteúdo das chamadas de um ator.",
@@ -49,13 +53,13 @@ function AtorPage() {
 
   // O ator vem da URL, não do campo de busca da barra de filtros: dentro do detalhe ele é o
   // assunto da tela, e deixar o filtro global sobrescrevê-lo esvaziaria a página do próprio ator.
-  const base = { ...filtersToParams(filters), ator };
+  const base = { ...filtersToParams(filters), modelo: filters.modelo || undefined, ator };
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex min-w-0 flex-wrap items-center gap-3">
         <Button variant="ghost" size="sm" asChild className="-ml-2 gap-1.5">
-          <Link to="/eventos">
+          <Link to="/llm/eventos">
             <ArrowLeft className="h-4 w-4" />
             Atores
           </Link>
@@ -65,7 +69,9 @@ function AtorPage() {
         </h2>
       </div>
 
-      <GlobalFilters />
+      <GlobalFilters>
+        <FiltroModelo />
+      </GlobalFilters>
       <Leitura baseParams={base} />
       <PorModelo baseParams={base} />
       <Chamadas baseParams={base} />
@@ -77,8 +83,8 @@ type Params = Record<string, string | undefined>;
 
 function Leitura({ baseParams }: { baseParams: Params }) {
   const q = useQuery({
-    queryKey: ["metricas", baseParams],
-    queryFn: () => apiGet<MetricaBucket[]>("/v1/metricas", baseParams),
+    queryKey: ["metricas-llm", baseParams],
+    queryFn: () => apiGet<MetricaBucket[]>("/v1/llm/metricas", baseParams),
   });
 
   return (
@@ -94,8 +100,8 @@ function Leitura({ baseParams }: { baseParams: Params }) {
 function PorModelo({ baseParams }: { baseParams: Params }) {
   const params = { ...baseParams, grupo: "modelo" };
   const q = useQuery({
-    queryKey: ["metricas", params],
-    queryFn: () => apiGet<MetricaBucket[]>("/v1/metricas", params),
+    queryKey: ["metricas-llm", params],
+    queryFn: () => apiGet<MetricaBucket[]>("/v1/llm/metricas", params),
   });
 
   const modelos = (q.data ?? []).slice().sort((a, b) => (b.custo ?? 0) - (a.custo ?? 0));
@@ -205,8 +211,8 @@ function ChamadasTabela({ baseParams, acao }: { baseParams: Params; acao: ReactN
 
   const params = { ...baseParams, limite: PAGE_SIZE, offset };
   const q = useQuery({
-    queryKey: ["eventos", params],
-    queryFn: () => apiGet<EventosResponse>("/v1/eventos", params),
+    queryKey: ["eventos-llm", params],
+    queryFn: () => apiGet<EventosResponse>("/v1/llm/eventos", params),
   });
 
   const alternar = (id: string) =>

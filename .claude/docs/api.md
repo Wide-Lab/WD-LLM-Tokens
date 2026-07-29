@@ -421,6 +421,7 @@ O custo das duas origens somado — a resposta inteira para "quanto custou atend
 |---|---|---|
 | `grupo` | `origem` \| `aplicacao` \| `ator` | dimensão do agrupamento; se omitido, agrega tudo |
 | `intervalo` | `dia` \| `semana` \| `mes` | bucket temporal; se omitido, sem série temporal |
+| `por_origem` | `true` \| `false` | reparte cada balde entre as origens, num campo `origem` à parte |
 | `de` / `ate` | data ISO | período, os dois extremos inteiros |
 | `aplicacao`, `ator` | texto | filtros |
 
@@ -430,6 +431,22 @@ O custo das duas origens somado — a resposta inteira para "quanto custou atend
   { "grupo": "whatsapp", "periodo": "2026-07-28", "lancamentos": 120, "custo": 0.67, "moeda": "USD" }
 ]
 ```
+
+`por_origem` é dimensão à parte, e não um quarto valor de `grupo`, porque origem não concorre com
+as outras — ela **acompanha**. "Custo por aplicação" e "custo por aplicação repartido entre LLM e
+WhatsApp" são a mesma pergunta com e sem o recorte, e gastar o `grupo` com origem obrigaria a
+escolher uma das duas. É o mesmo arranjo de `intervalo`:
+
+```
+GET /v1/consolidado/metricas?grupo=aplicacao&por_origem=true
+[
+  { "grupo": "famossul", "origem": "llm", "lancamentos": 42, "custo": 1.23, "moeda": "USD" },
+  { "grupo": "famossul", "origem": "whatsapp", "lancamentos": 120, "custo": 0.67, "moeda": "USD" }
+]
+```
+
+`grupo=origem` continua respondendo a pergunta sem recorte, e é a forma certa quando origem é a
+pergunta inteira — é o que os cartões de KPI do painel usam.
 
 > **O consolidado fala só dinheiro, tempo e quem.** Sem `tokens_*`, sem `mensagens`, sem
 > `requisicoes`: volume tem unidade, e as unidades não se somam — um `requisicoes` somado a um

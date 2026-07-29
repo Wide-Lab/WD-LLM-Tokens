@@ -10,6 +10,24 @@ export interface MetricaBucket {
   moeda: string;
 }
 
+/**
+ * Um balde de `/v1/consolidado/metricas`.
+ *
+ * **Sem `tokens_*`, sem `requisicoes`** — e a ausência é o contrato, não um esquecimento: token não
+ * soma com mensagem. Volume fica no painel de cada origem.
+ *
+ * `origem` só vem quando a chamada pediu `por_origem`; `grupo` e `periodo`, quando pediu `grupo` e
+ * `intervalo`. São três dimensões independentes, e é por isso que as três são opcionais.
+ */
+export interface ConsolidadoBucket {
+  grupo?: string;
+  periodo?: string;
+  origem?: string;
+  lancamentos: number;
+  custo: number | null;
+  moeda: string;
+}
+
 export interface EventoItem {
   id: string;
   criado_em: string;

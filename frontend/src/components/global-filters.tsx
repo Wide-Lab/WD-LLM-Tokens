@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -27,8 +28,12 @@ const ATALHOS = [
  *
  * A etiqueta é `<label for>` e não um `<label>` envolvendo o controle: o gatilho do Select
  * do Radix é um `<button>`, e botão dentro de label dispara o clique duas vezes.
+ *
+ * Exportado porque os controles que cada painel pendura em `children` — o Modelo no LLM, a
+ * Categoria e a Direção no WhatsApp — precisam nascer com a mesma moldura, ou a barra passa a ter
+ * duas gramáticas de campo lado a lado.
  */
-function Campo({
+export function Campo({
   rotulo,
   para,
   children,
@@ -49,18 +54,19 @@ function Campo({
   );
 }
 
-export function GlobalFilters() {
+/**
+ * Os filtros que as três seções do painel têm em comum.
+ *
+ * O que é de uma seção só entra por `children` e é renderizado no fim do grupo da direita — é
+ * como o Modelo continua existindo no `/llm` sem passar a existir no consolidado, onde ele não
+ * filtraria nada.
+ */
+export function GlobalFilters({ children }: { children?: ReactNode }) {
   const { filters, setFilters, resetRange } = useFilters();
 
   const aplicacoes = useQuery({
     queryKey: ["aplicacoes"],
     queryFn: () => apiGet<string[]>("/v1/aplicacoes"),
-    staleTime: 60_000,
-  });
-
-  const modelos = useQuery({
-    queryKey: ["modelos"],
-    queryFn: () => apiGet<string[]>("/v1/modelos"),
     staleTime: 60_000,
   });
 
@@ -127,25 +133,6 @@ export function GlobalFilters() {
           </Select>
         </Campo>
 
-        <Campo rotulo="Modelo" para="filtro-modelo">
-          <Select
-            value={filters.modelo || ALL}
-            onValueChange={(v) => setFilters({ modelo: v === ALL ? "" : v })}
-          >
-            <SelectTrigger id="filtro-modelo" className="h-9 w-[12rem]">
-              <SelectValue placeholder="Todos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>Todos</SelectItem>
-              {modelos.data?.map((m) => (
-                <SelectItem key={m} value={m}>
-                  {m}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Campo>
-
         <Campo rotulo="Ator" para="filtro-ator">
           <Input
             id="filtro-ator"
@@ -171,6 +158,8 @@ export function GlobalFilters() {
             </SelectContent>
           </Select>
         </Campo>
+
+        {children}
       </div>
     </section>
   );

@@ -11,8 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as EventosIndexRouteImport } from './routes/eventos/index'
-import { Route as EventosAtorRouteImport } from './routes/eventos/$ator'
+import { Route as LlmIndexRouteImport } from './routes/llm/index'
+import { Route as WhatsappIndexRouteImport } from './routes/whatsapp/index'
+import { Route as WhatsappMensagensRouteImport } from './routes/whatsapp/mensagens'
+import { Route as LlmEventosIndexRouteImport } from './routes/llm/eventos/index'
+import { Route as LlmEventosAtorRouteImport } from './routes/llm/eventos/$ator'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -24,49 +27,98 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EventosIndexRoute = EventosIndexRouteImport.update({
-  id: '/eventos/',
-  path: '/eventos/',
+const LlmIndexRoute = LlmIndexRouteImport.update({
+  id: '/llm/',
+  path: '/llm/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EventosAtorRoute = EventosAtorRouteImport.update({
-  id: '/eventos/$ator',
-  path: '/eventos/$ator',
+const WhatsappIndexRoute = WhatsappIndexRouteImport.update({
+  id: '/whatsapp/',
+  path: '/whatsapp/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WhatsappMensagensRoute = WhatsappMensagensRouteImport.update({
+  id: '/whatsapp/mensagens',
+  path: '/whatsapp/mensagens',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LlmEventosIndexRoute = LlmEventosIndexRouteImport.update({
+  id: '/llm/eventos/',
+  path: '/llm/eventos/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LlmEventosAtorRoute = LlmEventosAtorRouteImport.update({
+  id: '/llm/eventos/$ator',
+  path: '/llm/eventos/$ator',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/eventos/$ator': typeof EventosAtorRoute
-  '/eventos/': typeof EventosIndexRoute
+  '/whatsapp/mensagens': typeof WhatsappMensagensRoute
+  '/llm/': typeof LlmIndexRoute
+  '/whatsapp/': typeof WhatsappIndexRoute
+  '/llm/eventos/$ator': typeof LlmEventosAtorRoute
+  '/llm/eventos/': typeof LlmEventosIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/eventos/$ator': typeof EventosAtorRoute
-  '/eventos': typeof EventosIndexRoute
+  '/whatsapp/mensagens': typeof WhatsappMensagensRoute
+  '/llm': typeof LlmIndexRoute
+  '/whatsapp': typeof WhatsappIndexRoute
+  '/llm/eventos/$ator': typeof LlmEventosAtorRoute
+  '/llm/eventos': typeof LlmEventosIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/eventos/$ator': typeof EventosAtorRoute
-  '/eventos/': typeof EventosIndexRoute
+  '/whatsapp/mensagens': typeof WhatsappMensagensRoute
+  '/llm/': typeof LlmIndexRoute
+  '/whatsapp/': typeof WhatsappIndexRoute
+  '/llm/eventos/$ator': typeof LlmEventosAtorRoute
+  '/llm/eventos/': typeof LlmEventosIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/eventos/$ator' | '/eventos/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/whatsapp/mensagens'
+    | '/llm/'
+    | '/whatsapp/'
+    | '/llm/eventos/$ator'
+    | '/llm/eventos/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/eventos/$ator' | '/eventos'
-  id: '__root__' | '/' | '/login' | '/eventos/$ator' | '/eventos/'
+  to:
+    | '/'
+    | '/login'
+    | '/whatsapp/mensagens'
+    | '/llm'
+    | '/whatsapp'
+    | '/llm/eventos/$ator'
+    | '/llm/eventos'
+  id:
+    | '__root__'
+    | '/'
+    | '/login'
+    | '/whatsapp/mensagens'
+    | '/llm/'
+    | '/whatsapp/'
+    | '/llm/eventos/$ator'
+    | '/llm/eventos/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
-  EventosAtorRoute: typeof EventosAtorRoute
-  EventosIndexRoute: typeof EventosIndexRoute
+  WhatsappMensagensRoute: typeof WhatsappMensagensRoute
+  LlmIndexRoute: typeof LlmIndexRoute
+  WhatsappIndexRoute: typeof WhatsappIndexRoute
+  LlmEventosAtorRoute: typeof LlmEventosAtorRoute
+  LlmEventosIndexRoute: typeof LlmEventosIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -85,18 +137,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/eventos/': {
-      id: '/eventos/'
-      path: '/eventos'
-      fullPath: '/eventos/'
-      preLoaderRoute: typeof EventosIndexRouteImport
+    '/llm/': {
+      id: '/llm/'
+      path: '/llm'
+      fullPath: '/llm/'
+      preLoaderRoute: typeof LlmIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/eventos/$ator': {
-      id: '/eventos/$ator'
-      path: '/eventos/$ator'
-      fullPath: '/eventos/$ator'
-      preLoaderRoute: typeof EventosAtorRouteImport
+    '/whatsapp/': {
+      id: '/whatsapp/'
+      path: '/whatsapp'
+      fullPath: '/whatsapp/'
+      preLoaderRoute: typeof WhatsappIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/whatsapp/mensagens': {
+      id: '/whatsapp/mensagens'
+      path: '/whatsapp/mensagens'
+      fullPath: '/whatsapp/mensagens'
+      preLoaderRoute: typeof WhatsappMensagensRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/llm/eventos/': {
+      id: '/llm/eventos/'
+      path: '/llm/eventos'
+      fullPath: '/llm/eventos/'
+      preLoaderRoute: typeof LlmEventosIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/llm/eventos/$ator': {
+      id: '/llm/eventos/$ator'
+      path: '/llm/eventos/$ator'
+      fullPath: '/llm/eventos/$ator'
+      preLoaderRoute: typeof LlmEventosAtorRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -105,8 +178,11 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
-  EventosAtorRoute: EventosAtorRoute,
-  EventosIndexRoute: EventosIndexRoute,
+  WhatsappMensagensRoute: WhatsappMensagensRoute,
+  LlmIndexRoute: LlmIndexRoute,
+  WhatsappIndexRoute: WhatsappIndexRoute,
+  LlmEventosAtorRoute: LlmEventosAtorRoute,
+  LlmEventosIndexRoute: LlmEventosIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

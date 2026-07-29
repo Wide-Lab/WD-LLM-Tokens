@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 
+import { FiltroModelo } from "@/components/filtro-modelo";
 import { GlobalFilters } from "@/components/global-filters";
 import { PainelCard } from "@/components/painel-card";
 import {
@@ -17,15 +18,15 @@ import { useFilters, filtersToParams } from "@/lib/filters";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import type { MetricaBucket } from "@/lib/api-types";
 
-export const Route = createFileRoute("/eventos/")({
+export const Route = createFileRoute("/llm/eventos/")({
   head: () => ({
     meta: [
-      { title: "Eventos — Painel LLM" },
+      { title: "Eventos de LLM — Painel de custos" },
       {
         name: "description",
         content: "Consumo de tokens e custo agrupados por ator.",
       },
-      { property: "og:title", content: "Eventos — Painel LLM" },
+      { property: "og:title", content: "Eventos de LLM — Painel de custos" },
       {
         property: "og:description",
         content: "Quem consumiu quanto: requisições, tokens e custo por ator.",
@@ -39,24 +40,30 @@ export const Route = createFileRoute("/eventos/")({
  * A porta de entrada dos eventos é o **ator**, não a linha crua.
  *
  * A lista solta de eventos respondia "o que aconteceu às 14h32", que quase nunca é a pergunta —
- * a pergunta é "quem está gastando". Agrupar é `/v1/metricas?grupo=ator`, o mesmo endpoint dos
+ * a pergunta é "quem está gastando". Agrupar é `/v1/llm/metricas?grupo=ator`, o mesmo endpoint dos
  * gráficos, sem paginação: o `GROUP BY` já reduz a um punhado de linhas. A lista crua continua
  * existindo, um clique adiante, dentro do ator.
  */
 function AtoresPage() {
   const { filters } = useFilters();
-  const params = { ...filtersToParams(filters), grupo: "ator" };
+  const params = {
+    ...filtersToParams(filters),
+    modelo: filters.modelo || undefined,
+    grupo: "ator",
+  };
 
   const q = useQuery({
-    queryKey: ["metricas", params],
-    queryFn: () => apiGet<MetricaBucket[]>("/v1/metricas", params),
+    queryKey: ["metricas-llm", params],
+    queryFn: () => apiGet<MetricaBucket[]>("/v1/llm/metricas", params),
   });
 
   const atores = (q.data ?? []).slice().sort((a, b) => (b.custo ?? 0) - (a.custo ?? 0));
 
   return (
     <div className="flex flex-col gap-4">
-      <GlobalFilters />
+      <GlobalFilters>
+        <FiltroModelo />
+      </GlobalFilters>
       <PainelCard
         title="Atores"
         hint={atores.length > 0 ? `${atores.length} no período` : undefined}
@@ -86,7 +93,7 @@ function AtoresPage() {
                     {/* O link cobre a célula inteira: linha clicável sem `onClick` num
                         `<tr>`, que não é focável nem abre em nova aba. */}
                     <Link
-                      to="/eventos/$ator"
+                      to="/llm/eventos/$ator"
                       params={{ ator: a.grupo ?? "" }}
                       className="focus-visible:ring-ring block truncate py-2.5 pl-5 font-medium focus-visible:ring-2 focus-visible:outline-none"
                       title={a.grupo}

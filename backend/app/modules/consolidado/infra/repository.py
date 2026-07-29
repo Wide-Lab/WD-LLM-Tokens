@@ -42,8 +42,14 @@ class ConsolidadoRepository:
         filtro: FiltroComum,
         grupo: Grupo | None,
         intervalo: Intervalo | None,
+        por_origem: bool = False,
     ) -> list[Balde]:
         """As mesmas quatro combinações de `grupo` × `intervalo` dos outros painéis, sobre a união.
+
+        `por_origem` é a terceira dimensão, e não um quarto valor de `Grupo`, porque origem não
+        concorre com as outras — ela **acompanha**. "Custo por aplicação" e "custo por aplicação
+        repartido entre LLM e WhatsApp" são a mesma pergunta com e sem o recorte, do mesmo jeito
+        que `intervalo` é a mesma pergunta com e sem tempo.
 
         `sum` ignora `NULL`, então o balde soma o que tem preço e sai `NULL` só quando nada tem —
         o mesmo comportamento que o painel de LLM já tinha, pelo mesmo motivo. Na prática é o que
@@ -60,6 +66,8 @@ class ConsolidadoRepository:
             chaves.append(lancamento.c[_COLUNA_GRUPO[grupo]].label("grupo"))
         if intervalo is not None:
             chaves.append(truncar(intervalo, lancamento.c.criado_em).label("periodo"))
+        if por_origem:
+            chaves.append(lancamento.c.origem.label("origem"))
 
         stmt = select(
             *chaves,
@@ -78,6 +86,7 @@ class ConsolidadoRepository:
                 moeda=linha.moeda,
                 grupo=linha.grupo if grupo is not None else None,
                 periodo=linha.periodo if intervalo is not None else None,
+                origem=linha.origem if por_origem else None,
             )
             for linha in (await self._session.execute(stmt)).all()
         ]

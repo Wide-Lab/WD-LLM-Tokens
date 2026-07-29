@@ -40,3 +40,10 @@ class Balde:
     moeda: str
     grupo: str | None = None
     periodo: date | None = None
+    origem: str | None = None
+    """A origem como eixo **separado** do `grupo`, preenchida só quando `por_origem` foi pedido.
+
+    Existe porque `Grupo.ORIGEM` responde "quanto foi LLM e quanto foi WhatsApp" e nada mais: para
+    perguntar "quanto foi LLM e quanto foi WhatsApp **em cada aplicação**" seriam duas dimensões, e
+    `grupo` só carrega uma. É o mesmo arranjo de `periodo`, que também é dimensão à parte — pela
+    mesma razão de sempre haver uma pergunta com tempo *e* recorte."""

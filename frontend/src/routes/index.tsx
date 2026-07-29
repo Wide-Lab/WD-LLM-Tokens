@@ -4,12 +4,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Legend,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -17,85 +12,200 @@ import {
 } from "recharts";
 
 import { GlobalFilters } from "@/components/global-filters";
-import { Medidor } from "@/components/medidor";
 import { PainelCard } from "@/components/painel-card";
-import { eixo, tooltipEstilo } from "@/lib/grafico";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorBox } from "@/components/empty-states";
+import { ORIGENS, eixo, pivotarPorGrupo, tooltipEstilo, totalDaLinha } from "@/lib/grafico";
 import { apiGet } from "@/lib/api";
 import { useFilters, filtersToParams } from "@/lib/filters";
 import { formatCompact, formatCurrency, formatNumber } from "@/lib/format";
-import type { MetricaBucket } from "@/lib/api-types";
+import type { ConsolidadoBucket } from "@/lib/api-types";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Visão geral — Painel LLM" },
+      { title: "Visão geral — Painel de custos" },
       {
         name: "description",
-        content: "Resumo de requisições, tokens e custos de LLM por período.",
+        content: "Custo somado de LLM e WhatsApp por período, aplicação e ator.",
       },
-      { property: "og:title", content: "Visão geral — Painel LLM" },
+      { property: "og:title", content: "Visão geral — Painel de custos" },
       {
         property: "og:description",
-        content: "KPIs e gráficos de consumo de tokens e custo de modelos de linguagem.",
+        content: "Quanto custou atender: o gasto das duas origens somado no mesmo painel.",
       },
     ],
   }),
-  component: Overview,
+  component: Consolidado,
 });
 
-/** A rampa violeta: todo gráfico de dinheiro sai daqui. */
-const RAMPA_CUSTO = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-];
+type Params = Record<string, string | undefined>;
 
-function useMetricas(params: Record<string, string | undefined>) {
+function useConsolidado(params: Params) {
   return useQuery({
-    queryKey: ["metricas", params],
-    queryFn: () => apiGet<MetricaBucket[]>("/v1/metricas", params),
+    queryKey: ["consolidado", params],
+    queryFn: () => apiGet<ConsolidadoBucket[]>("/v1/consolidado/metricas", params),
   });
 }
 
-function Overview() {
+/**
+ * A visão geral — a soma das duas origens, e **só dinheiro**.
+ *
+ * Nada de medidor de baldes e nada de contagem de mensagem: token não soma com mensagem, e um
+ * painel que mostra um número sem significado ensina o leitor a desconfiar dos outros. Volume
+ * mora no painel de cada origem; aqui ficam custo, tempo e quem.
+ *
+ * As duas origens têm a mesma cor nos três gráficos (`ORIGENS`, em `lib/grafico.ts`) — é o que
+ * permite ler o último sem voltar à legenda do primeiro.
+ */
+function Consolidado() {
   const { filters } = useFilters();
-
   const base = filtersToParams(filters);
 
   return (
     <div className="flex flex-col gap-4">
       <GlobalFilters />
-      <Leitura baseParams={base} />
+      <Cartoes baseParams={base} />
+      <CustoTemporal baseParams={base} granularidade={filters.granularidade} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <CustoTemporal baseParams={base} granularidade={filters.granularidade} />
-        <TokensTemporal baseParams={base} granularidade={filters.granularidade} />
-      </div>
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <CustoPorModelo baseParams={base} />
+        <CustoPorAplicacao baseParams={base} />
         <TopAtores baseParams={base} />
       </div>
-      <UsoPorAplicacao baseParams={base} />
     </div>
   );
 }
 
-function Leitura({ baseParams }: { baseParams: Record<string, string | undefined> }) {
-  const q = useMetricas(baseParams);
-  return <Medidor totais={q.data?.[0]} carregando={q.isLoading} erro={q.error} />;
+/* ------------------------------------------------------------------ cartões */
+
+/**
+ * Total, as duas parcelas e os lançamentos.
+ *
+ * Duas chamadas e não uma: o total sai do balde sem `grupo` e as parcelas do `grupo=origem`.
+ * Somar as duas parcelas aqui daria o mesmo número quase sempre — e o "quase" é o problema:
+ * `custo: null` ("não sei quanto custou") viraria zero na conta do browser, e o total passaria a
+ * afirmar o que ninguém apurou. Quem soma é o banco.
+ */
+function Cartoes({ baseParams }: { baseParams: Params }) {
+  const total = useConsolidado(baseParams);
+  const origens = useConsolidado({ ...baseParams, grupo: "origem" });
+
+  const geral = total.data?.[0];
+  const moeda = geral?.moeda ?? "USD";
+  const erro = total.error ?? origens.error;
+  const carregando = total.isLoading || origens.isLoading;
+
+  if (erro) return <ErrorBox error={erro} />;
+
+  const daOrigem = (chave: string) => origens.data?.find((b) => b.grupo === chave);
+
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <Cartao
+        rotulo="Custo total"
+        valor={formatCurrency(geral?.custo, moeda)}
+        cor="var(--custo)"
+        destaque
+        carregando={carregando}
+      />
+      {ORIGENS.map((o) => {
+        const balde = daOrigem(o.chave);
+        return (
+          <Cartao
+            key={o.chave}
+            rotulo={`Custo ${o.nome}`}
+            valor={formatCurrency(balde?.custo ?? null, balde?.moeda ?? moeda)}
+            nota={balde ? `${formatNumber(balde.lancamentos)} lançamentos` : "nada no período"}
+            cor={o.cor}
+            carregando={carregando}
+          />
+        );
+      })}
+      <Cartao
+        rotulo="Lançamentos"
+        valor={formatNumber(geral?.lancamentos ?? 0)}
+        nota="fatos somados no período"
+        carregando={carregando}
+      />
+    </div>
+  );
+}
+
+function Cartao({
+  rotulo,
+  valor,
+  nota,
+  cor,
+  destaque,
+  carregando,
+}: {
+  rotulo: string;
+  valor: string;
+  nota?: string;
+  /** Filete lateral na cor da origem — a mesma dos três gráficos. */
+  cor?: string;
+  destaque?: boolean;
+  carregando?: boolean;
+}) {
+  return (
+    <section
+      className="bg-card flex flex-col justify-center gap-1.5 rounded-xl border p-5 shadow-sm"
+      style={cor ? { borderLeftColor: cor, borderLeftWidth: 2 } : undefined}
+    >
+      <div className="etiqueta">{rotulo}</div>
+      {carregando ? (
+        <Skeleton className="h-8 w-32" />
+      ) : (
+        <div
+          className={
+            destaque
+              ? "leitura text-custo overflow-hidden text-2xl leading-none text-ellipsis whitespace-nowrap sm:text-[1.75rem]"
+              : "leitura overflow-hidden text-xl leading-none text-ellipsis whitespace-nowrap"
+          }
+        >
+          {valor}
+        </div>
+      )}
+      {nota && !carregando && <div className="text-muted-foreground text-xs">{nota}</div>}
+      {nota && carregando && <Skeleton className="h-4 w-24" />}
+    </section>
+  );
+}
+
+/* ----------------------------------------------------------------- gráficos */
+
+/**
+ * As duas séries empilhadas, na ordem e nas cores de `ORIGENS`.
+ *
+ * Função e não componente, chamada como `{barrasDeOrigem()}`: o recharts lê os próprios filhos
+ * para descobrir o que desenhar, e um componente meu no meio da árvore seria um elemento que ele
+ * não reconhece — o gráfico sairia vazio.
+ */
+function barrasDeOrigem({ vertical }: { vertical?: boolean } = {}) {
+  return ORIGENS.map((o, i) => (
+    <Bar
+      key={o.chave}
+      dataKey={o.chave}
+      stackId="origem"
+      fill={o.cor}
+      name={o.nome}
+      // Só o segmento de cima leva canto arredondado, ou a pilha ganha um sulco no meio.
+      radius={i === ORIGENS.length - 1 ? (vertical ? [0, 2, 2, 0] : [2, 2, 0, 0]) : undefined}
+      {...(vertical ? { barSize: 14 } : { maxBarSize: 64 })}
+    />
+  ));
 }
 
 function CustoTemporal({
   baseParams,
   granularidade,
 }: {
-  baseParams: Record<string, string | undefined>;
+  baseParams: Params;
   granularidade: string;
 }) {
-  const q = useMetricas({ ...baseParams, intervalo: granularidade });
-  const data = q.data ?? [];
-  const moeda = data[0]?.moeda ?? "USD";
+  const q = useConsolidado({ ...baseParams, grupo: "origem", intervalo: granularidade });
+  const dados = pivotarPorGrupo(q.data ?? [], "periodo");
+  const moeda = q.data?.[0]?.moeda ?? "USD";
+
   return (
     <PainelCard
       title="Custo ao longo do tempo"
@@ -104,175 +214,86 @@ function CustoTemporal({
       }
       loading={q.isLoading}
       error={q.error}
-      empty={!q.isLoading && data.length === 0}
+      empty={!q.isLoading && dados.length === 0}
     >
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+        <BarChart data={dados} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--border)" vertical={false} />
           <XAxis dataKey="periodo" {...eixo} />
           <YAxis {...eixo} tickFormatter={(v) => formatCompact(v)} width={52} />
-          <Tooltip
-            {...tooltipEstilo}
-            formatter={(v: number) => [formatCurrency(v, moeda), "Custo"]}
-          />
-          <Line
-            type="monotone"
-            dataKey="custo"
-            stroke="var(--custo)"
-            strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 4, strokeWidth: 0 }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </PainelCard>
-  );
-}
-
-function TokensTemporal({
-  baseParams,
-  granularidade,
-}: {
-  baseParams: Record<string, string | undefined>;
-  granularidade: string;
-}) {
-  const q = useMetricas({ ...baseParams, intervalo: granularidade });
-  const data = q.data ?? [];
-  return (
-    // Sem legenda própria: a fita do medidor, no topo da página, já ensina as quatro cores.
-    <PainelCard
-      title="Tokens ao longo do tempo"
-      hint="entrada · saída · cache"
-      loading={q.isLoading}
-      error={q.error}
-      empty={!q.isLoading && data.length === 0}
-    >
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-          <CartesianGrid stroke="var(--border)" vertical={false} />
-          <XAxis dataKey="periodo" {...eixo} />
-          <YAxis {...eixo} tickFormatter={(v) => formatCompact(v)} width={52} />
-          <Tooltip {...tooltipEstilo} formatter={(v: number) => formatNumber(v)} />
-          <Bar dataKey="tokens_entrada" stackId="t" fill="var(--balde-entrada)" name="Entrada" />
-          <Bar dataKey="tokens_saida" stackId="t" fill="var(--balde-saida)" name="Saída" />
-          <Bar
-            dataKey="tokens_cache_leitura"
-            stackId="t"
-            fill="var(--balde-cache-leitura)"
-            name="Cache leitura"
-          />
-          <Bar
-            dataKey="tokens_cache_escrita"
-            stackId="t"
-            fill="var(--balde-cache-escrita)"
-            name="Cache escrita"
-            radius={[2, 2, 0, 0]}
-          />
-        </BarChart>
-      </ResponsiveContainer>
-    </PainelCard>
-  );
-}
-
-function CustoPorModelo({ baseParams }: { baseParams: Record<string, string | undefined> }) {
-  const q = useMetricas({ ...baseParams, grupo: "modelo" });
-  const data = (q.data ?? [])
-    .filter((d) => (d.custo ?? 0) > 0)
-    .sort((a, b) => (b.custo ?? 0) - (a.custo ?? 0))
-    .slice(0, 8);
-  const moeda = data[0]?.moeda ?? "USD";
-  return (
-    <PainelCard
-      title="Custo por modelo"
-      hint="fatia do gasto"
-      loading={q.isLoading}
-      error={q.error}
-      empty={!q.isLoading && data.length === 0}
-      emptyMessage="Nenhum modelo com custo apurado. Verifique se há preço vigente para o período."
-    >
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Tooltip {...tooltipEstilo} formatter={(v: number) => formatCurrency(v, moeda)} />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
-          <Pie
-            data={data}
-            dataKey="custo"
-            nameKey="grupo"
-            cx="50%"
-            cy="50%"
-            innerRadius={58}
-            outerRadius={92}
-            paddingAngle={2}
-            stroke="var(--card)"
-            strokeWidth={2}
-          >
-            {data.map((_, i) => (
-              <Cell key={i} fill={RAMPA_CUSTO[i % RAMPA_CUSTO.length]} />
-            ))}
-          </Pie>
-        </PieChart>
-      </ResponsiveContainer>
-    </PainelCard>
-  );
-}
-
-function TopAtores({ baseParams }: { baseParams: Record<string, string | undefined> }) {
-  const q = useMetricas({ ...baseParams, grupo: "ator" });
-  const data = (q.data ?? [])
-    .slice()
-    .sort((a, b) => (b.custo ?? 0) - (a.custo ?? 0))
-    .slice(0, 10);
-  const moeda = data[0]?.moeda ?? "USD";
-  return (
-    <PainelCard
-      title="Atores por custo"
-      hint="10 maiores"
-      loading={q.isLoading}
-      error={q.error}
-      empty={!q.isLoading && data.length === 0}
-    >
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} layout="vertical" margin={{ top: 4, right: 12, left: 4, bottom: 0 }}>
-          <CartesianGrid stroke="var(--border)" horizontal={false} />
-          <XAxis type="number" {...eixo} tickFormatter={(v) => formatCompact(v)} />
-          <YAxis type="category" dataKey="grupo" {...eixo} width={140} />
           <Tooltip
             {...tooltipEstilo}
             cursor={{ fill: "var(--muted)" }}
-            formatter={(v: number) => [formatCurrency(v, moeda), "Custo"]}
+            formatter={(v: number) => formatCurrency(v, moeda)}
           />
-          <Bar dataKey="custo" fill="var(--custo)" radius={[0, 2, 2, 0]} barSize={14} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          {barrasDeOrigem()}
         </BarChart>
       </ResponsiveContainer>
     </PainelCard>
   );
 }
 
-function UsoPorAplicacao({ baseParams }: { baseParams: Record<string, string | undefined> }) {
-  const q = useMetricas({ ...baseParams, grupo: "aplicacao" });
-  const data = (q.data ?? []).slice().sort((a, b) => (b.custo ?? 0) - (a.custo ?? 0));
-  const moeda = data[0]?.moeda ?? "USD";
-
-  if (!q.isLoading && data.length <= 1) return null;
+function CustoPorAplicacao({ baseParams }: { baseParams: Params }) {
+  const q = useConsolidado({ ...baseParams, grupo: "aplicacao", por_origem: "true" });
+  const dados = pivotarPorGrupo(q.data ?? [], "grupo", "origem").sort(
+    (a, b) => totalDaLinha(b, "grupo") - totalDaLinha(a, "grupo"),
+  );
+  const moeda = q.data?.[0]?.moeda ?? "USD";
 
   return (
     <PainelCard
       title="Custo por aplicação"
+      hint="por origem"
       loading={q.isLoading}
       error={q.error}
-      empty={!q.isLoading && data.length === 0}
+      empty={!q.isLoading && dados.length === 0}
     >
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+        <BarChart data={dados} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--border)" vertical={false} />
           <XAxis dataKey="grupo" {...eixo} />
           <YAxis {...eixo} tickFormatter={(v) => formatCompact(v)} width={52} />
           <Tooltip
             {...tooltipEstilo}
             cursor={{ fill: "var(--muted)" }}
-            formatter={(v: number) => [formatCurrency(v, moeda), "Custo"]}
+            formatter={(v: number) => formatCurrency(v, moeda)}
           />
-          <Bar dataKey="custo" fill="var(--custo)" radius={[2, 2, 0, 0]} maxBarSize={64} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          {barrasDeOrigem()}
+        </BarChart>
+      </ResponsiveContainer>
+    </PainelCard>
+  );
+}
+
+function TopAtores({ baseParams }: { baseParams: Params }) {
+  const q = useConsolidado({ ...baseParams, grupo: "ator", por_origem: "true" });
+  const dados = pivotarPorGrupo(q.data ?? [], "grupo", "origem")
+    .sort((a, b) => totalDaLinha(b, "grupo") - totalDaLinha(a, "grupo"))
+    .slice(0, 10);
+  const moeda = q.data?.[0]?.moeda ?? "USD";
+
+  return (
+    <PainelCard
+      title="Atores por custo"
+      hint="10 maiores"
+      loading={q.isLoading}
+      error={q.error}
+      empty={!q.isLoading && dados.length === 0}
+    >
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={dados} layout="vertical" margin={{ top: 4, right: 12, left: 4, bottom: 0 }}>
+          <CartesianGrid stroke="var(--border)" horizontal={false} />
+          <XAxis type="number" {...eixo} tickFormatter={(v) => formatCompact(v)} />
+          <YAxis type="category" dataKey="grupo" {...eixo} width={140} />
+          <Tooltip
+            {...tooltipEstilo}
+            cursor={{ fill: "var(--muted)" }}
+            formatter={(v: number) => formatCurrency(v, moeda)}
+          />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          {barrasDeOrigem({ vertical: true })}
         </BarChart>
       </ResponsiveContainer>
     </PainelCard>
