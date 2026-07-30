@@ -60,20 +60,27 @@ const GRUPOS = [
   },
 ];
 
+/** Todos os destinos da barra, do mais fundo para o mais raso. */
+const DESTINOS = GRUPOS.flatMap((g) => g.itens.map((i) => i.url)).sort((a, b) => b.length - a.length);
+
 /**
- * O item do pai fica marcado quando se está no filho.
+ * O destino que a barra acende — um só, o mais específico que casa com a rota atual.
  *
- * Era igualdade exata, o que bastava com rotas irmãs; com `/llm/eventos/<ator>` embaixo de
- * `/llm/eventos`, deixaria a barra sem nenhum item aceso justo na tela mais funda. `/` é a
- * exceção que casa só exato — ele é prefixo de tudo.
+ * Cada item decidindo sozinho por prefixo acendia dois de uma vez: em `/llm/eventos`, o "Eventos" e
+ * o "Painel" do mesmo grupo, o que é a barra dizendo que se está em dois lugares. Igualdade exata
+ * corrigiria isso e apagaria a barra inteira em `/llm/eventos/<ator>`, justo na tela mais funda.
+ * Escolher o casamento mais longo faz as duas coisas: o filho ganha do pai quando ele próprio é um
+ * item, e o pai segue aceso pelo neto que não é. `/` casa só exato — ele é prefixo de tudo.
  */
-function estaAtivo(caminhoAtual: string, url: string): boolean {
-  if (url === "/") return caminhoAtual === "/";
-  return caminhoAtual === url || caminhoAtual.startsWith(`${url}/`);
+function destinoAtivo(caminhoAtual: string): string | undefined {
+  return DESTINOS.find((url) =>
+    url === "/" ? caminhoAtual === "/" : caminhoAtual === url || caminhoAtual.startsWith(`${url}/`),
+  );
 }
 
 export function AppSidebar() {
   const currentPath = useRouterState({ select: (r) => r.location.pathname });
+  const ativo = destinoAtivo(currentPath);
   const { theme, toggle } = useTheme();
   const { usuario, sair } = useSessao();
 
@@ -102,7 +109,7 @@ export function AppSidebar() {
                   <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton
                       asChild
-                      isActive={estaAtivo(currentPath, item.url)}
+                      isActive={item.url === ativo}
                       // Recolhida, a barra some com o rótulo do grupo e sobram dois "Painel"
                       // iguais: o tooltip precisa dizer de qual origem cada um é.
                       tooltip={grupo.rotulo ? `${grupo.rotulo} · ${item.title}` : item.title}
