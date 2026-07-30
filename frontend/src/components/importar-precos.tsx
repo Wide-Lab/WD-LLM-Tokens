@@ -267,9 +267,7 @@ export function DialogoImportarPrecos({
       // O número vem do leitor, e não do índice na lista: é a linha do arquivo, que é a que a
       // planilha aberta ao lado mostra.
       const numero = numeros[i];
-      return "erro" in r
-        ? { numero, item: null, erro: r.erro }
-        : { numero, item: r, erro: null };
+      return "erro" in r ? { numero, item: null, erro: r.erro } : { numero, item: r, erro: null };
     });
   }, [texto, formato]);
 
