@@ -34,9 +34,9 @@ Duas formas, para dois públicos.
 A mesma chave de escrita ingere os dois tipos de fato: ela é a identidade de **quem reporta**, não
 do que se reporta. Reportar `aplicacao` que não é a dona dela dá `403` nas duas rotas.
 
-As de escrita e leitura viviam em variável de ambiente (`CHAVES_ESCRITA`, `CHAVE_LEITURA`) e
-**continuam valendo** — o backend confere o ambiente primeiro e o banco depois, para a migração
-acontecer sem virada de chave. Esvaziar as variáveis é o último passo.
+As de escrita e leitura viviam em variável de ambiente (`CHAVES_ESCRITA`, `CHAVE_LEITURA`) e hoje
+só existem no banco — o backend não lê mais o ambiente para elas. As variáveis continuam sendo
+aceitas pelo `.env` sem reclamar, porque a config ignora o que não conhece, mas não abrem nada.
 
 A de admin não seguiu para o banco: é ela que emite e revoga as outras, e uma admin criável por
 `POST /v1/chaves` poderia cunhar substitutas para si mesma — quem roubasse uma continuaria

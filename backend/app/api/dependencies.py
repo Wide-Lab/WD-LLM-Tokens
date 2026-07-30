@@ -13,14 +13,11 @@ exceção é `requer_gestao_de_precos`, que também aceita a sessão: a tabela d
 escrita com tela, porque sem ela o custo do painel é `null` e a chave que a abriria não pode
 morar no browser.
 
-**Duas fontes de chave, nesta ordem: ambiente e depois banco.** As de ambiente vieram primeiro,
-quando uma tabela de chaves seria cerimônia para uma aplicação nova por semestre; hoje existe
-`POST /v1/chaves` e elas nascem no banco, com nome, data e revogação. As duas valem ao mesmo
-tempo de propósito — é o que deixa a migração acontecer sem virada de chave e sem app parado.
-Esvaziar `CHAVES_ESCRITA` e `CHAVE_LEITURA` no `.env` é o último passo, não o primeiro.
-
-A ordem também é o barato antes do caro: comparar com o que está em memória não custa ida ao
-banco, e só quem não bate ali paga o `SELECT`."""
+**Uma fonte de chave de escrita e de leitura: o banco.** As de ambiente vieram primeiro, quando
+uma tabela de chaves seria cerimônia para uma aplicação nova por semestre; hoje elas nascem em
+`POST /v1/chaves`, com nome, data e revogação, e `CHAVES_ESCRITA`/`CHAVE_LEITURA` já saíram da
+config — quem ainda as tiver no `.env` não vê erro, vê `401`. A `CHAVE_ADMIN` continua no
+ambiente, e é conferida em memória: ela é a que emite as outras."""
 
 import hmac
 import uuid

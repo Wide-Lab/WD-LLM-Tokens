@@ -27,7 +27,7 @@ O prefixo `/api` faz parte das rotas **no FastAPI** (`create_app` monta em `/api
 
 Autenticação em duas vias: `X-API-Key` para máquina (uma chave de escrita por app — recusa evento de `aplicacao` que não seja a dona da chave —, uma de leitura, uma de admin) e cookie `HttpOnly` de sessão para gente. **Nenhum segredo no browser**: o painel não usa API key, chama `/api` na própria origem e o cookie viaja sozinho (`frontend/src/lib/api.ts`). Usuário e chave nascem por `CHAVE_ADMIN`, sem tela. **A única escrita com tela é a de preço** (`requer_gestao_de_precos`: sessão ou `CHAVE_ADMIN`), porque a `CHAVE_ADMIN` não desce para o browser e sem tela a tabela de que todo o custo depende só se preencheria por `curl` — qualquer sessão válida cadastra preço, não há papel de usuário. É também a única escrita que um cookie abre, e quem cobre o CSRF dela é o `SameSite=Lax`.
 
-As chaves de escrita e leitura são emitidas em `POST /v1/chaves` e ficam em `chave_api` (só o SHA-256; o segredo aparece uma vez na resposta). As de variável de ambiente continuam valendo em paralelo — ambiente primeiro, banco depois. A `CHAVE_ADMIN` não migrou: é a que emite e revoga as outras.
+As chaves de escrita e leitura são emitidas em `POST /v1/chaves` e ficam em `chave_api` (só o SHA-256; o segredo aparece uma vez na resposta). O banco é a única fonte delas: `CHAVES_ESCRITA` e `CHAVE_LEITURA` saíram da config e o ambiente não é mais consultado. A `CHAVE_ADMIN` não migrou: é a que emite e revoga as outras.
 
 Frontend: TanStack Start + React 19 + Tailwind 4 + shadcn/ui. Rotas em `src/routes/`, `src/components/ui/` é shadcn (não edite à mão sem motivo).
 

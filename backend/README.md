@@ -117,8 +117,8 @@ curl -X POST localhost:8000/api/v1/chaves \
 ```
 
 `GET /api/v1/chaves` lista (sem segredo, ativas primeiro) e `DELETE /api/v1/chaves/{id}` revoga na
-hora. As chaves de `CHAVES_ESCRITA`/`CHAVE_LEITURA` no `.env` continuam valendo em paralelo — dá
-para emitir as novas, apontar cada app e só então esvaziar as variáveis.
+hora. O banco é a **única** fonte das duas: `CHAVES_ESCRITA` e `CHAVE_LEITURA` viveram em variável
+de ambiente e não são mais lidas. Deixá-las no `.env` não dá erro nenhum — e também não abre nada.
 
 ## Preços
 
