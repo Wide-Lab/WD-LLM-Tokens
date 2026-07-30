@@ -279,9 +279,11 @@ function PrecosDeMensagem() {
   });
 
   // A tarifa é por categoria **e** país: as duas juntas são a chave, e separá-las em duas listas
-  // faria parecer que existe "o preço do marketing" ou "o preço do Brasil".
+  // faria parecer que existe "o preço do marketing" ou "o preço do Brasil". O separador entra como
+  // escape e não como byte no fonte: gravado, ele faz o `grep` ler o arquivo como binário e pular a
+  // tela inteira na busca — é o mesmo cuidado do BOM em `lib/csv.ts`.
   const grupos = useMemo(
-    () => agrupar(precos.data ?? [], (p) => `${p.categoria} ${p.pais}`),
+    () => agrupar(precos.data ?? [], (p) => `${p.categoria}\u0000${p.pais}`),
     [precos.data],
   );
 
