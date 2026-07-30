@@ -144,6 +144,29 @@ export function coluna(linha: LinhaCsv, ...nomes: string[]): string {
 }
 
 /**
+ * O que uma vírgula sozinha não consegue dizer: `1,500` é mil e quinhentos ou um e meio?
+ *
+ * Grupo de exatamente três dígitos, sem ponto decimal em lugar nenhum e sem zero na frente — a
+ * forma em que o milhar americano e o decimal brasileiro são o mesmo texto e diferem por mil
+ * vezes. `0,075` não entra aqui (ninguém agrupa milhar depois do zero) e `1,50` nem `1,5`
+ * tampouco. Adivinhar erraria calado; recusar manda a linha de volta para quem sabe qual é.
+ */
+const MILHAR_AMBIGUO = /^[1-9]\d{0,2}(,\d{3})+$/;
+
+/** Tira o que a planilha põe em volta do número: cifrão e espaço. */
+function semEnfeite(valor: string): string {
+  return valor
+    .trim()
+    .replace(/^(us\$|r\$|\$)\s*/i, "")
+    .replace(/\s/g, "");
+}
+
+/** Se o valor é dos que `paraNumero` recusa por não dar para saber onde está o decimal. */
+export function ambiguoPorMilhar(valor: string): boolean {
+  return MILHAR_AMBIGUO.test(semEnfeite(valor));
+}
+
+/**
  * Um valor de dinheiro, mantido como **texto** até o backend.
  *
  * Passar por `Number` e voltar para string é o caminho curto para uma tarifa de cache virar
@@ -151,11 +174,9 @@ export function coluna(linha: LinhaCsv, ...nomes: string[]): string {
  * (cifrão, espaço) e se troca a vírgula decimal por ponto.
  */
 export function paraNumero(valor: string): string | null {
-  let t = valor
-    .trim()
-    .replace(/^(us\$|r\$|\$)\s*/i, "")
-    .replace(/\s/g, "");
+  let t = semEnfeite(valor);
   if (!t) return null;
+  if (MILHAR_AMBIGUO.test(t)) return null;
   if (t.includes(",") && !t.includes(".")) t = t.replace(",", ".");
   return /^\d+(\.\d+)?$/.test(t) ? t : null;
 }

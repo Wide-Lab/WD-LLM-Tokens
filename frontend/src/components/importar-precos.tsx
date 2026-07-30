@@ -14,7 +14,14 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { apiPost } from "@/lib/api";
-import { coluna, lerCsv, paraDataISO, paraNumero, type LinhaCsv } from "@/lib/csv";
+import {
+  ambiguoPorMilhar,
+  coluna,
+  lerCsv,
+  paraDataISO,
+  paraNumero,
+  type LinhaCsv,
+} from "@/lib/csv";
 import { formatDateOnly } from "@/lib/format";
 import {
   CATEGORIAS_COBRAVEIS,
@@ -54,6 +61,13 @@ interface Preparo {
   erro: string | null;
 }
 
+/** A recusa do número, dita pelo motivo — o ambíguo não é "não é um número", é "qual dos dois?". */
+function erroDeNumero(rotulo: string, cru: string): { erro: string } {
+  return ambiguoPorMilhar(cru)
+    ? { erro: `${rotulo}: "${cru}" tanto pode ser milhar quanto decimal — use ponto no decimal` }
+    : { erro: `${rotulo}: "${cru}" não é um número` };
+}
+
 function numeroObrigatorio(
   linha: LinhaCsv,
   rotulo: string,
@@ -61,7 +75,7 @@ function numeroObrigatorio(
 ): string | { erro: string } {
   const cru = coluna(linha, ...nomes);
   if (!cru) return { erro: `falta ${rotulo}` };
-  return paraNumero(cru) ?? { erro: `${rotulo}: "${cru}" não é um número` };
+  return paraNumero(cru) ?? erroDeNumero(rotulo, cru);
 }
 
 function numeroOpcional(
@@ -72,7 +86,7 @@ function numeroOpcional(
 ): string | { erro: string } {
   const cru = coluna(linha, ...nomes);
   if (!cru) return padrao;
-  return paraNumero(cru) ?? { erro: `${rotulo}: "${cru}" não é um número` };
+  return paraNumero(cru) ?? erroDeNumero(rotulo, cru);
 }
 
 function ehErro(v: string | { erro: string }): v is { erro: string } {
