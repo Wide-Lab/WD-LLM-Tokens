@@ -22,9 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ApiError, apiPost } from "@/lib/api";
+import { apiPost } from "@/lib/api";
 import { formatDateOnly, toISODate } from "@/lib/format";
-import { CATEGORIAS } from "@/lib/grafico";
+import { CATEGORIAS_COBRAVEIS, invalidarCusto, mensagemDoErro } from "@/lib/precos";
 
 /**
  * O que o formulário já sabe quando é aberto a partir de uma faixa da tela.
@@ -203,33 +203,6 @@ function MolduraDoFormulario({
   );
 }
 
-function mensagemDoErro(e: unknown): string {
-  return e instanceof ApiError || e instanceof Error ? e.message : "Não foi possível salvar.";
-}
-
-/**
- * As consultas que mostram custo, por origem — o que fica velho quando um preço entra.
- *
- * A lista é explícita porque o custo não é gravado em lugar nenhum: ele é recalculado a cada
- * `GET`, então um preço novo muda a resposta de toda tela de dinheiro, e não só a de preços. E
- * precisa ser exata: `invalidateQueries` casa elemento a elemento, então uma chave pela metade
- * (`metricas`, para `["metricas-llm", params]`) não invalida nada e falha em silêncio — a tela
- * seguiria mostrando o total do preço anterior.
- */
-const LEITURAS_DE_CUSTO = {
-  llm: ["metricas-llm", "eventos-llm", "conversa", "consolidado"],
-  whatsapp: ["metricas-whatsapp", "mensagens-whatsapp", "consolidado"],
-} as const;
-
-function invalidarCusto(
-  queryClient: ReturnType<typeof useQueryClient>,
-  origem: "llm" | "whatsapp",
-) {
-  for (const chave of LEITURAS_DE_CUSTO[origem]) {
-    void queryClient.invalidateQueries({ queryKey: [chave] });
-  }
-}
-
 /**
  * Cadastro de preço de modelo.
  *
@@ -389,9 +362,6 @@ export function DialogoPrecoModelo({
     </MolduraDoFormulario>
   );
 }
-
-/** As três que se pode cobrar. `service` fica de fora: a Meta não cobra, e o backend recusa. */
-const CATEGORIAS_COBRAVEIS = CATEGORIAS.filter((c) => c.chave !== "service");
 
 /** Cadastro de tarifa de mensagem. Mesma vigência, outra chave: aqui é o par categoria/país. */
 export function DialogoPrecoMensagem({

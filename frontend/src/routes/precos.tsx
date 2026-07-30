@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 
 import { EmptyBox, ErrorBox } from "@/components/empty-states";
 import { FaixaDePreco, type Vigencia } from "@/components/faixa-preco";
@@ -11,6 +11,7 @@ import {
   type BasePrecoMensagem,
   type BasePrecoModelo,
 } from "@/components/dialogo-preco";
+import { DialogoImportarPrecos } from "@/components/importar-precos";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -98,33 +99,48 @@ function Carregando() {
   );
 }
 
-/** O cabeçalho de cada aba: o que a lista conta, e a porta para acrescentar. */
+/**
+ * O cabeçalho de cada aba: o que a lista conta, e as duas portas para acrescentar.
+ *
+ * Importar fica em `outline` ao lado do primário de propósito: o caminho de todo dia é o reajuste
+ * de um preço só, e a importação é a de encher a tabela — o dia em que o painel estreia, ou o dia em
+ * que um provedor mexeu no preço de doze modelos de uma vez.
+ */
 function Cabecalho({
   contagem,
   singular,
   plural,
   onNovo,
+  onImportar,
 }: {
   contagem: number;
   singular: string;
   plural: string;
   onNovo: () => void;
+  onImportar: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <p className="etiqueta">
         {contagem} {contagem === 1 ? singular : plural}
       </p>
-      <Button onClick={onNovo} className="gap-1.5">
-        <Plus className="h-4 w-4" />
-        Novo preço
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="outline" onClick={onImportar} className="gap-1.5">
+          <Upload className="h-4 w-4" />
+          Importar
+        </Button>
+        <Button onClick={onNovo} className="gap-1.5">
+          <Plus className="h-4 w-4" />
+          Novo preço
+        </Button>
+      </div>
     </div>
   );
 }
 
 function PrecosDeModelo() {
   const [aberto, setAberto] = useState(false);
+  const [importando, setImportando] = useState(false);
   const [base, setBase] = useState<BasePrecoModelo | null>(null);
 
   const precos = useQuery({
@@ -158,6 +174,7 @@ function PrecosDeModelo() {
         singular="modelo precificado"
         plural="modelos precificados"
         onNovo={() => abrir(null)}
+        onImportar={() => setImportando(true)}
       />
 
       {semPreco.length > 0 && (
@@ -198,6 +215,7 @@ function PrecosDeModelo() {
         base={base}
         modelosConhecidos={modelosVistos.data ?? []}
       />
+      <DialogoImportarPrecos tipo="modelo" aberto={importando} onOpenChange={setImportando} />
     </div>
   );
 }
@@ -252,6 +270,7 @@ function SemPreco({ modelos, onEscolher }: { modelos: string[]; onEscolher: (m: 
 
 function PrecosDeMensagem() {
   const [aberto, setAberto] = useState(false);
+  const [importando, setImportando] = useState(false);
   const [base, setBase] = useState<BasePrecoMensagem | null>(null);
 
   const precos = useQuery({
@@ -281,6 +300,7 @@ function PrecosDeMensagem() {
         singular="tarifa"
         plural="tarifas"
         onNovo={() => abrir(null)}
+        onImportar={() => setImportando(true)}
       />
 
       {grupos.size === 0 ? (
@@ -312,6 +332,7 @@ function PrecosDeMensagem() {
       )}
 
       <DialogoPrecoMensagem aberto={aberto} onOpenChange={setAberto} base={base} />
+      <DialogoImportarPrecos tipo="mensagem" aberto={importando} onOpenChange={setImportando} />
     </div>
   );
 }
