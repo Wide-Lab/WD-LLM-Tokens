@@ -261,13 +261,15 @@ export function DialogoImportarPrecos({
   // O CSV é lido a cada tecla: o erro de formato aparece enquanto ainda dá para consertar no
   // arquivo, e não depois de meia tabela já ter entrado no banco.
   const preparos = useMemo<Preparo[]>(() => {
-    const { linhas } = lerCsv(texto);
+    const { linhas, numeros } = lerCsv(texto);
     return linhas.map((linha, i) => {
       const r = formato.preparar(linha);
-      // +2: a linha 1 é o cabeçalho, e a contagem tem que bater com a da planilha aberta ao lado.
+      // O número vem do leitor, e não do índice na lista: é a linha do arquivo, que é a que a
+      // planilha aberta ao lado mostra.
+      const numero = numeros[i];
       return "erro" in r
-        ? { numero: i + 2, item: null, erro: r.erro }
-        : { numero: i + 2, item: r, erro: null };
+        ? { numero, item: null, erro: r.erro }
+        : { numero, item: r, erro: null };
     });
   }, [texto, formato]);
 

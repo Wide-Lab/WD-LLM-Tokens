@@ -23,6 +23,14 @@ export interface TabelaCsv {
   /** Os nomes de coluna como ficaram depois de normalizados — o que a tela pode conferir. */
   colunas: string[];
   linhas: LinhaCsv[];
+  /**
+   * Em que linha do arquivo cada uma de `linhas` começa, contando o cabeçalho e as em branco.
+   *
+   * Vem daqui, e não de contar o índice na lista, porque a lista já perdeu as linhas vazias pelo
+   * caminho: uma delas no meio da tabela faria a tela apontar um erro na linha de baixo, e quem
+   * fosse consertar na planilha aberta ao lado mexeria no preço errado.
+   */
+  numeros: number[];
 }
 
 /**
@@ -59,12 +67,22 @@ function normalizarColuna(nome: string): string {
     .replace(/^_|_$/g, "");
 }
 
+/** Um registro e onde ele começa no arquivo — o número que a planilha mostra na régua da esquerda. */
+interface Registro {
+  campos: string[];
+  numero: number;
+}
+
 /** Quebra o texto em registros, respeitando aspas — dentro delas, separador e quebra de linha são texto. */
-function dividirRegistros(texto: string, separador: string): string[][] {
-  const registros: string[][] = [];
-  let registro: string[] = [];
+function dividirRegistros(texto: string, separador: string): Registro[] {
+  const registros: Registro[] = [];
+  let campos: string[] = [];
   let campo = "";
   let entreAspas = false;
+  // Um registro pode ocupar mais de uma linha (campo com quebra dentro de aspas): o que vale é
+  // onde ele **começa**, que é onde quem for consertar vai olhar.
+  let linha = 1;
+  let inicio = 1;
 
   for (let i = 0; i < texto.length; i++) {
     const c = texto[i];
@@ -79,6 +97,7 @@ function dividirRegistros(texto: string, separador: string): string[][] {
           entreAspas = false;
         }
       } else {
+        if (c === "\n") linha++;
         campo += c;
       }
       continue;
@@ -87,24 +106,27 @@ function dividirRegistros(texto: string, separador: string): string[][] {
     if (c === '"') {
       entreAspas = true;
     } else if (c === separador) {
-      registro.push(campo);
+      campos.push(campo);
       campo = "";
     } else if (c === "\n" || c === "\r") {
       if (c === "\r" && texto[i + 1] === "\n") i++;
-      registro.push(campo);
+      campos.push(campo);
       campo = "";
-      registros.push(registro);
-      registro = [];
+      registros.push({ campos, numero: inicio });
+      campos = [];
+      linha++;
+      inicio = linha;
     } else {
       campo += c;
     }
   }
 
-  registro.push(campo);
-  registros.push(registro);
+  campos.push(campo);
+  registros.push({ campos, numero: inicio });
 
   // Linha em branco no fim do arquivo é o caso comum, e uma linha vazia no meio não é um preço.
-  return registros.filter((r) => r.some((c) => c.trim() !== ""));
+  // Elas saem da lista, mas não da contagem: `numero` já foi carimbado com a linha de verdade.
+  return registros.filter((r) => r.campos.some((c) => c.trim() !== ""));
 }
 
 /**
@@ -114,24 +136,28 @@ function dividirRegistros(texto: string, separador: string): string[][] {
  * saída, e trocar os dois cadastraria o preço invertido sem nenhum erro aparecer.
  */
 export function lerCsv(texto: string): TabelaCsv {
-  const limpo = (texto.startsWith(BOM) ? texto.slice(1) : texto).trim();
-  if (!limpo) return { colunas: [], linhas: [] };
+  // `trimEnd` e não `trim`: cortar o começo tiraria linhas em branco de antes do cabeçalho e a
+  // contagem de `numeros` já nasceria deslocada de tudo o que vem depois.
+  const limpo = (texto.startsWith(BOM) ? texto.slice(1) : texto).trimEnd();
+  const vazia: TabelaCsv = { colunas: [], linhas: [], numeros: [] };
+  if (!limpo.trim()) return vazia;
 
-  const separador = detectarSeparador(limpo.split(/\r?\n/, 1)[0] ?? "");
-  const registros = dividirRegistros(limpo, separador);
-  if (registros.length === 0) return { colunas: [], linhas: [] };
+  const cabecalho = limpo.split(/\r?\n/).find((l) => l.trim() !== "") ?? "";
+  const registros = dividirRegistros(limpo, detectarSeparador(cabecalho));
+  if (registros.length === 0) return vazia;
 
-  const colunas = registros[0].map(normalizarColuna);
+  const colunas = registros[0].campos.map(normalizarColuna);
+  const corpo = registros.slice(1);
 
-  const linhas = registros.slice(1).map((registro) => {
+  const linhas = corpo.map(({ campos }) => {
     const linha: LinhaCsv = {};
     colunas.forEach((nome, i) => {
-      if (nome) linha[nome] = (registro[i] ?? "").trim();
+      if (nome) linha[nome] = (campos[i] ?? "").trim();
     });
     return linha;
   });
 
-  return { colunas, linhas };
+  return { colunas, linhas, numeros: corpo.map((r) => r.numero) };
 }
 
 /** O primeiro dos nomes aceitos que veio preenchido — é o que permite sinônimo de coluna. */
