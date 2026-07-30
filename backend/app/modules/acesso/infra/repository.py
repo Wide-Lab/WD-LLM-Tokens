@@ -78,8 +78,11 @@ class UsuarioRepository:
         return _para_dominio(linha)
 
 
-_JANELA_USO = timedelta(hours=1)
-"""De quanto em quanto tempo `ultimo_uso_em` é reescrito. Ver `marcar_uso`."""
+JANELA_USO = timedelta(hours=1)
+"""De quanto em quanto tempo `ultimo_uso_em` é reescrito. Ver `marcar_uso`.
+
+Público porque quem autentica olha a janela **antes** de abrir transação: o `WHERE` daqui é a
+garantia contra corrida, não o filtro que evita a ida ao banco."""
 
 
 def _chave_para_dominio(linha: ChaveApiRow) -> ChaveApi:
@@ -159,7 +162,7 @@ class ChaveApiRepository:
                 ChaveApiRow.id == chave_id,
                 or_(
                     ChaveApiRow.ultimo_uso_em.is_(None),
-                    ChaveApiRow.ultimo_uso_em < agora - _JANELA_USO,
+                    ChaveApiRow.ultimo_uso_em < agora - JANELA_USO,
                 ),
             )
             .values(ultimo_uso_em=agora)

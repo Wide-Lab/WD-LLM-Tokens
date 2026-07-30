@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime
 
 from app.core.exceptions import TooManyRequestsError, UnauthorizedError
 from app.db.uow import UnitOfWork
@@ -12,7 +13,11 @@ from app.modules.acesso.domain.entities import (
     Usuario,
     normalizar_email,
 )
-from app.modules.acesso.infra.repository import ChaveApiRepository, UsuarioRepository
+from app.modules.acesso.infra.repository import (
+    JANELA_USO,
+    ChaveApiRepository,
+    UsuarioRepository,
+)
 from app.modules.acesso.infra.senha import confere
 
 
@@ -78,13 +83,18 @@ class ChaveApiService:
 
         O carimbo de uso vai numa transação própria, e não na do request: ele é fato sobre a
         chave, não sobre a operação que ela autorizou. Um `GET` que termina em `404` continua
-        sendo um uso — na transação do request, o rollback do `404` levaria o carimbo junto."""
+        sendo um uso — na transação do request, o rollback do `404` levaria o carimbo junto.
+
+        A janela é conferida aqui, com o que o `SELECT` acabou de trazer, e não só no `WHERE` do
+        `marcar_uso`: transação própria custa conexão própria, e sem esta pergunta todo request
+        autenticado abriria uma segunda para descobrir no banco que não havia nada a escrever."""
 
         chave = await self._chaves.ativa_por_segredo(segredo)
         if chave is None or chave.escopo is not escopo:
             return None
 
-        async with UnitOfWork() as uow:
-            await ChaveApiRepository(uow.session).marcar_uso(chave.id)
+        if chave.ultimo_uso_em is None or chave.ultimo_uso_em < datetime.now(UTC) - JANELA_USO:
+            async with UnitOfWork() as uow:
+                await ChaveApiRepository(uow.session).marcar_uso(chave.id)
 
         return chave
