@@ -36,6 +36,7 @@ import { CATEGORIAS_COBRAVEIS, invalidarCusto, mensagemDoErro } from "@/lib/prec
 export interface BasePrecoModelo {
   modelo: string;
   provedor?: string | null;
+  moeda?: string;
   entrada_por_milhao?: number;
   saida_por_milhao?: number;
   cache_leitura_por_milhao?: number;
@@ -45,8 +46,19 @@ export interface BasePrecoModelo {
 export interface BasePrecoMensagem {
   categoria: string;
   pais: string;
+  moeda?: string;
   por_mensagem: number;
 }
+
+/**
+ * A moeda da série, carregada e devolvida sem o formulário perguntar nada.
+ *
+ * O painel só cadastra em uma moeda por vez e não há campo para trocá-la — mas a importação de CSV
+ * aceita a coluna, então existe série que não é USD. Se o reajuste não devolvesse a moeda que veio,
+ * o backend aplicaria o default e a série trocaria de moeda no meio, sem ninguém pedir: é o único
+ * jeito de o total do painel sair errado parecendo certo (ver `preco_modelo.moeda`, no backend).
+ */
+const MOEDA_PADRAO = "USD";
 
 function hojeISO(): string {
   return toISODate(new Date());
@@ -232,6 +244,8 @@ export function DialogoPrecoModelo({
   const [cacheEscrita, setCacheEscrita] = useState("0");
   const [erro, setErro] = useState<string | null>(null);
 
+  const moeda = base?.moeda ?? MOEDA_PADRAO;
+
   // Reinicia a cada abertura: o diálogo é montado uma vez por tela e reaproveitado por todas as
   // faixas, então sem isso a segunda abertura viria com os números da primeira.
   useEffect(() => {
@@ -251,6 +265,7 @@ export function DialogoPrecoModelo({
       apiPost("/v1/precos", {
         modelo: modelo.trim(),
         provedor: provedor.trim() || null,
+        moeda,
         vigencia_inicio: vigencia,
         entrada_por_milhao: entrada,
         saida_por_milhao: saida,
@@ -330,28 +345,28 @@ export function DialogoPrecoModelo({
           rotulo="Entrada"
           valor={entrada}
           onChange={setEntrada}
-          sufixo="USD/1M"
+          sufixo={`${moeda}/1M`}
         />
         <CampoValor
           id="preco-saida"
           rotulo="Saída"
           valor={saida}
           onChange={setSaida}
-          sufixo="USD/1M"
+          sufixo={`${moeda}/1M`}
         />
         <CampoValor
           id="preco-cache-leitura"
           rotulo="Cache leitura"
           valor={cacheLeitura}
           onChange={setCacheLeitura}
-          sufixo="USD/1M"
+          sufixo={`${moeda}/1M`}
         />
         <CampoValor
           id="preco-cache-escrita"
           rotulo="Cache escrita"
           valor={cacheEscrita}
           onChange={setCacheEscrita}
-          sufixo="USD/1M"
+          sufixo={`${moeda}/1M`}
         />
       </div>
 
@@ -380,6 +395,8 @@ export function DialogoPrecoMensagem({
   const [porMensagem, setPorMensagem] = useState("");
   const [erro, setErro] = useState<string | null>(null);
 
+  const moeda = base?.moeda ?? MOEDA_PADRAO;
+
   useEffect(() => {
     if (!aberto) return;
     setErro(null);
@@ -394,6 +411,7 @@ export function DialogoPrecoMensagem({
       apiPost("/v1/precos/mensagem", {
         categoria,
         pais,
+        moeda,
         vigencia_inicio: vigencia,
         por_mensagem: porMensagem,
       }),
@@ -475,7 +493,7 @@ export function DialogoPrecoMensagem({
         rotulo="Por mensagem"
         valor={porMensagem}
         onChange={setPorMensagem}
-        sufixo="USD"
+        sufixo={moeda}
       />
 
       <p className="text-muted-foreground text-xs">

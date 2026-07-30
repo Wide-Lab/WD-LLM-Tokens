@@ -198,6 +198,7 @@ function PrecosDeModelo() {
                 abrir({
                   modelo,
                   provedor: vigente.provedor,
+                  moeda: vigente.moeda,
                   entrada_por_milhao: vigente.entrada_por_milhao,
                   saida_por_milhao: vigente.saida_por_milhao,
                   cache_leitura_por_milhao: vigente.cache_leitura_por_milhao,
@@ -327,7 +328,9 @@ function PrecosDeMensagem() {
               }
               unidade="por mensagem cobrável"
               vigencias={linhas.map(vigenciaDeMensagem)}
-              onNovoPreco={() => abrir({ categoria, pais, por_mensagem: vigente.por_mensagem })}
+              onNovoPreco={() =>
+                abrir({ categoria, pais, moeda: vigente.moeda, por_mensagem: vigente.por_mensagem })
+              }
             />
           );
         })
