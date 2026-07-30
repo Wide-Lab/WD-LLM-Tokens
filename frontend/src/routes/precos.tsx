@@ -54,10 +54,17 @@ function Precos() {
         <TabsTrigger value="modelos">Modelos</TabsTrigger>
         <TabsTrigger value="mensagens">Mensagens</TabsTrigger>
       </TabsList>
-      <TabsContent value="modelos" className="mt-0">
+      {/*
+        As duas abas ficam montadas (`forceMount`) porque a importação de CSV mora dentro delas e
+        grava linha a linha: desmontar a aba levaria junto o diálogo que está no meio de um lote, e
+        o relatório do que entrou e do que não entrou sumiria com ele — os `POST` continuariam
+        rodando sem ninguém para contar o resultado. O preço é a segunda lista buscada na abertura,
+        que são dois `GET` pequenos.
+      */}
+      <TabsContent value="modelos" className="mt-0" forceMount>
         <PrecosDeModelo />
       </TabsContent>
-      <TabsContent value="mensagens" className="mt-0">
+      <TabsContent value="mensagens" className="mt-0" forceMount>
         <PrecosDeMensagem />
       </TabsContent>
     </Tabs>
