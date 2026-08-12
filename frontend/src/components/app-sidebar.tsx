@@ -9,6 +9,7 @@ import {
   Moon,
   Sun,
   Tags,
+  Users,
 } from "lucide-react";
 import {
   Sidebar,
@@ -32,6 +33,10 @@ import { useSessao } from "@/lib/sessao";
  * A lista única de antes dizia, pela própria forma, que o painel era de uma coisa só. Agora a
  * primeira leitura da barra é o desenho do produto: o consolidado é a casa, LLM e WhatsApp são
  * as duas origens que ele soma.
+ *
+ * Depois das origens vem o que não é origem nenhuma, e por isso fica no fim: `Disparos` cadastra
+ * quem recebe, `Preços` cadastra quanto custa. As duas seções mexem no gasto de amanhã em vez de
+ * explicar o de ontem, e nenhuma delas soma no consolidado.
  */
 const GRUPOS = [
   {
@@ -54,6 +59,12 @@ const GRUPOS = [
       // do que ela explica — o texto aprovado é a causa das mensagens listadas acima.
       { title: "Templates", url: "/whatsapp/templates", icon: FileText },
     ],
+  },
+  // Seção própria, e não uma quarta aba do WhatsApp: o WhatsApp é o canal, o disparo é a decisão
+  // de usar o canal. Quem está aqui escolhe para quem a mensagem vai; quem está lá lê o que já foi.
+  {
+    rotulo: "Disparos",
+    itens: [{ title: "Clientes", url: "/disparos/clientes", icon: Users }],
   },
   // Sozinha no fim e sem rótulo: preço não é uma quarta origem de custo — é a régua com que as
   // outras duas viram dinheiro. Um grupo "Configurações" com um item só nomearia uma gaveta que
