@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   CalendarClock,
+  ChartColumn,
   FileText,
   Gauge,
   LayoutDashboard,
@@ -70,6 +71,10 @@ const GRUPOS = [
       // uma régua, e ler a carteira sem saber o que é uma régua é ler uma coluna de nomes soltos.
       { title: "Réguas", url: "/disparos/reguas", icon: CalendarClock },
       { title: "Clientes", url: "/disparos/clientes", icon: Users },
+      // A única leitura da seção, e por isso no fim: as duas de cima decidem o disparo, esta conta
+      // o que elas já produziram. É a única aba de Disparos com filtro de data, porque é a única
+      // em que período responde alguma coisa.
+      { title: "Dashboard", url: "/disparos/dashboard", icon: ChartColumn },
     ],
   },
   // Sozinha no fim e sem rótulo: preço não é uma quarta origem de custo — é a régua com que as
