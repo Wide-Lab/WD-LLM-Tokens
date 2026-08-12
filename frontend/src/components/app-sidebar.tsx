@@ -70,6 +70,10 @@ const GRUPOS = [
       // uma régua, e ler a carteira sem saber o que é uma régua é ler uma coluna de nomes soltos.
       { title: "Réguas", url: "/disparos/reguas", icon: CalendarClock },
       { title: "Clientes", url: "/disparos/clientes", icon: Users },
+      // A única leitura da seção, e por isso no fim: ela é a consequência das duas de cima. É
+      // também a única lista do painel onde aparece a mensagem que **não** saiu — sem `wamid`,
+      // sem custo, e invisível para o WhatsApp.
+      { title: "Mensagens", url: "/disparos/mensagens", icon: ListOrdered },
     ],
   },
   // Sozinha no fim e sem rótulo: preço não é uma quarta origem de custo — é a régua com que as
