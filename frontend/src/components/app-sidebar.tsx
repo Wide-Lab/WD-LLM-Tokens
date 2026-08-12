@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
+  CalendarClock,
   FileText,
   Gauge,
   LayoutDashboard,
@@ -64,7 +65,12 @@ const GRUPOS = [
   // de usar o canal. Quem está aqui escolhe para quem a mensagem vai; quem está lá lê o que já foi.
   {
     rotulo: "Disparos",
-    itens: [{ title: "Clientes", url: "/disparos/clientes", icon: Users }],
+    itens: [
+      // Régua antes de clientes porque é para ela que o cliente aponta: o vínculo guarda o id de
+      // uma régua, e ler a carteira sem saber o que é uma régua é ler uma coluna de nomes soltos.
+      { title: "Réguas", url: "/disparos/reguas", icon: CalendarClock },
+      { title: "Clientes", url: "/disparos/clientes", icon: Users },
+    ],
   },
   // Sozinha no fim e sem rótulo: preço não é uma quarta origem de custo — é a régua com que as
   // outras duas viram dinheiro. Um grupo "Configurações" com um item só nomearia uma gaveta que

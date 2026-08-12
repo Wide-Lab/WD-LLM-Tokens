@@ -164,6 +164,7 @@ function tituloDaRota(pathname: string): string {
   if (pathname === "/whatsapp") return "WhatsApp";
   if (pathname === "/whatsapp/mensagens") return "WhatsApp / Mensagens";
   if (pathname === "/whatsapp/templates") return "WhatsApp / Templates";
+  if (pathname === "/disparos/reguas") return "Disparos / Réguas";
   if (pathname === "/disparos/clientes") return "Disparos / Clientes";
   if (pathname === "/precos") return "Preços";
   return "Painel";
