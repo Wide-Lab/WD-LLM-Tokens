@@ -51,6 +51,11 @@ const HOJE = toISODate(AGORA);
 /** A janela do log, contando hoje. Duas semanas cobrem a régua inteira de um vencimento. */
 const DIAS_DE_LOG = 14;
 
+/**
+ * A semente é escolhida, não arbitrária: é a que faz os seis `STATUS` e as seis `RESPOSTAS`
+ * aparecerem todos pelo menos uma vez. Uma maquete em que "Pediu para sair" nunca chega a ser
+ * desenhado esconde justamente o caso que a tela existe para discutir.
+ */
 let semente = 20260901;
 
 /** Congruencial linear: o mesmo sorteio em toda carga, e a mesma lista em toda demonstração. */
