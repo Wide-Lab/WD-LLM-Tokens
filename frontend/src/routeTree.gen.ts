@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrecosRouteImport } from './routes/precos'
 import { Route as DisparosClientesRouteImport } from './routes/disparos/clientes'
+import { Route as DisparosMensagensRouteImport } from './routes/disparos/mensagens'
 import { Route as DisparosReguasRouteImport } from './routes/disparos/reguas'
 import { Route as LlmIndexRouteImport } from './routes/llm/index'
 import { Route as WhatsappIndexRouteImport } from './routes/whatsapp/index'
@@ -39,6 +40,11 @@ const PrecosRoute = PrecosRouteImport.update({
 const DisparosClientesRoute = DisparosClientesRouteImport.update({
   id: '/disparos/clientes',
   path: '/disparos/clientes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DisparosMensagensRoute = DisparosMensagensRouteImport.update({
+  id: '/disparos/mensagens',
+  path: '/disparos/mensagens',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DisparosReguasRoute = DisparosReguasRouteImport.update({
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/precos': typeof PrecosRoute
   '/disparos/clientes': typeof DisparosClientesRoute
+  '/disparos/mensagens': typeof DisparosMensagensRoute
   '/disparos/reguas': typeof DisparosReguasRoute
   '/whatsapp/mensagens': typeof WhatsappMensagensRoute
   '/whatsapp/templates': typeof WhatsappTemplatesRoute
@@ -95,6 +102,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/precos': typeof PrecosRoute
   '/disparos/clientes': typeof DisparosClientesRoute
+  '/disparos/mensagens': typeof DisparosMensagensRoute
   '/disparos/reguas': typeof DisparosReguasRoute
   '/whatsapp/mensagens': typeof WhatsappMensagensRoute
   '/whatsapp/templates': typeof WhatsappTemplatesRoute
@@ -109,6 +117,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/precos': typeof PrecosRoute
   '/disparos/clientes': typeof DisparosClientesRoute
+  '/disparos/mensagens': typeof DisparosMensagensRoute
   '/disparos/reguas': typeof DisparosReguasRoute
   '/whatsapp/mensagens': typeof WhatsappMensagensRoute
   '/whatsapp/templates': typeof WhatsappTemplatesRoute
@@ -124,6 +133,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/precos'
     | '/disparos/clientes'
+    | '/disparos/mensagens'
     | '/disparos/reguas'
     | '/whatsapp/mensagens'
     | '/whatsapp/templates'
@@ -137,6 +147,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/precos'
     | '/disparos/clientes'
+    | '/disparos/mensagens'
     | '/disparos/reguas'
     | '/whatsapp/mensagens'
     | '/whatsapp/templates'
@@ -150,6 +161,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/precos'
     | '/disparos/clientes'
+    | '/disparos/mensagens'
     | '/disparos/reguas'
     | '/whatsapp/mensagens'
     | '/whatsapp/templates'
@@ -164,6 +176,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   PrecosRoute: typeof PrecosRoute
   DisparosClientesRoute: typeof DisparosClientesRoute
+  DisparosMensagensRoute: typeof DisparosMensagensRoute
   DisparosReguasRoute: typeof DisparosReguasRoute
   WhatsappMensagensRoute: typeof WhatsappMensagensRoute
   WhatsappTemplatesRoute: typeof WhatsappTemplatesRoute
@@ -201,6 +214,13 @@ declare module '@tanstack/react-router' {
       path: '/disparos/clientes'
       fullPath: '/disparos/clientes'
       preLoaderRoute: typeof DisparosClientesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/disparos/mensagens': {
+      id: '/disparos/mensagens'
+      path: '/disparos/mensagens'
+      fullPath: '/disparos/mensagens'
+      preLoaderRoute: typeof DisparosMensagensRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/disparos/reguas': {
@@ -260,6 +280,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   PrecosRoute: PrecosRoute,
   DisparosClientesRoute: DisparosClientesRoute,
+  DisparosMensagensRoute: DisparosMensagensRoute,
   DisparosReguasRoute: DisparosReguasRoute,
   WhatsappMensagensRoute: WhatsappMensagensRoute,
   WhatsappTemplatesRoute: WhatsappTemplatesRoute,
