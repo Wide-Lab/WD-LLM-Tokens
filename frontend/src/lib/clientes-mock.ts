@@ -12,11 +12,17 @@
  * três para existir, e separar agora só desenharia uma fronteira que ainda não tem nada dos dois
  * lados. O comentário fica: é aqui que a divisão acontece no dia em que houver backend.
  *
+ * As réguas não são inventadas aqui: vêm de `lib/reguas-mock.ts`, que é a aba onde elas se
+ * editam. Uma cópia local divergiria da outra tela na primeira alteração, e a carteira passaria
+ * a prometer um ritmo que já não existe.
+ *
  * O estado vive em memória e volta ao início a cada F5. É de propósito: um `localStorage` faria a
  * demonstração parecer que grava, e "gravou" é justamente o que esta aba ainda não sabe fazer.
  */
 
-import { vinculoVazio, type Cliente, type Regua, type Vinculo } from "@/lib/clientes";
+import { vinculoVazio, type Cliente, type Vinculo } from "@/lib/clientes";
+import type { Regua } from "@/lib/reguas";
+import { reguasAtuais } from "@/lib/reguas-mock";
 
 /** A latência fingida: curta para não irritar, longa o bastante para o skeleton aparecer. */
 const ATRASO = 320;
@@ -24,52 +30,6 @@ const ATRASO = 320;
 function esperar<T>(valor: T): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(valor), ATRASO));
 }
-
-/**
- * Três réguas, e a padrão levando a maioria da carteira.
- *
- * Os templates são citados pelo `name` do catálogo de `/whatsapp/templates` — é a amarra entre as
- * duas abas do "antes": o texto aprovado lá é o que sai por uma etapa daqui. A referência é por
- * nome e não por import porque, com backend, quem resolve isso é a rota, não a tela.
- */
-const REGUAS: Regua[] = [
-  {
-    id: "padrao",
-    nome: "Padrão",
-    padrao: true,
-    motivo: "Serve a carteira inteira que não tem tratamento combinado.",
-    etapas: [
-      { rotulo: "D-3", nome: "Preventivo", template: "cobranca_vencimento", ativa: true },
-      { rotulo: "D+2", nome: "Primeiro aviso", template: "cobranca_atraso", ativa: true },
-      { rotulo: "D+9", nome: "Segundo aviso", template: "cobranca_atraso", ativa: true },
-    ],
-  },
-  {
-    id: "publico",
-    nome: "Órgão público",
-    padrao: false,
-    motivo: "Empenho e liquidação têm prazo próprio: cobrar em D+2 é cobrar antes de poder pagar.",
-    etapas: [
-      { rotulo: "D-3", nome: "Preventivo", template: "cobranca_vencimento", ativa: true },
-      // Desligada, e é o desvio que justifica a régua existir: o primeiro aviso da padrão não faz
-      // sentido antes de o empenho correr.
-      { rotulo: "D+2", nome: "Primeiro aviso", template: "cobranca_atraso", ativa: false },
-      { rotulo: "D+15", nome: "Aviso único", template: "cobranca_atraso", ativa: true },
-    ],
-  },
-  {
-    id: "atraso",
-    nome: "Atraso recorrente",
-    padrao: false,
-    motivo: "Histórico de atraso: o mesmo texto, mais cedo e mais vezes.",
-    etapas: [
-      { rotulo: "D-5", nome: "Preventivo", template: "cobranca_vencimento", ativa: true },
-      { rotulo: "D0", nome: "No vencimento", template: "cobranca_vencimento", ativa: true },
-      { rotulo: "D+1", nome: "Primeiro aviso", template: "cobranca_atraso", ativa: true },
-      { rotulo: "D+5", nome: "Segundo aviso", template: "cobranca_atraso", ativa: true },
-    ],
-  },
-];
 
 /**
  * Quatorze clientes, como o portal os devolveria.
@@ -336,7 +296,7 @@ export interface Carteira {
 }
 
 export function listarCarteira(): Promise<Carteira> {
-  return esperar({ clientes: CLIENTES, reguas: REGUAS, vinculos: { ...VINCULOS } });
+  return esperar({ clientes: CLIENTES, reguas: reguasAtuais(), vinculos: { ...VINCULOS } });
 }
 
 /** A única escrita da aba, e ela só toca o que é nosso: o cliente do portal fica como veio. */

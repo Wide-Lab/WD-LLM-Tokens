@@ -21,13 +21,12 @@ import {
   bloqueio,
   buscar,
   clientesPorRegua,
-  reguaDoCliente,
-  reguaPadrao,
   vinculoVazio,
   FLAGS,
   type Cliente,
 } from "@/lib/clientes";
 import { listarCarteira } from "@/lib/clientes-mock";
+import { reguaDoCliente, reguaPadrao } from "@/lib/reguas";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 

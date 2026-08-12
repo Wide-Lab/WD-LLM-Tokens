@@ -14,8 +14,11 @@
  * É exatamente o que o portal não tem onde guardar, e a tela desenha essa costura.
  *
  * `reguaId: null` é o caso comum e não é ausência de configuração — é a régua padrão. O fallback
- * inteiro cabe num campo porque a unidade de substituição é a régua, não a etapa.
+ * inteiro cabe num campo porque a unidade de substituição é a régua, não a etapa. A régua em si
+ * é a outra metade de Disparos e mora em `lib/reguas.ts`: aqui só se aponta para ela.
  */
+
+import { reguaDoCliente, type Regua } from "@/lib/reguas";
 
 /** Flags do portal que suprimem o disparo. A régua lê; quem trata é humano. */
 export type FlagPortal = "negociacao" | "juridico" | "protesto";
@@ -40,31 +43,6 @@ export interface Cliente {
   telefone: string | null;
 }
 
-/**
- * Uma etapa da régua: quando o disparo sai e com que template.
- *
- * `template` é o `name` da Meta, do mesmo catálogo de `/whatsapp/templates` — por referência, e
- * não com o texto embutido, porque template é recurso escasso: cada versão passa por uma análise.
- * Mudar o ritmo de uma régua de D+2 para D+4 não pode custar uma aprovação nova.
- */
-export interface Etapa {
-  /** `D-3` / `D0` / `D+2`, contado a partir do vencimento. É como a equipe fala da etapa. */
-  rotulo: string;
-  nome: string;
-  template: string;
-  ativa: boolean;
-}
-
-export interface Regua {
-  id: string;
-  nome: string;
-  /** A régua de quem não tem atribuição. Exatamente uma, e não se apaga. */
-  padrao: boolean;
-  /** Por que ela existe. Régua sem motivo escrito é régua que ninguém revoga depois. */
-  motivo: string;
-  etapas: Etapa[];
-}
-
 export interface Vinculo {
   clienteId: string;
   /** Nulo cai na régua padrão. Não é falta de configuração: é a configuração. */
@@ -77,15 +55,6 @@ export interface Vinculo {
 
 export function vinculoVazio(clienteId: string): Vinculo {
   return { clienteId, reguaId: null, numeroVinculado: null, gerenteDaConta: null, optOut: false };
-}
-
-export function reguaPadrao(reguas: Regua[]): Regua {
-  return reguas.find((r) => r.padrao) ?? reguas[0];
-}
-
-/** A régua que vale para o cliente. `null` no vínculo é o fallback, e é o caso comum. */
-export function reguaDoCliente(reguas: Regua[], reguaId: string | null): Regua {
-  return (reguaId && reguas.find((r) => r.id === reguaId)) || reguaPadrao(reguas);
 }
 
 /**

@@ -22,17 +22,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import {
-  bloqueio,
-  reguaDoCliente,
-  reguaPadrao,
-  vinculoVazio,
-  FLAGS,
-  type Cliente,
-  type Regua,
-  type Vinculo,
-} from "@/lib/clientes";
+import { bloqueio, vinculoVazio, FLAGS, type Cliente, type Vinculo } from "@/lib/clientes";
 import { salvarVinculo } from "@/lib/clientes-mock";
+import { ordenar, reguaDoCliente, reguaPadrao, rotuloDe, type Regua } from "@/lib/reguas";
 import { formatCurrency, formatNumber } from "@/lib/format";
 
 /** A chave que a lista usa — o diálogo derruba a mesma leitura depois de gravar. */
@@ -95,7 +87,7 @@ export function DialogoVinculo({
     setRascunho({ ...rascunho, [campo]: valor });
 
   const regua = reguaDoCliente(reguas, rascunho.reguaId);
-  const ativas = regua.etapas.filter((e) => e.ativa);
+  const ativas = ordenar(regua.etapas).filter((e) => e.ativa);
   const barrado = bloqueio(cliente, rascunho);
   const padrao = reguaPadrao(reguas);
 
@@ -188,12 +180,15 @@ export function DialogoVinculo({
             ) : (
               <ul className="mt-3 space-y-2">
                 {ativas.map((etapa) => (
-                  <li key={etapa.rotulo} className="flex flex-wrap items-center gap-2.5 text-xs">
+                  <li key={etapa.id} className="flex flex-wrap items-center gap-2.5 text-xs">
                     <span className="leitura bg-secondary text-secondary-foreground rounded-sm px-1.5 py-0.5">
-                      {etapa.rotulo}
+                      {rotuloDe(etapa)}
                     </span>
                     <span>{etapa.nome}</span>
-                    <span className="text-muted-foreground font-mono">{etapa.template}</span>
+                    {/* Etapa ativa sem template não envia nada, e é na régua que isso se resolve. */}
+                    <span className="text-muted-foreground font-mono">
+                      {etapa.template ?? "sem template"}
+                    </span>
                   </li>
                 ))}
               </ul>
