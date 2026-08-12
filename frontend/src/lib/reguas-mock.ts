@@ -109,7 +109,7 @@ const INICIAIS: Regua[] = [
         deslocamento: 2,
         contagem: "corridos",
         anexo: "nf",
-        ativa: false,
+        ativa: true,
         etapaFinal: false,
         template: "cobranca_atraso",
       },
@@ -273,7 +273,7 @@ export function etapaNova(): Etapa {
     contagem: "corridos",
     anexo: "nf",
     // Desligada: etapa sem template escolhido não tem o que enviar, e ligar é decisão explícita.
-    ativa: false,
+    ativa: true,
     etapaFinal: false,
     template: null,
   };

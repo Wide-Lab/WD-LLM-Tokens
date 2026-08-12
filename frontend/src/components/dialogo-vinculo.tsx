@@ -168,7 +168,7 @@ export function DialogoVinculo({
                       {rotuloDe(etapa)}
                     </span>
                     <span>{etapa.nome}</span>
-                    {/* Etapa ativa sem template não envia nada, e é na régua que isso se resolve. */}
+                    {/* Etapa sem template aprovado. */}
                     <span className="text-muted-foreground font-mono">
                       {etapa.template ?? "sem template"}
                     </span>

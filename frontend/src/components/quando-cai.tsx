@@ -34,11 +34,6 @@ export function QuandoCai({ etapa }: { etapa: Etapa }) {
             </span>
             <span className="leitura">{formatDateOnly(data).slice(0, 5)}</span>
             <span className="text-muted-foreground">{DIAS_DA_SEMANA[diaDaSemana(data)]}</span>
-            {fora && (
-              <span className="text-destructive" title={feriado ?? "fim de semana"}>
-                fora da janela
-              </span>
-            )}
           </div>
         );
       })}

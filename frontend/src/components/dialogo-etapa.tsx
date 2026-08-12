@@ -213,10 +213,7 @@ export function DialogoEtapa({
                   </span>
                 </div>
               ) : (
-                <p className="text-muted-foreground text-xs">
-                  Referência ao catálogo, por nome. Duas réguas podem apontar para o mesmo texto —
-                  mudar o deslocamento não gera versão nova para a Meta aprovar.
-                </p>
+                <p className="text-muted-foreground text-xs"></p>
               )}
             </div>
 

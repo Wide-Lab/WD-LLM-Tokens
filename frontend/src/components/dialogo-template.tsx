@@ -131,10 +131,6 @@ export function DialogoTemplate({
               </span>
             )}
           </DialogTitle>
-          <DialogDescription>
-            Alterar o corpo aqui <strong>não</strong> altera o que está saindo. Gera uma versão
-            nova, que vai para análise da Meta e só entra em vigor quando ela aprova.
-          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -151,9 +147,6 @@ export function DialogoTemplate({
               className="font-mono"
               readOnly={emAnalise}
             />
-            <p className="text-muted-foreground text-xs">
-              Rótulo de chamada, não conteúdo: renomear não passa pela Meta.
-            </p>
           </div>
 
           <div className="space-y-2">
