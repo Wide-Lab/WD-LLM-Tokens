@@ -60,7 +60,8 @@ function paraData(iso: string): Date {
   return new Date(`${iso}T00:00:00Z`);
 }
 
-function somarDias(iso: string, dias: number): string {
+/** Anda `dias` no calendário. Exportado porque o log de disparos monta a janela dele com isto. */
+export function somarDias(iso: string, dias: number): string {
   return new Date(paraData(iso).getTime() + dias * DIA_EM_MS).toISOString().slice(0, 10);
 }
 

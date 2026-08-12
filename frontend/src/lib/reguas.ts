@@ -92,6 +92,17 @@ export function ordenar(etapas: Etapa[]): Etapa[] {
   return [...etapas].sort((a, b) => a.deslocamento - b.deslocamento);
 }
 
+/**
+ * A etapa da padrão de que esta veio — ou ela mesma, quando é da padrão ou nasceu depois.
+ *
+ * É o que permite juntar num filtro só o "Preventivo" das três réguas, que é a mesma etapa com
+ * deslocamento diferente em cada uma. Sem isto, recortar o log por etapa daria um botão por régua
+ * para a mesma pergunta.
+ */
+export function raizDe(etapa: Etapa): string {
+  return etapa.origemId ?? etapa.id;
+}
+
 export function reguaPadrao(reguas: Regua[]): Regua {
   return reguas.find((r) => r.padrao) ?? reguas[0];
 }
