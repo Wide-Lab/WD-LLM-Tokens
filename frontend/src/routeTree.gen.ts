@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrecosRouteImport } from './routes/precos'
+import { Route as DisparosClientesRouteImport } from './routes/disparos/clientes'
 import { Route as LlmIndexRouteImport } from './routes/llm/index'
 import { Route as WhatsappIndexRouteImport } from './routes/whatsapp/index'
 import { Route as WhatsappMensagensRouteImport } from './routes/whatsapp/mensagens'
@@ -32,6 +33,11 @@ const LoginRoute = LoginRouteImport.update({
 const PrecosRoute = PrecosRouteImport.update({
   id: '/precos',
   path: '/precos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DisparosClientesRoute = DisparosClientesRouteImport.update({
+  id: '/disparos/clientes',
+  path: '/disparos/clientes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LlmIndexRoute = LlmIndexRouteImport.update({
@@ -69,6 +75,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/precos': typeof PrecosRoute
+  '/disparos/clientes': typeof DisparosClientesRoute
   '/whatsapp/mensagens': typeof WhatsappMensagensRoute
   '/whatsapp/templates': typeof WhatsappTemplatesRoute
   '/llm/': typeof LlmIndexRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/precos': typeof PrecosRoute
+  '/disparos/clientes': typeof DisparosClientesRoute
   '/whatsapp/mensagens': typeof WhatsappMensagensRoute
   '/whatsapp/templates': typeof WhatsappTemplatesRoute
   '/llm': typeof LlmIndexRoute
@@ -92,6 +100,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/precos': typeof PrecosRoute
+  '/disparos/clientes': typeof DisparosClientesRoute
   '/whatsapp/mensagens': typeof WhatsappMensagensRoute
   '/whatsapp/templates': typeof WhatsappTemplatesRoute
   '/llm/': typeof LlmIndexRoute
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/precos'
+    | '/disparos/clientes'
     | '/whatsapp/mensagens'
     | '/whatsapp/templates'
     | '/llm/'
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/precos'
+    | '/disparos/clientes'
     | '/whatsapp/mensagens'
     | '/whatsapp/templates'
     | '/llm'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/precos'
+    | '/disparos/clientes'
     | '/whatsapp/mensagens'
     | '/whatsapp/templates'
     | '/llm/'
@@ -139,6 +151,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
   PrecosRoute: typeof PrecosRoute
+  DisparosClientesRoute: typeof DisparosClientesRoute
   WhatsappMensagensRoute: typeof WhatsappMensagensRoute
   WhatsappTemplatesRoute: typeof WhatsappTemplatesRoute
   LlmIndexRoute: typeof LlmIndexRoute
@@ -168,6 +181,13 @@ declare module '@tanstack/react-router' {
       path: '/precos'
       fullPath: '/precos'
       preLoaderRoute: typeof PrecosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/disparos/clientes': {
+      id: '/disparos/clientes'
+      path: '/disparos/clientes'
+      fullPath: '/disparos/clientes'
+      preLoaderRoute: typeof DisparosClientesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/llm/': {
@@ -219,6 +239,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
   PrecosRoute: PrecosRoute,
+  DisparosClientesRoute: DisparosClientesRoute,
   WhatsappMensagensRoute: WhatsappMensagensRoute,
   WhatsappTemplatesRoute: WhatsappTemplatesRoute,
   LlmIndexRoute: LlmIndexRoute,
