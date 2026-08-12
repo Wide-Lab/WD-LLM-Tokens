@@ -158,6 +158,11 @@ export function listarTemplates(): Promise<Template[]> {
   return esperar(catalogo.map((t) => ({ ...t })));
 }
 
+/** A leitura sem espera, para o log de disparos renderizar o texto. Ver `carteiraAtual`. */
+export function templatesAtuais(): Template[] {
+  return catalogo.map((t) => ({ ...t }));
+}
+
 /**
  * Um template novo nasce sem aprovação e sem uso.
  *

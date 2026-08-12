@@ -299,6 +299,17 @@ export function listarCarteira(): Promise<Carteira> {
   return esperar({ clientes: CLIENTES, reguas: reguasAtuais(), vinculos: { ...VINCULOS } });
 }
 
+/**
+ * A leitura sem espera, para o log de disparos montar a linha de cada mensagem.
+ *
+ * Existe pelo mesmo motivo de `reguasAtuais` em `lib/reguas-mock.ts`: o log percorre o caminho
+ * inteiro — cliente, vínculo, régua, etapa, template — e encadear quatro promessas fingiria uma
+ * latência que a rota real não terá, porque lá o log já vem pronto do banco.
+ */
+export function carteiraAtual(): { clientes: Cliente[]; vinculos: Record<string, Vinculo> } {
+  return { clientes: CLIENTES, vinculos: { ...VINCULOS } };
+}
+
 /** A única escrita da aba, e ela só toca o que é nosso: o cliente do portal fica como veio. */
 export function salvarVinculo(vinculo: Vinculo): Promise<Vinculo> {
   VINCULOS[vinculo.clienteId] = { ...vinculo };
