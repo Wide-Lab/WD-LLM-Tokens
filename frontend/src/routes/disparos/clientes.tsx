@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Lock, Search, SquarePen } from "lucide-react";
+import { Search, SquarePen } from "lucide-react";
 
 import { AvisoDeMock } from "@/components/aviso-mock";
 import { DialogoVinculo } from "@/components/dialogo-vinculo";
@@ -17,16 +17,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  bloqueio,
-  buscar,
-  clientesPorRegua,
-  vinculoVazio,
-  FLAGS,
-  type Cliente,
-} from "@/lib/clientes";
+import { bloqueio, buscar, vinculoVazio, type Cliente } from "@/lib/clientes";
 import { listarCarteira } from "@/lib/clientes-mock";
-import { reguaDoCliente, reguaPadrao } from "@/lib/reguas";
+import { reguaDoCliente } from "@/lib/reguas";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -59,10 +52,8 @@ const CHAVE = ["carteira-disparos"];
  * mexer no template muda pela tarifa — e é por isso que Disparos é uma seção própria, e não uma
  * quarta aba do WhatsApp: o WhatsApp é o canal, o disparo é a decisão de usar o canal.
  *
- * O desenho da tela é uma costura, e ela é literal: à esquerda o que vem do portal, à direita o que
- * é nosso, com uma borda entre os dois. Cliente **não é cadastro nosso** — razão social, títulos em
- * aberto e as flags que suprimem são consulta, não registro editável, e uma tabela que misturasse as
- * duas metades convidaria alguém a corrigir um CNPJ aqui e esperar que o portal soubesse.
+ * Cliente **não é cadastro nosso** — razão social e títulos em aberto são consulta, não registro
+ * editável. O que se edita aqui é só o vínculo: a régua atribuída, o número verificado e o gerente.
  *
  * Sem `<GlobalFilters>` de propósito, pelo mesmo motivo de `/precos` e `/whatsapp/templates`:
  * carteira é cadastro, não leitura de período. Recortar clientes por data de nada responderia.
@@ -84,9 +75,6 @@ function Clientes() {
   const aberto = abertoId ? (clientes.find((c) => c.id === abertoId) ?? null) : null;
 
   if (q.error) return <ErrorBox error={q.error} />;
-
-  const padrao = reguas.length > 0 ? reguaPadrao(reguas) : null;
-  const contagem = padrao ? clientesPorRegua(clientes, vinculos, reguas)[padrao.id] : 0;
 
   return (
     <div className="flex flex-col gap-4">
@@ -121,33 +109,18 @@ function Clientes() {
       ) : lista.length === 0 ? (
         <EmptyBox
           message={
-            clientes.length === 0
-              ? "Nenhum cliente na carteira. Sem destinatário verificado, nenhuma régua tem para quem disparar."
-              : "Nenhum cliente com esse termo. A busca é no portal, não numa lista nossa."
+            clientes.length === 0 ? "Nenhum cliente na carteira." : "Nenhum cliente com esse termo."
           }
         />
       ) : (
         <div className="bg-card overflow-hidden rounded-xl border shadow-sm">
           <Table>
             <TableHeader>
-              {/* A costura é o desenho: à esquerda o portal, à direita nós. */}
               <TableRow className="hover:bg-transparent">
-                <TableHead colSpan={4} className="etiqueta bg-muted/50 py-2">
-                  <span className="flex items-center gap-1.5">
-                    <Lock className="h-3 w-3 shrink-0" aria-hidden />
-                    Do portal
-                  </span>
-                </TableHead>
-                <TableHead colSpan={4} className="etiqueta border-l-2 py-2">
-                  Nosso
-                </TableHead>
-              </TableRow>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="etiqueta bg-muted/50 py-3">Cliente</TableHead>
-                <TableHead className="etiqueta bg-muted/50 py-3">Cidade</TableHead>
-                <TableHead className="etiqueta bg-muted/50 py-3 text-right">Em aberto</TableHead>
-                <TableHead className="etiqueta bg-muted/50 py-3">Situação</TableHead>
-                <TableHead className="etiqueta border-l-2 py-3">Régua</TableHead>
+                <TableHead className="etiqueta py-3">Cliente</TableHead>
+                <TableHead className="etiqueta py-3">Cidade</TableHead>
+                <TableHead className="etiqueta py-3 text-right">Em aberto</TableHead>
+                <TableHead className="etiqueta py-3">Régua</TableHead>
                 <TableHead className="etiqueta py-3">Vínculo</TableHead>
                 <TableHead className="etiqueta py-3">Gerente</TableHead>
                 <TableHead className="w-10 pr-3" />
@@ -166,15 +139,6 @@ function Clientes() {
             </TableBody>
           </Table>
         </div>
-      )}
-
-      {padrao && (
-        <p className="text-muted-foreground text-xs">
-          A régua padrão é <strong>{padrao.nome}</strong>, e {formatNumber(contagem)} dos{" "}
-          {formatNumber(clientes.length)} clientes caem nela — mexer nas etapas dela mexe em todo
-          mundo que aparece como <em>herdada</em>. No serviço real esta lista é paginada e vem do
-          portal a cada abertura.
-        </p>
       )}
 
       <DialogoVinculo
@@ -198,7 +162,7 @@ function Carregando() {
 }
 
 /**
- * Uma linha: o cliente do portal e o vínculo nosso, separados pela borda.
+ * Uma linha: o cliente do portal e o vínculo nosso, na mesma tabela.
  *
  * O valor em aberto é a única quantia da tela e sai em mono **sem o violeta de custo**. Violeta
  * neste painel quer dizer "quanto nós gastamos" (`styles.css`), e aqui a quantia é dívida do cliente
@@ -224,32 +188,23 @@ function Linha({
       onClick={onAbrir}
       className="cursor-pointer"
     >
-      <TableCell className="bg-muted/40 py-3">
+      <TableCell className="py-3">
         <div className="text-sm font-medium">{cliente.razaoSocial}</div>
         <div className="text-muted-foreground mt-0.5 font-mono text-xs">{cliente.documento}</div>
       </TableCell>
-      <TableCell className="bg-muted/40 text-muted-foreground text-xs whitespace-nowrap">
+      <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
         {cliente.cidade}
       </TableCell>
-      <TableCell className="bg-muted/40 text-right whitespace-nowrap">
+      <TableCell className="text-right whitespace-nowrap">
         <span className="leitura text-sm">{formatCurrency(cliente.valorAberto, "BRL")}</span>
         <span className="text-muted-foreground ml-1.5 text-xs">
           {formatNumber(cliente.titulosAbertos)} tít.
         </span>
       </TableCell>
-      <TableCell className="bg-muted/40 text-xs">
-        {cliente.flags.length === 0 ? (
-          <span className="text-muted-foreground">—</span>
-        ) : (
-          cliente.flags.map((f) => FLAGS[f]).join(" · ")
-        )}
-      </TableCell>
-
-      <TableCell className="border-l-2">
+      <TableCell>
         <div className={cn("text-sm", vinculo.reguaId ? "font-medium" : "text-muted-foreground")}>
           {regua.nome}
         </div>
-        {/* Herdada é o caso comum, e precisa ser lido como escolha e não como campo em branco. */}
         {!vinculo.reguaId && <div className="etiqueta mt-1">herdada</div>}
       </TableCell>
       <TableCell className="text-xs">

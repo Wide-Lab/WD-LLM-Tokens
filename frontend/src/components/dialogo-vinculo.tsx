@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -22,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { bloqueio, vinculoVazio, FLAGS, type Cliente, type Vinculo } from "@/lib/clientes";
+import { bloqueio, vinculoVazio, type Cliente, type Vinculo } from "@/lib/clientes";
 import { salvarVinculo } from "@/lib/clientes-mock";
 import { ordenar, reguaDoCliente, reguaPadrao, rotuloDe, type Regua } from "@/lib/reguas";
 import { formatCurrency, formatNumber } from "@/lib/format";
@@ -96,10 +95,6 @@ export function DialogoVinculo({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-base">{cliente.razaoSocial}</DialogTitle>
-          <DialogDescription>
-            O que está no bloco de cima vem do portal e não se edita aqui. O de baixo é nosso — é
-            exatamente o que o portal não tem onde guardar.
-          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -130,14 +125,6 @@ export function DialogoVinculo({
                 <dt className="etiqueta">Telefone do cadastro</dt>
                 <dd className="leitura mt-1.5 text-sm leading-none">{cliente.telefone ?? "—"}</dd>
               </div>
-              <div className="col-span-2">
-                <dt className="etiqueta">Flags</dt>
-                <dd className="mt-1.5 text-sm leading-none">
-                  {cliente.flags.length === 0
-                    ? "nenhuma"
-                    : cliente.flags.map((f) => FLAGS[f]).join(" · ")}
-                </dd>
-              </div>
             </dl>
           </div>
 
@@ -163,10 +150,6 @@ export function DialogoVinculo({
                   ))}
               </SelectContent>
             </Select>
-            <p className="text-muted-foreground text-xs">
-              Sem atribuição o cliente segue a padrão, e é o caso da maior parte da carteira. Trocar
-              aqui muda o ritmo dele, não o texto: o texto é o template, e passa pela Meta.
-            </p>
           </div>
 
           {/* O efeito da escolha, na mesma tela da escolha: quantos disparos e por qual template.
@@ -193,7 +176,6 @@ export function DialogoVinculo({
                 ))}
               </ul>
             )}
-            <p className="text-muted-foreground mt-3 text-xs">{regua.motivo}</p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -208,9 +190,6 @@ export function DialogoVinculo({
                 value={rascunho.numeroVinculado ?? ""}
                 onChange={(e) => mudar("numeroVinculado", e.target.value || null)}
               />
-              <p className="text-muted-foreground text-xs">
-                Verificado no WhatsApp. Sem ele nada sai, mesmo com régua atribuída.
-              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="vinculo-gerente" className="etiqueta">
@@ -222,20 +201,11 @@ export function DialogoVinculo({
                 value={rascunho.gerenteDaConta ?? ""}
                 onChange={(e) => mudar("gerenteDaConta", e.target.value || null)}
               />
-              <p className="text-muted-foreground text-xs">
-                Quem recebe o alerta quando a régua chega na última etapa.
-              </p>
             </div>
           </div>
 
           <div className="flex items-center justify-between gap-4 rounded-sm border px-4 py-3">
-            <div>
-              <div className="text-sm font-medium">Pediu para sair</div>
-              <p className="text-muted-foreground mt-1 text-xs">
-                Suspende a régua inteira para este cliente. Exigência do WhatsApp, não preferência
-                nossa.
-              </p>
-            </div>
+            <div className="text-sm font-medium">Pediu para sair</div>
             <Switch
               checked={rascunho.optOut}
               onCheckedChange={(v) => mudar("optOut", v)}
