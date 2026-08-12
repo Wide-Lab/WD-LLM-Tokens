@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
+  FileText,
   Gauge,
   LayoutDashboard,
   ListOrdered,
@@ -49,6 +50,9 @@ const GRUPOS = [
     itens: [
       { title: "Painel", url: "/whatsapp", icon: MessageSquare },
       { title: "Mensagens", url: "/whatsapp/mensagens", icon: ListOrdered },
+      // Fim do grupo, depois das duas leituras: é a única aba da seção que cadastra, e vem depois
+      // do que ela explica — o texto aprovado é a causa das mensagens listadas acima.
+      { title: "Templates", url: "/whatsapp/templates", icon: FileText },
     ],
   },
   // Sozinha no fim e sem rótulo: preço não é uma quarta origem de custo — é a régua com que as
@@ -61,7 +65,9 @@ const GRUPOS = [
 ];
 
 /** Todos os destinos da barra, do mais fundo para o mais raso. */
-const DESTINOS = GRUPOS.flatMap((g) => g.itens.map((i) => i.url)).sort((a, b) => b.length - a.length);
+const DESTINOS = GRUPOS.flatMap((g) => g.itens.map((i) => i.url)).sort(
+  (a, b) => b.length - a.length,
+);
 
 /**
  * O destino que a barra acende — um só, o mais específico que casa com a rota atual.
