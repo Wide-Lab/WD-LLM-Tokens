@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Plus, TriangleAlert } from "lucide-react";
 
+import { AvisoDeMock } from "@/components/aviso-mock";
 import { DialogoTemplate } from "@/components/dialogo-template";
 import { EmptyBox, ErrorBox } from "@/components/empty-states";
 import { SeloEstadoMeta } from "@/components/selo-estado-meta";
@@ -68,7 +69,10 @@ function Templates() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Mock />
+      <AvisoDeMock>
+        Esta aba ainda não fala com o backend: o catálogo vive em memória e volta ao início a cada
+        recarga. Salvar, enviar e a resposta da Meta funcionam na tela e não gravam nada.
+      </AvisoDeMock>
 
       {q.isLoading ? (
         <Carregando />
@@ -123,25 +127,6 @@ function Templates() {
         aberto={aberto !== null}
         onOpenChange={(v) => !v && setEditando(null)}
       />
-    </div>
-  );
-}
-
-/**
- * O aviso de que a aba é uma maquete.
- *
- * Fica no topo e escrito, não num rodapé: uma tela que mostra custo em dólar e botão de salvar é
- * lida como produção por padrão, e aqui nada disso saiu do banco. Sai daqui no dia em que a rota
- * existir — junto com `lib/templates-mock.ts`.
- */
-function Mock() {
-  return (
-    <div className="border-border rounded-sm border border-dashed px-4 py-3">
-      <div className="etiqueta">Dados de exemplo</div>
-      <p className="text-muted-foreground mt-1.5 text-sm">
-        Esta aba ainda não fala com o backend: o catálogo vive em memória e volta ao início a cada
-        recarga. Salvar, enviar e a resposta da Meta funcionam na tela e não gravam nada.
-      </p>
     </div>
   );
 }
