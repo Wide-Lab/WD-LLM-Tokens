@@ -71,10 +71,13 @@ const GRUPOS = [
       // uma régua, e ler a carteira sem saber o que é uma régua é ler uma coluna de nomes soltos.
       { title: "Réguas", url: "/disparos/reguas", icon: CalendarClock },
       { title: "Clientes", url: "/disparos/clientes", icon: Users },
-      // A única leitura da seção, e por isso no fim: as duas de cima decidem o disparo, esta conta
-      // o que elas já produziram. É a única aba de Disparos com filtro de data, porque é a única
-      // em que período responde alguma coisa.
+      // As duas leituras da seção vêm depois dos dois cadastros, porque são a consequência deles —
+      // e entre si seguem a ordem que LLM e WhatsApp já usam: o painel antes da lista. O dashboard
+      // responde **quanto** saiu e é a única aba de Disparos com filtro de data, porque é a única
+      // em que período responde alguma coisa; as mensagens respondem **quais**, e são a única lista
+      // do painel onde aparece a que **não** saiu — sem `wamid`, sem custo, invisível no WhatsApp.
       { title: "Dashboard", url: "/disparos/dashboard", icon: ChartColumn },
+      { title: "Mensagens", url: "/disparos/mensagens", icon: ListOrdered },
     ],
   },
   // Sozinha no fim e sem rótulo: preço não é uma quarta origem de custo — é a régua com que as
