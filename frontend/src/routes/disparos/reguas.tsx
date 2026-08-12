@@ -144,11 +144,6 @@ function Reguas() {
 
   return (
     <div className="flex flex-col gap-4">
-      <AvisoDeMock>
-        Esta aba ainda não fala com o backend: as réguas vivem em memória e voltam ao início a cada
-        recarga. Criar, mover e desligar etapa funciona na tela e não grava nada — e nada dispara,
-        porque o motor que monta o lote não existe deste lado.
-      </AvisoDeMock>
 
       {q.isLoading || !regua || !padrao ? (
         <Carregando />
@@ -239,13 +234,6 @@ function Reguas() {
               </Table>
             </div>
           )}
-
-          <p className="text-muted-foreground text-xs">
-            Mexer numa etapa vale a partir do próximo lote montado, e não passa pela Meta: o que ela
-            aprova é o texto, e o texto está no template. Etapa ativa sem template aprovado é
-            bloqueio de salvamento no serviço real — aqui fica como aviso, porque não há motor que
-            dispare.
-          </p>
         </>
       )}
 

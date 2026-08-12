@@ -97,10 +97,6 @@ export function DialogoEtapa({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-base">{rascunho.nome}</DialogTitle>
-          <DialogDescription>
-            Âncora, deslocamento e contagem. Mexer aqui muda o disparo do dia seguinte, sem deploy e
-            sem passar de novo pela Meta.
-          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -243,9 +239,6 @@ export function DialogoEtapa({
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-muted-foreground text-xs">
-                Em carteira nunca vai boleto: o cliente paga por depósito e não há título bancário.
-              </p>
             </div>
           </div>
 
@@ -265,9 +258,6 @@ export function DialogoEtapa({
           <div className="flex items-center justify-between gap-4 rounded-sm border px-4 py-3">
             <div>
               <div className="text-sm font-medium">Ativa</div>
-              <p className="text-muted-foreground mt-1 text-xs">
-                Desliga sem apagar a configuração — é o que uma régua personalizada mais faz.
-              </p>
             </div>
             <Switch
               checked={rascunho.ativa}
@@ -279,9 +269,6 @@ export function DialogoEtapa({
           <div className="flex items-center justify-between gap-4 rounded-sm border px-4 py-3">
             <div>
               <div className="text-sm font-medium">Etapa final</div>
-              <p className="text-muted-foreground mt-1 text-xs">
-                Depois dela o título sai da automação e vai para quem cobra na mão.
-              </p>
             </div>
             <Switch
               checked={rascunho.etapaFinal}

@@ -57,9 +57,6 @@ export function DialogoMensagem({
               {STATUS[mensagem.status]}
             </span>
           </DialogTitle>
-          <DialogDescription>
-            O que a régua decidiu para este cliente neste dia, e o que aconteceu depois.
-          </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
@@ -114,10 +111,6 @@ export function DialogoMensagem({
                 </tbody>
               </table>
             </div>
-            <p className="text-muted-foreground mt-1.5 text-xs">
-              Uma mensagem por cliente e data de vencimento, não uma por boleto — é o que separa o
-              volume do disparo do número de títulos em aberto.
-            </p>
           </div>
 
           <div>
@@ -138,7 +131,6 @@ export function DialogoMensagem({
                 {escala(mensagem.resposta) && (
                   <span className="text-muted-foreground">
                     {" "}
-                    — sai da automação e vai para o analista.
                   </span>
                 )}
               </p>

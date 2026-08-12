@@ -69,10 +69,6 @@ function Templates() {
 
   return (
     <div className="flex flex-col gap-4">
-      <AvisoDeMock>
-        Esta aba ainda não fala com o backend: o catálogo vive em memória e volta ao início a cada
-        recarga. Salvar, enviar e a resposta da Meta funcionam na tela e não gravam nada.
-      </AvisoDeMock>
 
       {q.isLoading ? (
         <Carregando />

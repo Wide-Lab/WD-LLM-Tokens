@@ -98,12 +98,6 @@ function Dashboard() {
 
   return (
     <div className="flex flex-col gap-4">
-      <AvisoDeMock>
-        Esta aba ainda não fala com o backend: ela agrega o mesmo log em memória da aba de
-        mensagens, que cobre {formatDateOnly(PERIODO_DO_LOG.de)} a{" "}
-        {formatDateOnly(PERIODO_DO_LOG.ate)} e é gerado de novo a cada recarga. No serviço real a
-        soma vem do banco por período, e o filtro de data vira o recorte da consulta.
-      </AvisoDeMock>
 
       <FiltroDePeriodo periodo={periodo} onChange={setPedido} />
 
@@ -113,21 +107,21 @@ function Dashboard() {
           valor={formatNumber(resumo.mensagens)}
           nota={
             dias > 0
-              ? `em ${formatNumber(dias)} ${dias === 1 ? "dia" : "dias"} · o que chegou à Meta`
-              : "o que chegou à Meta"
+              ? `em ${formatNumber(dias)} ${dias === 1 ? "dia" : "dias"}`
+              : ""
           }
           carregando={carregando}
         />
         <Cartao
           rotulo="Clientes"
           valor={formatNumber(resumo.clientes)}
-          nota="distintos, e não uma vez por etapa"
+          nota=""
           carregando={carregando}
         />
         <Cartao
           rotulo="Títulos"
           valor={formatNumber(resumo.titulos)}
-          nota="citados nas mensagens que saíram"
+          nota=""
           carregando={carregando}
         />
       </div>
@@ -339,11 +333,6 @@ function FiltroDePeriodo({
           </Button>
         ))}
       </div>
-
-      <p className="text-muted-foreground ml-auto max-w-sm text-xs">
-        O log cobre {formatDateOnly(PERIODO_DO_LOG.de)} a {formatDateOnly(PERIODO_DO_LOG.ate)}. Data
-        fora da janela é cortada para dentro dela.
-      </p>
     </section>
   );
 }

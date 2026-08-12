@@ -69,6 +69,7 @@ const GRUPOS = [
     itens: [
       // Régua antes de clientes porque é para ela que o cliente aponta: o vínculo guarda o id de
       // uma régua, e ler a carteira sem saber o que é uma régua é ler uma coluna de nomes soltos.
+      { title: "Dashboard", url: "/disparos/dashboard", icon: ChartColumn },
       { title: "Réguas", url: "/disparos/reguas", icon: CalendarClock },
       { title: "Clientes", url: "/disparos/clientes", icon: Users },
       // As duas leituras da seção vêm depois dos dois cadastros, porque são a consequência deles —
@@ -76,7 +77,6 @@ const GRUPOS = [
       // responde **quanto** saiu e é a única aba de Disparos com filtro de data, porque é a única
       // em que período responde alguma coisa; as mensagens respondem **quais**, e são a única lista
       // do painel onde aparece a que **não** saiu — sem `wamid`, sem custo, invisível no WhatsApp.
-      { title: "Dashboard", url: "/disparos/dashboard", icon: ChartColumn },
       { title: "Mensagens", url: "/disparos/mensagens", icon: ListOrdered },
     ],
   },
@@ -84,7 +84,7 @@ const GRUPOS = [
   // outras duas viram dinheiro. Um grupo "Configurações" com um item só nomearia uma gaveta que
   // ainda não existe.
   {
-    rotulo: null,
+    rotulo: "Configurações",
     itens: [{ title: "Preços", url: "/precos", icon: Tags }],
   },
 ];

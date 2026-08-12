@@ -128,11 +128,6 @@ function MensagensDisparo() {
 
   return (
     <div className="flex flex-col gap-4">
-      <AvisoDeMock>
-        Esta aba ainda não fala com o backend: o log é gerado em memória a cada carga, percorrendo o
-        mesmo caminho do serviço real — cliente, vínculo, régua, etapa, template. Nada disso saiu de
-        verdade, porque o motor que monta o lote não existe deste lado.
-      </AvisoDeMock>
 
       {q.isLoading ? (
         <Carregando />
@@ -157,7 +152,7 @@ function MensagensDisparo() {
             <Cartao
               rotulo="Não saíram"
               valor={formatNumber(naoSairam.length)}
-              nota="suprimidas ou adiadas — nenhuma custou nada"
+              nota="suprimidas ou adiadas"
             />
           </div>
 

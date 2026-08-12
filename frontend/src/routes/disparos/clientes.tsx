@@ -78,11 +78,6 @@ function Clientes() {
 
   return (
     <div className="flex flex-col gap-4">
-      <AvisoDeMock>
-        Esta aba ainda não fala com o backend: a carteira vive em memória e volta ao início a cada
-        recarga. No serviço real o cliente vem por consulta ao portal a cada abertura, e só o
-        vínculo é nosso para gravar.
-      </AvisoDeMock>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="relative w-full max-w-sm">

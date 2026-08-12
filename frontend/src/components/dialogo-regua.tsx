@@ -84,11 +84,6 @@ export function DialogoRegua({
           <DialogTitle className="text-base">
             {criando ? "Nova régua" : `Renomear ${regua.nome}`}
           </DialogTitle>
-          <DialogDescription>
-            {criando
-              ? "Nasce como cópia da padrão, apontando para os mesmos templates. Ajuste as etapas aqui e atribua os clientes na aba de clientes."
-              : "O motivo aparece no cartão da régua. É o que permite a alguém revogar a exceção daqui a um ano."}
-          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -116,9 +111,6 @@ export function DialogoRegua({
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
             />
-            <p className="text-muted-foreground text-xs">
-              Por que estes clientes não seguem a padrão.
-            </p>
           </div>
         </div>
 

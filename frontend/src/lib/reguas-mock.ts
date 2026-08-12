@@ -72,7 +72,7 @@ const INICIAIS: Regua[] = [
         origemId: null,
         nome: "Segundo aviso",
         ancora: "vencimento",
-        deslocamento: 9,
+        deslocamento: 5,
         contagem: "corridos",
         anexo: "nf",
         ativa: true,
