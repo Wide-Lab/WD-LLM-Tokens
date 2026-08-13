@@ -1,5 +1,8 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
+  CalendarClock,
+  ChartColumn,
+  FileText,
   Gauge,
   LayoutDashboard,
   ListOrdered,
@@ -8,6 +11,7 @@ import {
   Moon,
   Sun,
   Tags,
+  Users,
 } from "lucide-react";
 import {
   Sidebar,
@@ -31,6 +35,10 @@ import { useSessao } from "@/lib/sessao";
  * A lista única de antes dizia, pela própria forma, que o painel era de uma coisa só. Agora a
  * primeira leitura da barra é o desenho do produto: o consolidado é a casa, LLM e WhatsApp são
  * as duas origens que ele soma.
+ *
+ * Depois das origens vem o que não é origem nenhuma, e por isso fica no fim: `Disparos` cadastra
+ * quem recebe, `Preços` cadastra quanto custa. As duas seções mexem no gasto de amanhã em vez de
+ * explicar o de ontem, e nenhuma delas soma no consolidado.
  */
 const GRUPOS = [
   {
@@ -49,19 +57,42 @@ const GRUPOS = [
     itens: [
       { title: "Painel", url: "/whatsapp", icon: MessageSquare },
       { title: "Mensagens", url: "/whatsapp/mensagens", icon: ListOrdered },
+      // Fim do grupo, depois das duas leituras: é a única aba da seção que cadastra, e vem depois
+      // do que ela explica — o texto aprovado é a causa das mensagens listadas acima.
+      { title: "Templates", url: "/whatsapp/templates", icon: FileText },
+    ],
+  },
+  // Seção própria, e não uma quarta aba do WhatsApp: o WhatsApp é o canal, o disparo é a decisão
+  // de usar o canal. Quem está aqui escolhe para quem a mensagem vai; quem está lá lê o que já foi.
+  {
+    rotulo: "Disparos",
+    itens: [
+      // Régua antes de clientes porque é para ela que o cliente aponta: o vínculo guarda o id de
+      // uma régua, e ler a carteira sem saber o que é uma régua é ler uma coluna de nomes soltos.
+      { title: "Dashboard", url: "/disparos/dashboard", icon: ChartColumn },
+      { title: "Réguas", url: "/disparos/reguas", icon: CalendarClock },
+      { title: "Clientes", url: "/disparos/clientes", icon: Users },
+      // As duas leituras da seção vêm depois dos dois cadastros, porque são a consequência deles —
+      // e entre si seguem a ordem que LLM e WhatsApp já usam: o painel antes da lista. O dashboard
+      // responde **quanto** saiu e é a única aba de Disparos com filtro de data, porque é a única
+      // em que período responde alguma coisa; as mensagens respondem **quais**, e são a única lista
+      // do painel onde aparece a que **não** saiu — sem `wamid`, sem custo, invisível no WhatsApp.
+      { title: "Mensagens", url: "/disparos/mensagens", icon: ListOrdered },
     ],
   },
   // Sozinha no fim e sem rótulo: preço não é uma quarta origem de custo — é a régua com que as
   // outras duas viram dinheiro. Um grupo "Configurações" com um item só nomearia uma gaveta que
   // ainda não existe.
   {
-    rotulo: null,
+    rotulo: "Configurações",
     itens: [{ title: "Preços", url: "/precos", icon: Tags }],
   },
 ];
 
 /** Todos os destinos da barra, do mais fundo para o mais raso. */
-const DESTINOS = GRUPOS.flatMap((g) => g.itens.map((i) => i.url)).sort((a, b) => b.length - a.length);
+const DESTINOS = GRUPOS.flatMap((g) => g.itens.map((i) => i.url)).sort(
+  (a, b) => b.length - a.length,
+);
 
 /**
  * O destino que a barra acende — um só, o mais específico que casa com a rota atual.
