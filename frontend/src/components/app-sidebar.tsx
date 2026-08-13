@@ -123,8 +123,8 @@ export function AppSidebar() {
             <Gauge className="h-5 w-5" />
           </div>
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <div className="truncate text-sm font-semibold tracking-tight">Painel de custos</div>
-            <div className="etiqueta mt-1 truncate">LLM e WhatsApp</div>
+            <div className="truncate text-sm font-semibold tracking-tight">Painel de cobranças</div>
+            <div className="etiqueta mt-1 truncate">Disparos</div>
           </div>
         </div>
       </SidebarHeader>
