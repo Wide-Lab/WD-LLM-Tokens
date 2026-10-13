@@ -97,7 +97,7 @@ nossa suposição, e o evento tem de entrar do jeito que ela mandou.
 aplicação — a chave é a identidade de quem reporta, não do tipo de fato. `403` se a `aplicacao`
 do payload não for a dona da chave, igual ao LLM.
 
-Idempotência por `(aplicacao, id_externo)` com `ON CONFLICT DO NOTHING`, mesmo padrão. O
+Idempotência por `(aplicacao, id_externo)` com `ON CONFLICT DO UPDATE` que só preenche o que a linha ainda não tinha (texto de quem reporta no envio, `pricing` do status `sent`, em qualquer ordem). O
 `wamid` é chave natural perfeita: o webhook manda `sent`, depois `delivered`, depois `read` para
 o mesmo id, e quem reporta pode mandar os três sem pensar — o segundo e o terceiro devolvem
 `duplicado: true`.

@@ -331,7 +331,8 @@ quem está errado é a nossa suposição.
 
 **Response `201`:** igual à do LLM — `{"id": "018f...", "duplicado": false}`, array para lote, na
 mesma ordem. `duplicado: true` quando o `wamid` já existia: mandar `sent`, `delivered` e `read`
-não conta a mensagem três vezes.
+não conta a mensagem três vezes. O reenvio completa a linha existente: conteúdo, `categoria`,
+`cobravel` e `metadados` só entram onde ainda estavam vazios (nada preenchido é sobrescrito).
 
 ---
 

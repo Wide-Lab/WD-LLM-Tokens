@@ -8,7 +8,7 @@ na agregação."""
 import uuid
 from typing import Any
 
-from sqlalchemy import Select, func, literal, select, true
+from sqlalchemy import Boolean, Select, func, literal, literal_column, select, true
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
@@ -68,12 +68,16 @@ class RegistroMensagemRepository:
         self._session = session
 
     async def inserir(self, nova: NovaMensagem) -> Ingestao:
-        """Grava uma mensagem, ou reconhece que ela já estava lá.
+        """Grava uma mensagem, ou reconhece que ela já estava lá e completa o que faltava.
 
-        `ON CONFLICT DO NOTHING` sobre `(aplicacao, id_externo)`, como no LLM. Aqui a
+        Conflito em `(aplicacao, id_externo)` não insere outra linha, como no LLM. Aqui a
         idempotência trabalha mais: o webhook manda `sent`, `delivered` e `read` para o mesmo
         `wamid`, e quem reporta pode repassar os três sem se preocupar — o segundo e o terceiro
-        voltam `duplicado: true`."""
+        voltam `duplicado: true`.
+
+        A linha existente só **ganha** o que ainda não tinha: quem reporta no envio manda o texto
+        sem `pricing`, o status `sent` manda o `pricing` sem texto, e os dois chegam em qualquer
+        ordem. Nada já preenchido é sobrescrito, e `criado_em` fica o da primeira."""
 
         valores: dict[str, Any] = {
             "id": uuid.uuid7(),
@@ -91,32 +95,30 @@ class RegistroMensagemRepository:
         if nova.criado_em is not None:
             valores["criado_em"] = nova.criado_em
 
-        stmt = (
-            pg_insert(RegistroMensagemRow)
-            .values(**valores)
-            .on_conflict_do_nothing(
-                index_elements=["aplicacao", "id_externo"],
-                index_where=RegistroMensagemRow.id_externo.is_not(None),
-            )
-            .returning(RegistroMensagemRow.id)
+        insercao = pg_insert(RegistroMensagemRow).values(**valores)
+        tabela = RegistroMensagemRow.__table__
+        stmt = insercao.on_conflict_do_update(
+            index_elements=["aplicacao", "id_externo"],
+            index_where=RegistroMensagemRow.id_externo.is_not(None),
+            set_={
+                "conteudo": func.coalesce(tabela.c.conteudo, insercao.excluded.conteudo),
+                "categoria": func.coalesce(tabela.c.categoria, insercao.excluded.categoria),
+                "cobravel": tabela.c.cobravel | insercao.excluded.cobravel,
+                # Raso, e o que chegou agora vai por baixo: `pricing` e `tipo` não colidem, e
+                # numa chave repetida vale a primeira.
+                "metadados": insercao.excluded.metadados.op("||")(tabela.c.metadados),
+            },
+        ).returning(
+            RegistroMensagemRow.id,
+            # `xmax` é 0 só na linha que este comando inseriu; no conflito é o do `UPDATE`.
+            literal_column("(xmax = 0)", Boolean).label("inserido"),
         )
 
-        inserido = await self._session.scalar(stmt)
-        if inserido is not None:
-            return Ingestao(id=inserido, duplicado=False)
-
-        # Não inseriu: já existia. Devolve o `id` da linha original, e não o sorteado agora —
-        # quem reenviou precisa poder correlacionar com o primeiro envio.
-        existente = await self._session.scalar(
-            select(RegistroMensagemRow.id).where(
-                RegistroMensagemRow.aplicacao == nova.aplicacao,
-                RegistroMensagemRow.id_externo == nova.id_externo,
-            )
-        )
-        if existente is None:
+        linha = (await self._session.execute(stmt)).one_or_none()
+        if linha is None:
             raise ConflictError("O banco recusou a mensagem e não há original correspondente.")
 
-        return Ingestao(id=existente, duplicado=True)
+        return Ingestao(id=linha.id, duplicado=not linha.inserido)
 
     async def listar(
         self, filtro: Filtro, limite: int, offset: int

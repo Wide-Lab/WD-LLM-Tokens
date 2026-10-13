@@ -10,7 +10,8 @@ from app.db.base import Base
 
 
 class RegistroMensagem(Base):
-    """Uma linha por mensagem de WhatsApp. Append-only, como tudo que é fato consumado.
+    """Uma linha por mensagem de WhatsApp. Append-only, como tudo que é fato consumado; a única
+    escrita sobre linha existente é o reenvio do mesmo `wamid`, que completa o que faltava.
 
     `COUNT(*)` = mensagens, do mesmo jeito que em `registro_llm` é requisições.
 

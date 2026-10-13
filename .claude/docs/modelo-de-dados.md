@@ -51,7 +51,7 @@ index (aplicacao, modelo, criado_em)
 ```
 
 O `unique` dá idempotência: se o app reenviar por causa de um retry, o `INSERT`
-usa `ON CONFLICT (aplicacao, id_externo) DO NOTHING` e não conta em dobro.
+usa `ON CONFLICT (aplicacao, id_externo)` e não conta em dobro. Em `registro_llm` o conflito não faz nada; em `registro_mensagem` ele completa o que faltava na linha (texto, `categoria`, `cobravel`, `metadados`), sem sobrescrever o que já estava preenchido.
 
 ## Convenção crítica: os quatro baldes de token não se sobrepõem
 
