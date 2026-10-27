@@ -1,155 +1,298 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { LogOut, Menu, Moon, Search, Sun } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import {
-  Gauge,
-  LayoutDashboard,
-  ListOrdered,
-  LogOut,
-  MessageSquare,
-  Moon,
-  Sun,
-  Tags,
-} from "lucide-react";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { GRUPOS, destinoAtivo, trilhaDaRota } from "@/lib/navegacao";
 import { useTheme } from "@/lib/theme";
 import { useSessao } from "@/lib/sessao";
 
 /**
- * Três grupos, um por origem de custo, com a soma no topo e sem rótulo.
+ * A moldura do painel no padrão "App shell" do wide-ui: barra lateral de 252px fixa a partir de
+ * 1000px, gaveta temporária abaixo disso, e um topo de 52px com a trilha.
  *
- * A lista única de antes dizia, pela própria forma, que o painel era de uma coisa só. Agora a
- * primeira leitura da barra é o desenho do produto: o consolidado é a casa, LLM e WhatsApp são
- * as duas origens que ele soma.
+ * Não usa o `components/ui/sidebar.tsx` do shadcn: o modo recolhido em ícone dele não existe no
+ * wide-ui, e o que sobra (uma coluna fixa e uma gaveta) cabe em menos código do que configurá-lo.
  */
-const GRUPOS = [
-  {
-    rotulo: null,
-    itens: [{ title: "Visão geral", url: "/", icon: LayoutDashboard }],
-  },
-  {
-    rotulo: "LLM",
-    itens: [
-      { title: "Painel", url: "/llm", icon: Gauge },
-      { title: "Eventos", url: "/llm/eventos", icon: ListOrdered },
-    ],
-  },
-  {
-    rotulo: "WhatsApp",
-    itens: [
-      { title: "Painel", url: "/whatsapp", icon: MessageSquare },
-      { title: "Mensagens", url: "/whatsapp/mensagens", icon: ListOrdered },
-    ],
-  },
-  // Sozinha no fim e sem rótulo: preço não é uma quarta origem de custo — é a régua com que as
-  // outras duas viram dinheiro. Um grupo "Configurações" com um item só nomearia uma gaveta que
-  // ainda não existe.
-  {
-    rotulo: null,
-    itens: [{ title: "Preços", url: "/precos", icon: Tags }],
-  },
-];
+export function Moldura({ children }: { children: React.ReactNode }) {
+  const [gavetaAberta, setGavetaAberta] = useState(false);
+  const [buscaAberta, setBuscaAberta] = useState(false);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-/** Todos os destinos da barra, do mais fundo para o mais raso. */
-const DESTINOS = GRUPOS.flatMap((g) => g.itens.map((i) => i.url)).sort((a, b) => b.length - a.length);
+  // A gaveta fecha sozinha ao navegar: ficar aberta sobre a página nova esconderia o destino.
+  useEffect(() => setGavetaAberta(false), [pathname]);
 
-/**
- * O destino que a barra acende — um só, o mais específico que casa com a rota atual.
- *
- * Cada item decidindo sozinho por prefixo acendia dois de uma vez: em `/llm/eventos`, o "Eventos" e
- * o "Painel" do mesmo grupo, o que é a barra dizendo que se está em dois lugares. Igualdade exata
- * corrigiria isso e apagaria a barra inteira em `/llm/eventos/<ator>`, justo na tela mais funda.
- * Escolher o casamento mais longo faz as duas coisas: o filho ganha do pai quando ele próprio é um
- * item, e o pai segue aceso pelo neto que não é. `/` casa só exato — ele é prefixo de tudo.
- */
-function destinoAtivo(caminhoAtual: string): string | undefined {
-  return DESTINOS.find((url) =>
-    url === "/" ? caminhoAtual === "/" : caminhoAtual === url || caminhoAtual.startsWith(`${url}/`),
+  useEffect(() => {
+    const aoTeclar = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setBuscaAberta((aberta) => !aberta);
+      }
+    };
+    window.addEventListener("keydown", aoTeclar);
+    return () => window.removeEventListener("keydown", aoTeclar);
+  }, []);
+
+  const abrirBusca = () => {
+    setGavetaAberta(false);
+    setBuscaAberta(true);
+  };
+
+  return (
+    <div className="bg-background flex min-h-screen w-full">
+      <aside className="border-line bg-surface sticky top-0 hidden h-screen w-[252px] shrink-0 border-r min-[1000px]:flex">
+        <BarraLateral aoBuscar={abrirBusca} />
+      </aside>
+
+      <Sheet open={gavetaAberta} onOpenChange={setGavetaAberta}>
+        <SheetContent
+          side="left"
+          className="bg-surface flex w-[252px] max-w-[85vw] p-0 sm:max-w-[252px]"
+        >
+          <SheetTitle className="sr-only">Navegação</SheetTitle>
+          <SheetDescription className="sr-only">Destinos do painel</SheetDescription>
+          <BarraLateral aoBuscar={abrirBusca} />
+        </SheetContent>
+      </Sheet>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="border-line bg-surface sticky top-0 z-30 flex h-[52px] shrink-0 items-center gap-2 border-b px-4 min-[700px]:px-7">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="-ml-2 min-[1000px]:hidden"
+            onClick={() => setGavetaAberta(true)}
+            aria-label="Abrir navegação"
+          >
+            <Menu className="h-[18px] w-[18px]" />
+          </Button>
+          <Trilha caminho={pathname} />
+        </header>
+        <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 pt-4 pb-10 min-[700px]:px-7 min-[700px]:pt-6">
+          {children}
+        </main>
+      </div>
+
+      <BuscaDeComando aberta={buscaAberta} aoMudar={setBuscaAberta} />
+    </div>
   );
 }
 
-export function AppSidebar() {
+function Trilha({ caminho }: { caminho: string }) {
+  const trilha = trilhaDaRota(caminho);
+  return (
+    <nav aria-label="Trilha" className="min-w-0">
+      <ol className="flex min-w-0 items-center gap-1.5 text-[13px]">
+        {trilha.map((m, i) => {
+          const ultima = i === trilha.length - 1;
+          return (
+            <li
+              key={`${m.rotulo}-${i}`}
+              className={cn("flex min-w-0 items-center gap-1.5", !ultima && "hidden sm:flex")}
+            >
+              {ultima ? (
+                <span aria-current="page" className="text-foreground truncate font-semibold">
+                  {m.rotulo}
+                </span>
+              ) : (
+                <>
+                  <Link to={m.url} className="text-subtle hover:text-foreground truncate">
+                    {m.rotulo}
+                  </Link>
+                  <span aria-hidden className="text-subtle">
+                    /
+                  </span>
+                </>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
+function BarraLateral({ aoBuscar }: { aoBuscar: () => void }) {
   const currentPath = useRouterState({ select: (r) => r.location.pathname });
   const ativo = destinoAtivo(currentPath);
+
+  return (
+    <div className="flex h-full w-full min-w-0 flex-col">
+      <div className="flex items-center gap-2.5 px-4 pt-4 pb-3">
+        {/* O tile do wide-ui é o accent com iniciais; aqui o próprio logo já é magenta, então o
+            tile é claro com o logo — magenta sobre magenta sumiria. */}
+        <div className="border-line grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-[var(--wu-radius-sm)] border bg-white">
+          <img src="/favicon.png" alt="" className="h-full w-full scale-125 object-cover" />
+        </div>
+        <div className="min-w-0">
+          <div className="text-foreground truncate text-[13.5px] font-semibold">
+            Painel de custos
+          </div>
+          <div className="text-subtle truncate text-xs">LLM e WhatsApp</div>
+        </div>
+      </div>
+
+      <div className="px-3 pb-2">
+        <button
+          type="button"
+          onClick={aoBuscar}
+          className="border-line bg-raised text-subtle hover:bg-hover flex h-8 w-full items-center gap-2 rounded-[var(--wu-radius)] border px-2.5 text-[13px]"
+        >
+          <Search className="h-4 w-4 shrink-0" />
+          <span className="flex-1 truncate text-left">Buscar ou ir para...</span>
+          <kbd className="border-line rounded border px-1 text-[11px] font-medium">Ctrl K</kbd>
+        </button>
+      </div>
+
+      <nav
+        data-sidebar="content"
+        aria-label="Principal"
+        className="flex-1 overflow-y-auto px-3 pb-3"
+      >
+        {GRUPOS.map((grupo, i) => (
+          <div
+            key={grupo.rotulo ?? `grupo-${i}`}
+            className={cn("pt-3", !grupo.rotulo && i > 0 && "border-line mt-3 border-t")}
+          >
+            {grupo.rotulo && (
+              <div className="text-subtle px-2.5 pb-1.5 text-[11px] font-semibold tracking-[0.04em] uppercase">
+                {grupo.rotulo}
+              </div>
+            )}
+            <ul className="flex flex-col gap-0.5">
+              {grupo.itens.map((item) => {
+                const aceso = item.url === ativo;
+                return (
+                  <li key={item.url}>
+                    <Link
+                      to={item.url}
+                      aria-current={aceso ? "page" : undefined}
+                      className={cn(
+                        "relative flex h-8 items-center gap-2.5 rounded-[var(--wu-radius-sm)] px-2.5 text-[13.5px] font-medium transition-colors",
+                        aceso
+                          ? "bg-sel text-foreground"
+                          : "text-muted-foreground hover:bg-hover hover:text-foreground",
+                      )}
+                    >
+                      {aceso && (
+                        <span
+                          aria-hidden
+                          className="bg-brand absolute top-1.5 bottom-1.5 -left-3 w-[3px] rounded-r"
+                        />
+                      )}
+                      <item.icon
+                        className={cn("h-[18px] w-[18px] shrink-0", !aceso && "text-subtle")}
+                      />
+                      <span className="truncate">{item.title}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </nav>
+
+      <Rodape />
+    </div>
+  );
+}
+
+function iniciais(nome: string): string {
+  const partes = nome.trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return "?";
+  const primeira = partes[0][0];
+  const ultima = partes.length > 1 ? partes[partes.length - 1][0] : "";
+  return (primeira + ultima).toUpperCase();
+}
+
+function Rodape() {
   const { theme, toggle } = useTheme();
   const { usuario, sair } = useSessao();
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader>
-        <div className="flex items-center gap-2.5 px-2 py-3">
-          <div className="bg-primary text-primary-foreground grid h-9 w-9 shrink-0 place-items-center rounded-md">
-            <Gauge className="h-5 w-5" />
-          </div>
-          <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <div className="truncate text-sm font-semibold tracking-tight">Painel de custos</div>
-            <div className="etiqueta mt-1 truncate">LLM e WhatsApp</div>
-          </div>
-        </div>
-      </SidebarHeader>
-      <SidebarContent>
-        {GRUPOS.map((grupo, i) => (
-          <SidebarGroup key={grupo.rotulo ?? i}>
-            {grupo.rotulo && (
-              <SidebarGroupLabel className="etiqueta">{grupo.rotulo}</SidebarGroupLabel>
-            )}
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {grupo.itens.map((item) => (
-                  <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={item.url === ativo}
-                      // Recolhida, a barra some com o rótulo do grupo e sobram dois "Painel"
-                      // iguais: o tooltip precisa dizer de qual origem cada um é.
-                      tooltip={grupo.rotulo ? `${grupo.rotulo} · ${item.title}` : item.title}
+    <div className="border-line flex items-center gap-2.5 border-t px-3 py-3">
+      <div className="bg-sel text-muted-foreground grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-semibold">
+        {usuario ? iniciais(usuario.nome) : "?"}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-foreground truncate text-[13px] font-medium">{usuario?.nome}</div>
+        <div className="text-subtle truncate text-xs">{usuario?.email}</div>
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 shrink-0"
+        onClick={toggle}
+        aria-label={theme === "dark" ? "Usar tema claro" : "Usar tema escuro"}
+        title={theme === "dark" ? "Tema claro" : "Tema escuro"}
+      >
+        {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 shrink-0"
+        onClick={() => void sair()}
+        aria-label="Sair"
+        title="Sair"
+      >
+        <LogOut className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
+
+/** "Buscar ou ir para...": os mesmos destinos da barra, por teclado. */
+function BuscaDeComando({ aberta, aoMudar }: { aberta: boolean; aoMudar: (v: boolean) => void }) {
+  const navigate = useNavigate();
+
+  return (
+    <Dialog open={aberta} onOpenChange={aoMudar}>
+      <DialogContent className="top-[20%] translate-y-0 gap-0 overflow-hidden p-0 sm:max-w-md [&>button:last-child]:hidden">
+        <DialogTitle className="sr-only">Buscar ou ir para</DialogTitle>
+        <DialogDescription className="sr-only">
+          Digite o nome de uma página do painel
+        </DialogDescription>
+        <Command>
+          <CommandInput placeholder="Buscar ou ir para..." className="h-11" />
+          <CommandList className="max-h-[320px] p-1">
+            <CommandEmpty>Nenhuma página com esse nome</CommandEmpty>
+            {GRUPOS.map((grupo, i) => (
+              <CommandGroup key={grupo.rotulo ?? `grupo-${i}`} heading={grupo.rotulo ?? undefined}>
+                {grupo.itens.map((item) => {
+                  const nome = grupo.rotulo ? `${grupo.rotulo} · ${item.title}` : item.title;
+                  return (
+                    <CommandItem
+                      key={item.url}
+                      value={nome}
+                      onSelect={() => {
+                        aoMudar(false);
+                        navigate({ to: item.url });
+                      }}
+                      className="h-9"
                     >
-                      <Link to={item.url} className="flex items-center gap-2">
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
-      </SidebarContent>
-      <SidebarFooter className="gap-2">
-        {usuario && (
-          <div className="border-sidebar-border min-w-0 border-t px-2 pt-3 group-data-[collapsible=icon]:hidden">
-            <div className="truncate text-sm font-medium">{usuario.nome}</div>
-            <div className="text-muted-foreground truncate font-mono text-xs">{usuario.email}</div>
-          </div>
-        )}
-        <Button variant="outline" size="sm" onClick={toggle} className="w-full justify-start gap-2">
-          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          <span className="group-data-[collapsible=icon]:hidden">
-            {theme === "dark" ? "Tema claro" : "Tema escuro"}
-          </span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => void sair()}
-          className="w-full justify-start gap-2"
-          title="Sair"
-        >
-          <LogOut className="h-4 w-4" />
-          <span className="group-data-[collapsible=icon]:hidden">Sair</span>
-        </Button>
-      </SidebarFooter>
-    </Sidebar>
+                      <item.icon className="text-subtle" />
+                      <span>{nome}</span>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            ))}
+          </CommandList>
+        </Command>
+      </DialogContent>
+    </Dialog>
   );
 }
