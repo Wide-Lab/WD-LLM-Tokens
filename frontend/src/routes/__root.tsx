@@ -128,7 +128,7 @@ function Carregando() {
         </div>
         <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 pt-6 min-[700px]:px-7">
           <Skeleton className="h-6 w-56" />
-          <div className="grid grid-cols-1 gap-3 min-[700px]:grid-cols-2 min-[1100px]:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 min-[1100px]:grid-cols-4">
             {Array.from({ length: 4 }, (_, i) => (
               <Skeleton key={i} className="h-[104px]" />
             ))}

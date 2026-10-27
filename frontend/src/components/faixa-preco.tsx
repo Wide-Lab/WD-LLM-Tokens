@@ -358,7 +358,7 @@ function PrecoLinha({
         <TableCell className="pr-0 pl-3">
           <BotaoDeHistorico aberto={aberto} onClick={() => onAlternar(item.chave)} />
         </TableCell>
-        {/* O limite fica no `div`: `max-w` num `<td>` de layout automático é ignorado. */}
+        {/* Teto e piso da coluna no `div` interno, que é onde o `truncate` dos nomes corta. */}
         <TableCell>
           <div className="max-w-[11rem] min-w-[8rem]">
             <div className="text-foreground truncate font-medium" title={item.titulo}>

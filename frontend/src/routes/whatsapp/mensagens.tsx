@@ -267,9 +267,9 @@ function MensagemLinha({
         <TableCell>
           <Cobranca mensagem={mensagem} />
         </TableCell>
-        {/* `w-full max-w-0`: em tabela de layout automático um `max-w` em rem no `<td>` é ignorado e a
-            coluna cresce até caber a prévia inteira, empurrando Data para fora a 1280. Com largura
-            zero de máximo ela ocupa só a sobra, e o `truncate` corta dentro dela. */}
+        {/* `w-full max-w-0`: um `max-w` em rem no `<td>` é teto fixo, a coluna não cede quando falta
+            largura (com 22rem empurrava Data para fora a 1280). Com largura zero de máximo ela ocupa
+            só a sobra, e o `truncate` corta dentro dela. */}
         <TableCell className="text-muted-foreground w-full max-w-0 truncate">
           {mensagem.conteudo ? (
             previa(mensagem.conteudo)
