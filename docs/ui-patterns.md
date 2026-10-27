@@ -8,8 +8,9 @@ O design system é o **wide-ui**, e ele é a fonte da verdade: pacote em
 acrescenta ou sobrescreve, e cada exceção diz por quê. O que não está aqui segue o pacote.
 
 Os arquivos do pacote copiados para o projeto ficam em `frontend/src/styles/wide-ui/`
-(`tokens.css`, `tailwind-v4.css`, `accent.ts`). Não se edita valor neles: muda no pacote e copia
-de novo. O que é do projeto fica em `frontend/src/styles.css` e `frontend/src/lib/grafico.ts`.
+(`tokens.css`, `tailwind-v4.css` e `accent.ts`, cópia tipada do `accent.js`). Não se edita valor
+neles: muda no pacote e copia de novo (o `accent.ts` se reescreve à mão a partir do `.js`). O que
+é do projeto fica em `frontend/src/styles.css` e `frontend/src/lib/grafico.ts`.
 
 ## Tokens e a sobrescrita do `muted`
 
@@ -17,8 +18,9 @@ de novo. O que é do projeto fica em `frontend/src/styles.css` e `frontend/src/l
   `styles.css`, uma vez só, sem bloco escuro: os `--wu-*` já trocam com o tema.
 - **`muted` é fundo, não texto.** No wide-ui `text-muted` é texto secundário; no shadcn `muted` é
   fundo apagado. O shadcn vence, porque os componentes de `components/ui/` dependem desse sentido.
-  Texto secundário é `text-muted-foreground`. O comentário de `styles/wide-ui/tailwind-v4.css` e os
-  exemplos do `components.md` dizem o contrário; aqui não valem. O eslint barra `text-muted`
+  Texto secundário é `text-muted-foreground`. O comentário de `styles/wide-ui/tailwind-v4.css` lista
+  `text-muted` entre os utilitários, e o `components.md` chama de `muted` a cor de texto secundário
+  ("13 `muted`"); aqui isso vira `text-muted-foreground`. O eslint barra `text-muted`
   (`no-restricted-syntax` em `frontend/eslint.config.js`).
 - `--muted` = `--wu-sel`, que tem alfa, então não aceita `/opacidade` (`bg-muted/50` some). Fundo
   apagado de linha é `bg-raised`; separador é `bg-border`.
@@ -30,6 +32,9 @@ de novo. O que é do projeto fica em `frontend/src/styles.css` e `frontend/src/l
   três tamanhos para as mesmas peças.
 - Foco: contorno de 2px no accent em todo controle, fora de `@layer` (vence o
   `focus-visible:outline-none` de vários componentes do shadcn).
+- A única cópia de valor fora do `tokens.css` é `lib/error-page.ts`, a página de falha do servidor:
+  é HTML cru, sem o CSS do app, então repete à mão os valores claro e escuro e o `#E30D4D`. Mudou
+  token ou marca, mude lá também.
 
 ## Tema e accent
 
@@ -38,14 +43,13 @@ de novo. O que é do projeto fica em `frontend/src/styles.css` e `frontend/src/l
   primeira pintura. Sem escolha salva, o painel segue o sistema.
 - Accent = magenta do logo, `COR_DA_MARCA` = `#E30D4D` (`lib/marca.ts`). No SSR sai no `style` do
   `<html>` por `variaveisDaMarca`; no cliente, `applyAccent` no boot (`routes/__root.tsx`).
-- O accent marca lugar e ação: botão primário, item ativo da barra, aba ativa, link, foco. Nunca
-  dado, gráfico ou status.
 
 ## Cor de dado e semântica
 
 Toda cor de dado tem papel fixo. Os valores estão em `styles.css` (sempre um `--wu-*` ou mistura
-de `fg` com `surface`, nenhuma cor nova); os papéis estão em `lib/grafico.ts`. Componente nenhum
-escolhe cor de dado por conta própria.
+de `fg` com `surface`, nenhuma cor nova); os papéis estão em `lib/grafico.ts`, menos os baldes
+(`BALDES`, em `components/medidor.tsx`, porque medidor e conversa desenham a mesma fita).
+Componente nenhum escolhe cor de dado por conta própria.
 
 | Papel | Token | Valor | Onde |
 | --- | --- | --- | --- |
@@ -76,19 +80,20 @@ escolhe cor de dado por conta própria.
   17.72 / 15.30, 7.04 / 6.94, 4.40 / 4.64, 3.11 / 3.31.
 - **Direções reusam entrada/saída**: o que o cliente falou é o que vira token de entrada do outro
   lado. Mesma pergunta ("quem falou"), mesma cor, nas duas origens.
-- **Custo é `fg`.** Valor de KPI é sempre `fg`; o ponto colorido antes do rótulo do `Cartao`
-  (`cor`) é a legenda da série, não pinta o número.
+- **Custo é `fg`.** Valor de KPI é sempre `fg`, ou `danger` no tile de `problema`; o ponto colorido
+  antes do rótulo do `Cartao` (`cor`) é a legenda da série, não pinta o número. Só leva ponto o
+  número que é uma série com cor nos gráficos da tela (as origens no consolidado).
 - Categoria na tabela vai só em texto, sem ponto: a cor dela é de gráfico.
 
 ## Tipografia e formatos
 
-- Inter para tudo, números tabulares (`tokens.css`). Mono (`font-mono`) só para ID técnico
-  literal (o `wamid` na mensagem aberta) e para o conteúdo literal de CSV (textarea e exemplo da
-  importação). Nome de modelo e de país não é mono.
+- Mono (`font-mono`) só para ID técnico literal (o `wamid` na mensagem aberta) e para o conteúdo
+  literal de CSV (textarea e exemplo da importação). Nome de modelo e de país não é mono.
 - Dinheiro (`formatCurrency`, `lib/format.ts`): até **4 casas** por padrão (tooltip, tabela), para
   um custo de centavos não sumir. KPI, medidor e legenda passam `{ casas: 2 }`.
-- **Exceção: KPI "Tarifa média"** (`/whatsapp`) fica com 4 casas. É tarifa em centavos de dólar, e
-  com 2 casas `US$ 0,0068` e `US$ 0,0250` viram `US$ 0,01` e `US$ 0,03`.
+- **Exceção: valor unitário** fica com até 4 casas: o KPI "Tarifa média" (`/whatsapp`) e o custo
+  por requisição do medidor. São centavos de dólar, e com 2 casas `US$ 0,0068` e `US$ 0,0250`
+  viram `US$ 0,01` e `US$ 0,03`.
 - Tarifa cadastrada (`formatTarifa`): até 6 casas. Ali o número é o dado.
 - Data e hora (`formatDateTime`): `dd/mm/aaaa, HH:mm`. **Exceção: listas de log** (eventos do LLM,
   mensagens do WhatsApp) passam `{ segundos: true }`, porque linhas do mesmo minuto precisam se
@@ -102,13 +107,17 @@ escolhe cor de dado por conta própria.
   não a da tela: 18px abaixo de 9.5rem, 22px até 12rem, 28px acima. Exceção ao "28, 22 abaixo de
   700px": com 2 tiles a 390px e 4 logo acima de 1100px (sidebar de 252px) sobram ~140–160px, e
   `US$ 1.284,60` truncaria.
-- KPIs em 2 colunas até 1100px, inclusive no celular.
+- KPIs em 2 colunas até 1100px, inclusive no celular; o esqueleto da raiz (`routes/__root.tsx`)
+  também, para a página não mudar de forma quando os dados chegam.
+- Rótulo de KPI cabe no tile a 390 e a 1280 (o `Cartao` trunca): "Tarifa média", não "Custo por
+  mensagem cobrável".
 - `children` do `Cartao` recebe o que a nota não diz sozinha (a fita de "Cobráveis": `fg` sobre
   trilho `sel`), com esqueleto próprio.
 - `Medidor` (`components/medidor.tsx`) substitui a fileira de KPIs em `/llm` e
   `/llm/eventos/$ator`: os quatro baldes somam o total, então a leitura é uma fita, não quatro
-  tiles soltos. Segue a tipografia do KPI. A fita cresce uma vez na montagem (`.fita-segmento`),
-  a única animação de conteúdo, desligada em `prefers-reduced-motion`.
+  tiles soltos. O valor segue o KPI do wide-ui pela largura da tela (22 abaixo de 700px, 28
+  acima), e não pelo tile: a coluna do custo é larga o bastante. A fita cresce uma vez na montagem
+  (`.fita-segmento`), a única animação de conteúdo, desligada em `prefers-reduced-motion`.
 
 ## Gráficos
 
@@ -132,28 +141,32 @@ Base em `lib/grafico.ts`: `eixo`, `tooltipEstilo`, `legendaEstilo`, `TooltipDoTe
 
 ## Tabelas e linha clicável
 
-- Meta line em vez de coluna extra; números e datas à direita; scroll interno; cartões abaixo de
-  700px (o cartão inteiro abre).
+- Abaixo de 700px o cartão inteiro abre, como a linha.
 - **Linha clicável** (`/llm/eventos`, `/llm/eventos/$ator`, `/whatsapp/mensagens`, `/precos`):
   ignora o clique se há texto selecionado (`haTextoSelecionado`, `lib/utils.ts`). A linha que
   navega imita o link: Ctrl, ⌘ ou botão do meio abrem em nova aba. O link ou botão da primeira
   célula continua sendo o caminho do teclado (`aria-expanded` quando expande).
+- No cartão que abre, clique dentro do conteúdo aberto não fecha o cartão.
+- Data não trunca. Se a meta line trunca, a data vai numa linha própria (o "novo preço em
+  dd/mm/aaaa" de `/precos`).
 - Coluna do botão de abrir conteúdo (`BotaoDeConteudo`) tem cabeçalho `sr-only` "Conteúdo".
 - Conteúdo aberto (`Conteudo`, `Conversa`): borda esquerda de 3px na cor de quem falou (balde ou
   direção). Não há filete colorido na linha fechada: a direção já tem o ponto na célula.
-- Largura: em `<td>` de layout automático, `max-w` em rem é ignorado. Coluna que deve absorver o
-  resto: `w-full max-w-0 truncate` (Conteúdo em mensagens). Quando a soma das colunas fixas pode
-  passar da largura, limite no `div` interno (`max-w-[11rem] min-w-[8rem]` no item de preço), não
-  no `<td>`, ou a coluna é esmagada.
+- Largura: `max-w` em rem no `<td>` vale, mas é teto fixo, que não cede quando a soma das colunas
+  passa da largura (o Conteúdo de mensagens com `max-w-[22rem]` empurrava Data para fora a 1280).
+  Serve para coluna de tamanho conhecido (Ator em mensagens, `max-w-[13rem]`, com o `truncate` no
+  `div` de dentro). Coluna que deve absorver o resto: `w-full max-w-0 truncate` (Conteúdo em
+  mensagens). Teto e piso juntos vão no `div` interno (`max-w-[11rem] min-w-[8rem]` no item de
+  preço). Conferir a 1280 que a tabela cabe sem rolagem lateral.
 - Paginação: `Paginacao` (`components/paginacao.tsx`).
 
 ## Estados
 
 - `PainelCard` tem carregando (esqueleto com a forma), vazio (`VazioNoCartao`, uma linha) e erro
-  ("Não foi possível carregar este quadro." + "Tentar de novo" com `onRetry`). Nunca erro cru.
+  ("Não foi possível carregar este quadro." + "Tentar de novo" com `onRetry`).
 - Estados de página: `ErrorBox` e `EmptyBox` (`components/empty-states.tsx`).
-- Quadro que só aparece com dado (custo por país, custo por aplicação) aparece também quando a
-  consulta falha, para o erro não sumir junto.
+- Quadro que só aparece com mais de um item (custo por país, custo por aplicação) aparece também
+  quando a consulta falha, para o erro não sumir junto.
 - Lista de log não tem "Atualizar" no cabeçalho nem o "dados de HH:mm" do painel.
 
 ## Pílulas de status
@@ -201,9 +214,8 @@ Base em `lib/grafico.ts`: `eixo`, `tooltipEstilo`, `legendaEstilo`, `TooltipDoTe
   `type=number` aceita.
 - Vocabulário por aba: Modelos fala "preço", Mensagens fala "tarifa" (Novo preço / Nova tarifa,
   Salvar preço / Salvar tarifa). Pílulas de status são iguais nas duas.
-- Ação de linha "Novo preço"/"Nova tarifa": ícone `ghost` com `aria-label` e `title`, visível com
-  hover ou foco na linha, e sempre em `@media (hover: none)`. No cartão, botão contornado com
-  rótulo.
+- Ação de linha "Novo preço"/"Nova tarifa": ícone `ghost` com `aria-label` e `title`, como no
+  wide-ui, mais sempre visível em `@media (hover: none)`. No cartão, botão contornado com rótulo.
 
 ## Importação de CSV
 
@@ -240,8 +252,8 @@ em lote: manda uma linha por vez e **pode gravar metade**. Isso aparece em três
   raiz (`ErroNaRaiz`) ocupa a tela.
 - `CabecalhoDaPagina`: título quebra em qualquer ponto (`overflow-wrap: anywhere`), porque às vezes
   é um id sem espaço (o ator em `/llm/eventos/$ator`) e empurraria a página a 390px.
-- `/precos`: "Importar CSV" (contornado) e o primário, ambos agindo na aba aberta. Contagem da aba
-  numa pílula `sel`, só depois que a lista chega.
+- `/precos`: "Importar CSV" (contornado) e o primário, ambos agindo na aba aberta. A contagem da
+  aba só aparece depois que a lista chega.
 
 ## Componentes compartilhados
 
@@ -287,5 +299,6 @@ Problemas herdados do wide-ui, a corrigir no pacote e não aqui:
   acima de 3.
 - `--wu-brand-ink-light` é calculado contra `--wu-surface`. Com `#E30D4D` ele é o próprio accent e
   cai a 4.43:1 sobre `--wu-bg`: link direto no fundo da página, fora de cartão, fica abaixo de 4.5.
-- O comentário de `tailwind-v4.css` e os exemplos do `components.md` usam `text-muted` como texto,
-  o que colide com o `muted` do shadcn. Vale uma nota no adaptador para projetos com shadcn.
+- O comentário de `tailwind-v4.css` lista `text-muted` como utilitário de texto, e o
+  `components.md` usa `muted` como cor de texto. Em projeto com shadcn, `muted` é fundo. Vale uma
+  nota no adaptador.
