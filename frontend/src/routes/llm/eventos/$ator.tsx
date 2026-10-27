@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Boxes,
@@ -30,7 +30,7 @@ import {
 import { apiGet } from "@/lib/api";
 import { useFilters, filtersToParams } from "@/lib/filters";
 import { formatCurrency, formatDateTime, formatNumber } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { cn, haTextoSelecionado } from "@/lib/utils";
 import type { EventosResponse, EventoItem, MetricaBucket } from "@/lib/api-types";
 
 export const Route = createFileRoute("/llm/eventos/$ator")({
@@ -136,7 +136,7 @@ function PorModelo({ baseParams }: { baseParams: Params }) {
               <div className="text-foreground truncate font-medium">{m.grupo}</div>
               <div className="text-subtle mt-0.5 text-xs">
                 {formatNumber(m.requisicoes)} {m.requisicoes === 1 ? "requisição" : "requisições"} ·{" "}
-                {formatNumber(m.tokens_entrada)} entrada · {formatNumber(m.tokens_saida)} saída
+                {formatNumber(totalDeTokens(m))} tokens
               </div>
             </div>
             <div className="text-foreground shrink-0 font-medium">
@@ -189,20 +189,117 @@ type Modo = "tabela" | "conversa";
  * Duas leituras do mesmo recorte. A tabela responde "quanto custou cada chamada"; a conversa
  * responde "o que foi dito". Nenhuma substitui a outra, e por isso o alternador fica no
  * cabeçalho do quadro — é a mesma leitura em outra forma, não outra tela.
+ *
+ * O cartão é um só nas duas formas, e só o corpo troca: se a raiz mudasse de tipo, o React
+ * desmontaria o alternador junto, e o botão que acabou de receber Enter levaria o foco para o
+ * `body`.
  */
 function Chamadas({ baseParams }: { baseParams: Params }) {
   const [modo, setModo] = useState<Modo>("tabela");
-  const alternador = <AlternadorDeModo modo={modo} onModo={setModo} />;
+  const [offset, setOffset] = useState(0);
+  const [abertos, setAbertos] = useState<Set<string>>(new Set());
 
-  if (modo === "conversa") {
-    return (
-      <PainelCard title="Chamadas" icon={MessagesSquare} action={alternador} bleed>
-        <Conversa baseParams={baseParams} />
+  // Voltar para a primeira página quando o período (ou qualquer filtro) muda: o offset antigo
+  // aponta para um lugar que não existe mais no novo resultado.
+  useEffect(() => {
+    setOffset(0);
+  }, [baseParams.de, baseParams.ate, baseParams.aplicacao, baseParams.modelo, baseParams.ator]);
+
+  const emTabela = modo === "tabela";
+  const params = { ...baseParams, limite: PAGE_SIZE, offset };
+  // Na conversa a tabela não está na tela, e a consulta dela fica parada — como antes, quando ela
+  // nem montava.
+  const q = useQuery({
+    queryKey: ["eventos-llm", params],
+    queryFn: () => apiGet<EventosResponse>("/v1/llm/eventos", params),
+    enabled: emTabela,
+  });
+
+  const alternar = (id: string) =>
+    setAbertos((atual) => {
+      const proximo = new Set(atual);
+      if (proximo.has(id)) proximo.delete(id);
+      else proximo.add(id);
+      return proximo;
+    });
+
+  const data = q.data;
+  const itens = data?.itens ?? [];
+  const total = data?.total ?? 0;
+  const pagina = Math.floor(offset / PAGE_SIZE) + 1;
+  const paginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  return (
+    <div className="flex flex-col gap-3">
+      <PainelCard
+        title="Chamadas"
+        icon={emTabela ? ListOrdered : MessagesSquare}
+        hint={emTabela && total > 0 ? `${formatNumber(total)} no período` : undefined}
+        action={<AlternadorDeModo modo={modo} onModo={setModo} />}
+        bleed
+        loading={emTabela && q.isLoading}
+        error={emTabela ? q.error : null}
+        onRetry={() => void q.refetch()}
+        empty={emTabela && !q.isLoading && itens.length === 0}
+        emptyMessage="Este ator não fez chamadas no período selecionado."
+      >
+        {emTabela ? (
+          <>
+            <ul className="divide-line divide-y min-[700px]:hidden">
+              {itens.map((e) => (
+                <ChamadaCartao
+                  key={e.id}
+                  evento={e}
+                  aberto={abertos.has(e.id)}
+                  onAlternar={alternar}
+                />
+              ))}
+            </ul>
+            <div className="hidden min-[700px]:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10 pl-3" />
+                    <TableHead>Modelo</TableHead>
+                    <TableHead className="text-right">Entrada</TableHead>
+                    <TableHead className="text-right">Saída</TableHead>
+                    <TableHead className="text-right">Cache leitura / escrita</TableHead>
+                    <TableHead className="text-right">Custo</TableHead>
+                    <TableHead className="pr-4 text-right">Data</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {itens.map((e) => (
+                    <ChamadaLinha
+                      key={e.id}
+                      evento={e}
+                      aberto={abertos.has(e.id)}
+                      onAlternar={alternar}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+        ) : (
+          <Conversa baseParams={baseParams} />
+        )}
       </PainelCard>
-    );
-  }
 
-  return <ChamadasTabela baseParams={baseParams} acao={alternador} />;
+      {/* O rodapé só existe quando há linhas: carregando, com erro ou vazio ele diria "Nenhum
+          resultado · Página 1 de 1" embaixo de um cartão que diz outra coisa. */}
+      {emTabela && !q.isLoading && !q.error && itens.length > 0 && (
+        <Paginacao
+          offset={offset}
+          total={total}
+          pagina={pagina}
+          paginas={paginas}
+          ocupado={q.isFetching}
+          onOffset={setOffset}
+        />
+      )}
+    </div>
+  );
 }
 
 /** Controle segmentado: duas formas da mesma leitura, a ativa em `surface` sobre o trilho `sel`. */
@@ -229,94 +326,6 @@ function AlternadorDeModo({ modo, onModo }: { modo: Modo; onModo: (m: Modo) => v
           {m === "tabela" ? "Tabela" : "Conversa"}
         </button>
       ))}
-    </div>
-  );
-}
-
-function ChamadasTabela({ baseParams, acao }: { baseParams: Params; acao: ReactNode }) {
-  const [offset, setOffset] = useState(0);
-  const [abertos, setAbertos] = useState<Set<string>>(new Set());
-
-  // Voltar para a primeira página quando o período (ou qualquer filtro) muda: o offset antigo
-  // aponta para um lugar que não existe mais no novo resultado.
-  useEffect(() => {
-    setOffset(0);
-  }, [baseParams.de, baseParams.ate, baseParams.aplicacao, baseParams.modelo, baseParams.ator]);
-
-  const params = { ...baseParams, limite: PAGE_SIZE, offset };
-  const q = useQuery({
-    queryKey: ["eventos-llm", params],
-    queryFn: () => apiGet<EventosResponse>("/v1/llm/eventos", params),
-  });
-
-  const alternar = (id: string) =>
-    setAbertos((atual) => {
-      const proximo = new Set(atual);
-      if (proximo.has(id)) proximo.delete(id);
-      else proximo.add(id);
-      return proximo;
-    });
-
-  const data = q.data;
-  const itens = data?.itens ?? [];
-  const total = data?.total ?? 0;
-  const pagina = Math.floor(offset / PAGE_SIZE) + 1;
-  const paginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
-
-  return (
-    <div className="flex flex-col gap-3">
-      <PainelCard
-        title="Chamadas"
-        icon={ListOrdered}
-        hint={total > 0 ? `${formatNumber(total)} no período` : undefined}
-        action={acao}
-        bleed
-        loading={q.isLoading}
-        error={q.error}
-        onRetry={() => void q.refetch()}
-        empty={!q.isLoading && itens.length === 0}
-        emptyMessage="Este ator não fez chamadas no período selecionado."
-      >
-        <ul className="divide-line divide-y min-[700px]:hidden">
-          {itens.map((e) => (
-            <ChamadaCartao key={e.id} evento={e} aberto={abertos.has(e.id)} onAlternar={alternar} />
-          ))}
-        </ul>
-        <div className="hidden min-[700px]:block">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10 pl-3" />
-                <TableHead>Modelo</TableHead>
-                <TableHead className="text-right">Entrada</TableHead>
-                <TableHead className="text-right">Saída</TableHead>
-                <TableHead className="text-right">Cache leitura / escrita</TableHead>
-                <TableHead className="text-right">Custo</TableHead>
-                <TableHead className="pr-4 text-right">Data</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {itens.map((e) => (
-                <ChamadaLinha
-                  key={e.id}
-                  evento={e}
-                  aberto={abertos.has(e.id)}
-                  onAlternar={alternar}
-                />
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </PainelCard>
-
-      <Paginacao
-        offset={offset}
-        total={total}
-        pagina={pagina}
-        paginas={paginas}
-        ocupado={q.isFetching}
-        onOffset={setOffset}
-      />
     </div>
   );
 }
@@ -398,7 +407,11 @@ function BotaoDeConteudo({
       variant="ghost"
       size={comRotulo ? "sm" : "icon"}
       className={comRotulo ? "-ml-2 h-7 px-2" : "h-8 w-8"}
-      onClick={onClick}
+      onClick={(e) => {
+        // Para aqui, e não na célula: o resto da célula continua abrindo a linha.
+        e.stopPropagation();
+        onClick();
+      }}
       aria-expanded={aberto}
       aria-label={aberto ? "Ocultar conteúdo" : "Ver conteúdo"}
     >
@@ -422,12 +435,20 @@ function ChamadaLinha({
   return (
     <>
       {/* A linha inteira abre o conteúdo, como no wide-ui; o botão continua sendo o caminho do
-          teclado e do leitor de tela, e para o clique para ele não alternar duas vezes. */}
+          teclado e do leitor de tela, e para o próprio clique para não alternar duas vezes.
+          Clique que terminou uma seleção de texto é cópia, não pedido de abrir. */}
       <TableRow
         className={cn(aberto && "border-b-0", temConteudo && "cursor-pointer")}
-        onClick={temConteudo ? () => onAlternar(evento.id) : undefined}
+        onClick={
+          temConteudo
+            ? () => {
+                if (haTextoSelecionado()) return;
+                onAlternar(evento.id);
+              }
+            : undefined
+        }
       >
-        <TableCell className="py-0 pr-0 pl-3" onClick={(e) => e.stopPropagation()}>
+        <TableCell className="py-0 pr-0 pl-3">
           {temConteudo && <BotaoDeConteudo aberto={aberto} onClick={() => onAlternar(evento.id)} />}
         </TableCell>
         <TableCell className="whitespace-nowrap">
@@ -469,11 +490,7 @@ function ChamadaCartao({
   onAlternar: (id: string) => void;
 }) {
   const temConteudo = Boolean(evento.mensagem || evento.resposta);
-  const tokens =
-    evento.tokens_entrada +
-    evento.tokens_saida +
-    evento.tokens_cache_leitura +
-    evento.tokens_cache_escrita;
+  const tokens = totalDeTokens(evento);
 
   return (
     <li className="flex flex-col gap-1 px-4 py-3">
@@ -500,4 +517,14 @@ function ChamadaCartao({
       )}
     </li>
   );
+}
+
+/** Os quatro baldes somados: não se sobrepõem, então a soma é o total de tokens da linha. */
+function totalDeTokens(t: {
+  tokens_entrada: number;
+  tokens_saida: number;
+  tokens_cache_leitura: number;
+  tokens_cache_escrita: number;
+}) {
+  return t.tokens_entrada + t.tokens_saida + t.tokens_cache_leitura + t.tokens_cache_escrita;
 }

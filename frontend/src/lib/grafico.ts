@@ -102,6 +102,13 @@ export const SERIES = [
 ] as const;
 
 /**
+ * A fatia que junta o que passou das séries (a rosca de custo por modelo: quatro maiores + o
+ * resto). Neutra porque não é um item, é a sobra — e o mesmo cinza do "sem categoria", que já
+ * passa de 3:1 contra o cartão nos dois temas e não se confunde com nenhuma série.
+ */
+export const OUTROS = { nome: "Outros", cor: "var(--serie-outros)" } as const;
+
+/**
  * As duas origens, na ordem e nas cores que valem na tela inteira.
  *
  * Sai daqui e não de cada gráfico porque a regra é essa: LLM e WhatsApp têm de ter **sempre** a

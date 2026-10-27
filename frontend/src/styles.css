@@ -141,6 +141,10 @@
   --categoria-service: var(--wu-c5);
   --categoria-nenhuma: color-mix(in oklab, var(--wu-fg) 45%, var(--wu-surface));
 
+  /* A fatia "Outros" de uma rosca recortada: a sobra, não uma série. Reusa o cinza do "sem
+     categoria" (e herda o clareamento do bloco escuro), que não se confunde com c1..c5. */
+  --serie-outros: var(--categoria-nenhuma);
+
   /*
    * Os quatro baldes de token, do mais caro ao mais barato: uma rampa neutra, de `fg` para o
    * cinza, porque os quatro são partes de um mesmo todo (nunca se sobrepõem — ver

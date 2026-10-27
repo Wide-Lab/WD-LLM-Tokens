@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, Users } from "lucide-react";
 
@@ -17,6 +17,7 @@ import {
 import { apiGet } from "@/lib/api";
 import { useFilters, filtersToParams } from "@/lib/filters";
 import { formatCurrency, formatNumber } from "@/lib/format";
+import { haTextoSelecionado } from "@/lib/utils";
 import type { MetricaBucket } from "@/lib/api-types";
 
 export const Route = createFileRoute("/llm/eventos/")({
@@ -48,6 +49,12 @@ export const Route = createFileRoute("/llm/eventos/")({
 function AtoresPage() {
   const { filters } = useFilters();
   const navigate = useNavigate();
+  const router = useRouter();
+  // O mesmo endereço que o `<Link>` da célula monta, para a nova aba abrir onde o link abriria.
+  const abrirEmNovaAba = (ator: string) => {
+    const { href } = router.buildLocation({ to: "/llm/eventos/$ator", params: { ator } });
+    window.open(href, "_blank", "noopener");
+  };
   const params = {
     ...filtersToParams(filters),
     modelo: filters.modelo || undefined,
@@ -131,10 +138,27 @@ function AtoresPage() {
                   key={a.grupo}
                   className="group cursor-pointer"
                   // A linha inteira abre o ator, como no wide-ui. O clique que já caiu no link
-                  // passa reto: ele navega sozinho (e abre em nova aba com Ctrl).
+                  // passa reto: ele navega sozinho (e abre em nova aba com Ctrl). Fora dele, a
+                  // linha imita o link: Ctrl, ⌘ ou o botão do meio abrem em nova aba, e o clique
+                  // que terminou uma seleção de texto é cópia, não navegação.
                   onClick={(e) => {
                     if ((e.target as HTMLElement).closest("a")) return;
+                    if (haTextoSelecionado()) return;
+                    if (e.ctrlKey || e.metaKey) {
+                      abrirEmNovaAba(a.grupo ?? "");
+                      return;
+                    }
                     void navigate({ to: "/llm/eventos/$ator", params: { ator: a.grupo ?? "" } });
+                  }}
+                  onMouseDown={(e) => {
+                    // Sem isto o botão do meio liga a rolagem automática do navegador e o
+                    // `auxclick` não chega.
+                    if (e.button === 1 && !(e.target as HTMLElement).closest("a"))
+                      e.preventDefault();
+                  }}
+                  onAuxClick={(e) => {
+                    if (e.button !== 1 || (e.target as HTMLElement).closest("a")) return;
+                    abrirEmNovaAba(a.grupo ?? "");
                   }}
                 >
                   <TableCell className="max-w-[320px] p-0">

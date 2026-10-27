@@ -26,7 +26,14 @@ import { GlobalFilters } from "@/components/global-filters";
 import { BALDES, Medidor } from "@/components/medidor";
 import { PainelCard } from "@/components/painel-card";
 import { Button } from "@/components/ui/button";
-import { SERIES, eixo, legendaComValores, tooltipEstilo, truncarRotulo } from "@/lib/grafico";
+import {
+  OUTROS,
+  SERIES,
+  eixo,
+  legendaComValores,
+  tooltipEstilo,
+  truncarRotulo,
+} from "@/lib/grafico";
 import { apiGet } from "@/lib/api";
 import { useFilters, filtersToParams } from "@/lib/filters";
 import {
@@ -267,43 +274,68 @@ function TokensTemporal({
 }
 
 /**
- * A rosca dos modelos mais caros, com o custo do período no centro e, na legenda, o valor e a
- * fatia de cada um sobre esse total.
+ * A rosca do custo por modelo, com o custo do período no centro e, na legenda, o valor e a fatia
+ * de cada um sobre esse total.
  *
- * São cinco, e não mais, porque as séries do wide-ui são cinco: a sexta fatia repetiria a cor da
- * primeira, e a legenda deixaria de dizer qual é qual. O total e as porcentagens vêm do banco (a
- * consulta sem `grupo`), não da soma das fatias — com mais de cinco modelos as fatias não somam o
- * período, e o centro diria um total que não existe.
+ * As séries do wide-ui são cinco: com até cinco modelos, cada um ganha a sua. Com mais, a sexta
+ * cor repetiria a primeira, então ficam os quatro maiores em c1..c4 e uma fatia "Outros" em
+ * neutro, igual ao total do período (do banco, a consulta sem `grupo`) menos os quatro. É uma
+ * diferença entre dois números do banco, não a soma das fatias no browser — e é ela que faz o
+ * anel fechar o total escrito no centro.
+ *
+ * A fatia sai com uma casa decimal, e as porcentagens são distribuídas pelo maior resto para
+ * somarem exatamente 100% do centro.
  */
 function CustoPorModelo({ baseParams }: { baseParams: Params }) {
   const q = useMetricas({ ...baseParams, grupo: "modelo" });
-  const data = (q.data ?? [])
+  // A mesma chave do medidor: não abre request.
+  const qTotais = useMetricas(baseParams);
+  const totais = qTotais.data?.[0];
+  const modelos = (q.data ?? [])
     .filter((d) => (d.custo ?? 0) > 0)
-    .sort((a, b) => (b.custo ?? 0) - (a.custo ?? 0))
-    .slice(0, SERIES.length);
-  const totais = useTotais(baseParams);
-  const moeda = data[0]?.moeda ?? totais?.moeda ?? "USD";
+    .sort((a, b) => (b.custo ?? 0) - (a.custo ?? 0));
+  const moeda = modelos[0]?.moeda ?? totais?.moeda ?? "USD";
   const totalDoPeriodo = totais?.custo ?? null;
 
-  const valores: Record<string, string> = {};
-  for (const d of data) {
-    const fatia =
-      totalDoPeriodo && totalDoPeriodo > 0
-        ? ` · ${(((d.custo ?? 0) / totalDoPeriodo) * 100).toFixed(1).replace(".", ",")}%`
-        : "";
-    valores[d.grupo ?? ""] = dinheiro(d.custo, d.moeda ?? moeda) + fatia;
+  const recortado = modelos.length > SERIES.length;
+  const fatias: Fatia[] = (recortado ? modelos.slice(0, SERIES.length - 1) : modelos).map(
+    (d, i) => ({ nome: d.grupo ?? "", custo: d.custo ?? 0, cor: SERIES[i] }),
+  );
+  if (recortado && totalDoPeriodo !== null) {
+    const outros = totalDoPeriodo - fatias.reduce((s, f) => s + f.custo, 0);
+    // Abaixo disso é resto de ponto flutuante, não dinheiro: a fatia some.
+    if (outros > 1e-6) fatias.push({ nome: OUTROS.nome, custo: outros, cor: OUTROS.cor });
   }
+
+  const porcentagens = porcentagensQueFecham(
+    fatias.map((f) => f.custo),
+    totalDoPeriodo,
+  );
+  const valores: Record<string, string> = {};
+  fatias.forEach((f, i) => {
+    const p = porcentagens[i];
+    valores[f.nome] =
+      dinheiro(f.custo, moeda) + (p !== undefined ? ` · ${p.toFixed(1).replace(".", ",")}%` : "");
+  });
   const legenda = legendaComValores(valores, { por: "nome" });
+
+  // Recortado, a fatia "Outros" depende do total: sem ele o anel não fecha, então o quadro
+  // espera (ou falha) junto com a consulta dos totais.
+  const carregando = q.isLoading || (recortado && qTotais.isLoading);
+  const erro = q.error ?? (recortado ? qTotais.error : null);
 
   return (
     <PainelCard
       title="Custo por modelo"
       icon={ChartPie}
-      hint={`${SERIES.length} maiores`}
-      loading={q.isLoading}
-      error={q.error}
-      onRetry={() => void q.refetch()}
-      empty={!q.isLoading && data.length === 0}
+      hint={recortado ? `${SERIES.length - 1} maiores + outros` : undefined}
+      loading={carregando}
+      error={erro}
+      onRetry={() => {
+        void q.refetch();
+        if (qTotais.error) void qTotais.refetch();
+      }}
+      empty={!carregando && fatias.length === 0}
       emptyMessage="Nenhum modelo com custo apurado. Verifique se há preço vigente para o período."
     >
       <ResponsiveContainer width="100%" height="100%">
@@ -311,9 +343,9 @@ function CustoPorModelo({ baseParams }: { baseParams: Params }) {
           <Tooltip {...tooltipEstilo} formatter={(v: number) => formatCurrency(v, moeda)} />
           <Legend {...legenda} />
           <Pie
-            data={data}
+            data={fatias}
             dataKey="custo"
-            nameKey="grupo"
+            nameKey="nome"
             cx="50%"
             cy="50%"
             innerRadius="62%"
@@ -322,8 +354,8 @@ function CustoPorModelo({ baseParams }: { baseParams: Params }) {
             stroke="var(--card)"
             strokeWidth={2}
           >
-            {data.map((_, i) => (
-              <Cell key={i} fill={SERIES[i]} />
+            {fatias.map((f) => (
+              <Cell key={f.nome} fill={f.cor} />
             ))}
             {totalDoPeriodo !== null && (
               <Label
@@ -349,6 +381,30 @@ function CustoPorModelo({ baseParams }: { baseParams: Params }) {
       </ResponsiveContainer>
     </PainelCard>
   );
+}
+
+type Fatia = { nome: string; custo: number; cor: string };
+
+/**
+ * A fatia de cada valor sobre `total`, com uma casa, pelo método do maior resto: arredondar cada
+ * uma por conta própria pode dar 99,9% ou 100,1%, e a legenda diria que o anel não fecha. Os
+ * décimos que faltam (ou sobram) vão para as fatias de maior resto. Sem total, não há fatia.
+ */
+function porcentagensQueFecham(valores: number[], total: number | null): number[] {
+  if (total === null || total <= 0) return [];
+  const brutos = valores.map((v) => (v / total) * 1000); // em décimos de ponto percentual
+  const alvo = Math.round(brutos.reduce((s, b) => s + b, 0));
+  const pisos = brutos.map(Math.floor);
+  let falta = alvo - pisos.reduce((s, p) => s + p, 0);
+  const ordem = brutos
+    .map((b, i) => ({ i, resto: b - Math.floor(b) }))
+    .sort((a, b) => b.resto - a.resto);
+  for (const { i } of ordem) {
+    if (falta <= 0) break;
+    pisos[i] += 1;
+    falta -= 1;
+  }
+  return pisos.map((p) => p / 10);
 }
 
 /** O rótulo de valor na ponta de cada barra: é a legenda com valor de um gráfico de uma série só. */
@@ -405,7 +461,7 @@ function UsoPorAplicacao({ baseParams }: { baseParams: Params }) {
   const data = (q.data ?? []).slice().sort((a, b) => (b.custo ?? 0) - (a.custo ?? 0));
   const moeda = data[0]?.moeda ?? "USD";
 
-  if (!q.isLoading && data.length <= 1) return null;
+  if (!q.isLoading && !q.error && data.length <= 1) return null;
 
   return (
     <PainelCard
