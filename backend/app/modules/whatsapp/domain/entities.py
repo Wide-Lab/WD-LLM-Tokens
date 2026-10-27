@@ -62,7 +62,7 @@ class NovaMensagem:
     ator: str
     """O `wa_id` do cliente, E.164 só dígitos — **o mesmo texto do `ator` do LLM**. Não há
     constraint que garanta isso: é convenção de quem reporta, e é o único acoplamento entre os
-    dois módulos (ver `docs/api.md`)."""
+    dois módulos (ver `.claude/docs/api.md`)."""
 
     direcao: Direcao
     pais: str

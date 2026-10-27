@@ -2,7 +2,10 @@ from typing import Any
 
 
 class AppError(Exception):
-    """Base dos erros da aplicação. Vira o `{"erro": ..., "detalhe": ...}` de `docs/api.md`."""
+    """Base dos erros da aplicação.
+
+    Vira o `{"erro": ..., "detalhe": ...}` de `.claude/docs/api.md`.
+    """
 
     status_code = 400
     message = "Ocorreu um erro na aplicação."

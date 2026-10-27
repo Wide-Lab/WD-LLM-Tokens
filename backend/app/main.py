@@ -41,7 +41,7 @@ def setup_middleware(app: FastAPI) -> None:
 
 
 def setup_exception_handlers(app: FastAPI) -> None:
-    """O formato de erro uniforme de `docs/api.md`: `{"erro": ..., "detalhe": ...}`.
+    """O formato de erro uniforme de `.claude/docs/api.md`: `{"erro": ..., "detalhe": ...}`.
 
     O handler do `RequestValidationError` está aqui pelo mesmo motivo: sem ele, o 422 do FastAPI
     sairia no formato dele (`{"detail": [...]}`) e o painel teria dois formatos de erro para

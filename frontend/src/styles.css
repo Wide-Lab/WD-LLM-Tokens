@@ -148,7 +148,7 @@
   /*
    * Os quatro baldes de token, do mais caro ao mais barato: uma rampa neutra, de `fg` para o
    * cinza, porque os quatro são partes de um mesmo todo (nunca se sobrepõem — ver
-   * `docs/modelo-de-dados.md`) e porque token não pode pegar a cor de origem nenhuma — as
+   * `.claude/docs/modelo-de-dados.md`) e porque token não pode pegar a cor de origem nenhuma — as
    * séries c1..c5 já dizem LLM, WhatsApp e categoria. Os dois de cache são os mais apagados de
    * propósito: cache é a faixa com desconto. A rampa mistura `fg` com `surface` em `oklab` (que
    * não interpola matiz), então "apagado" funciona nos dois temas sem bloco escuro.

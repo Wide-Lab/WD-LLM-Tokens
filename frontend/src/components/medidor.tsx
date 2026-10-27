@@ -11,7 +11,7 @@ import type { MetricaBucket } from "@/lib/api-types";
  *
  * Substitui a fileira de cartões idênticos porque ela escondia o fato mais característico
  * do modelo de dados: os quatro baldes de token **não se sobrepõem** e somam o total
- * (`docs/modelo-de-dados.md`). Cinco números soltos não mostram isso; uma barra única
+ * (`.claude/docs/modelo-de-dados.md`). Cinco números soltos não mostram isso; uma barra única
  * repartida em quatro mostra — a proporção é a informação.
  *
  * Custo fica de fora da fita, numa coluna própria, porque é outra substância: não é uma quinta

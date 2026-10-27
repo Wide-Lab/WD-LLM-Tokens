@@ -159,7 +159,7 @@ curl -X POST localhost:8000/api/v1/whatsapp/mensagens \
 ```
 
 `categoria` e `cobravel` são cópias do objeto `pricing` do webhook de status da Meta — não são
-regra nossa e não são recalculadas aqui (ver `docs/api.md`). O `id_externo` é o `wamid`: reenviar
+regra nossa e não são recalculadas aqui (ver `.claude/docs/api.md`). O `id_externo` é o `wamid`: reenviar
 o mesmo devolve `duplicado: true`, que é o que deixa repassar `sent`, `delivered` e `read` sem
 contar a mensagem três vezes.
 

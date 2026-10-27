@@ -11,7 +11,7 @@ class EventoIn(BaseModel):
     """O que uma aplicação de IA reporta depois de uma chamada ao LLM.
 
     Sem `custo`: o evento não carrega dinheiro. E os quatro baldes de token são
-    **não-sobrepostos** — quem reporta normaliza antes (ver `docs/modelo-de-dados.md`)."""
+    **não-sobrepostos** — quem reporta normaliza antes (ver `.claude/docs/modelo-de-dados.md`)."""
 
     aplicacao: str = Field(min_length=1)
     ator: str = Field(min_length=1)

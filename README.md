@@ -75,6 +75,7 @@ Para mexer só no backend, ver [`backend/README.md`](backend/README.md).
 
 ## Documentos
 
-- [`docs/modelo-de-dados.md`](docs/modelo-de-dados.md) — tabelas, contabilidade de tokens, cálculo de custo
-- [`docs/api.md`](docs/api.md) — contratos dos endpoints, autenticação, CORS, erros
+- [`.claude/docs/modelo-de-dados.md`](.claude/docs/modelo-de-dados.md) — tabelas, contabilidade de tokens, cálculo de custo
+- [`.claude/docs/api.md`](.claude/docs/api.md) — contratos dos endpoints, autenticação, CORS, erros
 - [`backend/README.md`](backend/README.md) — estrutura, dev local, migrations
+- [`docs/ui-patterns.md`](docs/ui-patterns.md) — padrões de UI: o que o painel acrescenta ou sobrescreve no wide-ui
