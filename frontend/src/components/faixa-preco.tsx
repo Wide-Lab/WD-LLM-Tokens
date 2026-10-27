@@ -1,11 +1,18 @@
-import { useState, type ReactNode } from "react";
-import { ChevronRight, Plus } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, Plus } from "lucide-react";
 
 import { StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { formatDateOnly } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { cn, haTextoSelecionado } from "@/lib/utils";
 
 /** Uma vigência já formatada para a tela: a data em que passou a valer e as tarifas dela. */
 export interface Vigencia {
@@ -13,6 +20,17 @@ export interface Vigencia {
   /** ISO sem hora, como vem do backend. */
   desde: string;
   leituras: { rotulo: string; valor: string }[];
+}
+
+/** Uma linha da tabela de preços: o que está sendo precificado, com todas as vigências dele. */
+export interface ItemDePreco {
+  chave: string;
+  titulo: string;
+  /** Fato secundário (o provedor do modelo) — vai na linha meta, e não numa coluna a mais. */
+  meta?: string | null;
+  /** Todas as vigências deste item, da mais nova para a mais antiga (a ordem do backend). */
+  vigencias: Vigencia[];
+  onNovoPreco: () => void;
 }
 
 /** Dias desde a época, a partir da string ISO — sem `new Date(iso)`, que desloca o fuso. */
@@ -26,21 +44,77 @@ function hojeEmDias(): number {
   return Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()) / 86_400_000;
 }
 
+interface Situacao {
+  /** A que vale hoje. Sem ela, só há preço agendado e o custo fica em branco até ele começar. */
+  atual: Vigencia | undefined;
+  futuras: Vigencia[];
+  anteriores: Vigencia[];
+  /** As que já começaram (a atual e as anteriores), da mais nova para a mais antiga. */
+  valendo: Vigencia[];
+}
+
 /**
- * A régua de vigência: a assinatura desta tela.
+ * "Vigente" é a de maior `desde` que já começou — a mesma regra do `LEFT JOIN LATERAL` que calcula
+ * o custo. Pegar simplesmente a mais recente mostraria um preço agendado para o mês que vem como se
+ * ele já estivesse valendo.
+ */
+function situacaoDe(vigencias: Vigencia[]): Situacao {
+  const hoje = hojeEmDias();
+  const futuras = vigencias.filter((v) => emDias(v.desde) > hoje);
+  const valendo = vigencias.filter((v) => emDias(v.desde) <= hoje);
+  return { atual: valendo[0], futuras, anteriores: valendo.slice(1), valendo };
+}
+
+/** A primeira data em que algum preço deste item passa a valer, quando nenhum vale ainda. */
+function primeiroInicio(s: Situacao): string | null {
+  return s.futuras.length > 0 ? s.futuras[s.futuras.length - 1].desde : null;
+}
+
+function linhaMeta(item: ItemDePreco, s: Situacao): string {
+  const inicio = primeiroInicio(s);
+  return [
+    item.meta,
+    s.anteriores.length === 1
+      ? "1 vigência anterior"
+      : s.anteriores.length > 1
+        ? `${s.anteriores.length} vigências anteriores`
+        : null,
+    !s.atual && inicio ? `o primeiro começa em ${formatDateOnly(inicio)}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/**
+ * A situação do preço como pílula. "Sem preço vigente" é `pending`, o mesmo tom do "Sem preço" das
+ * mensagens do WhatsApp: é o mesmo buraco visto do outro lado — custo em branco até haver preço.
+ */
+function PilulasDeSituacao({ s, className }: { s: Situacao; className?: string }) {
+  return (
+    <div className={cn("flex flex-wrap items-center gap-1.5", className)}>
+      {s.atual ? (
+        <StatusPill tom="done">Vigente</StatusPill>
+      ) : (
+        <StatusPill tom="pending">Sem preço vigente</StatusPill>
+      )}
+      {s.atual && s.futuras.length > 0 && <StatusPill tom="progress">Agendado</StatusPill>}
+    </div>
+  );
+}
+
+/**
+ * A régua de vigência: as vigências como faixas proporcionais ao tempo que cada uma valeu.
  *
  * Ela existe porque `preco_modelo` é a única tabela do painel em que uma linha não é um fato, é um
- * **trecho de tempo** — e é o trecho, não o valor, que decide qual evento sai por quanto. Ver as
- * vigências como faixas proporcionais responde de relance o que uma tabela responde lendo linha
- * por linha: há quanto tempo o preço atual vale, e se o anterior valeu uma semana ou dois anos.
- *
- * Só aparece com duas vigências ou mais. Com uma só, uma faixa cheia não compara nada.
+ * **trecho de tempo** — e é o trecho, não o valor, que decide qual evento sai por quanto. A régua
+ * responde de relance há quanto tempo o preço atual vale, e se o anterior valeu uma semana ou dois
+ * anos. Só aparece com duas vigências ou mais: com uma só, uma faixa cheia não compara nada.
  */
 function ReguaDeVigencia({ vigencias }: { vigencias: Vigencia[] }) {
   const fim = hojeEmDias();
 
   return (
-    <div className="px-4 pb-4">
+    <div>
       <div className="flex h-1.5 w-full gap-px" aria-hidden="true">
         {vigencias.map((v, i) => {
           const proxima = i + 1 < vigencias.length ? emDias(vigencias[i + 1].desde) : fim;
@@ -71,136 +145,308 @@ function ReguaDeVigencia({ vigencias }: { vigencias: Vigencia[] }) {
 }
 
 /**
- * Um preço na tela: o que vale hoje em destaque, e o resto como história.
- *
- * A unidade da tela não é a linha da tabela, é **o que está sendo precificado** — um modelo, um par
- * categoria/país. Listar as linhas cruas repetiria o mesmo modelo cinco vezes e enterraria a
- * pergunta que se faz aqui ("quanto custa hoje?") no meio do histórico, que é a pergunta rara.
+ * O histórico de um item, aberto na própria linha: todas as vigências da mais nova para a mais
+ * antiga, a agendada e a vigente marcadas, e a régua quando há o que comparar.
  */
-export function FaixaDePreco({
-  titulo,
-  distintivo,
-  subtitulo,
-  unidade,
-  vigencias,
-  onNovoPreco,
-}: {
-  titulo: string;
-  /** Marca de categoria ou provedor que precisa de cor própria. */
-  distintivo?: ReactNode;
-  subtitulo?: string | null;
-  /** O que os números querem dizer: "por milhão de tokens", "por mensagem". */
-  unidade: string;
-  /** Todas as vigências deste item, da mais nova para a mais antiga (a ordem do backend). */
-  vigencias: Vigencia[];
-  onNovoPreco: () => void;
-}) {
-  const [aberto, setAberto] = useState(false);
-  const hoje = hojeEmDias();
-
-  // "Vigente" é a de maior `desde` que já começou — a mesma regra do `LEFT JOIN LATERAL` que
-  // calcula o custo. Pegar simplesmente a mais recente mostraria um preço agendado para o mês que
-  // vem como se ele já estivesse valendo.
-  const futuras = vigencias.filter((v) => emDias(v.desde) > hoje);
-  const valendo = vigencias.filter((v) => emDias(v.desde) <= hoje);
-  const atual = valendo[0];
-  const anteriores = valendo.slice(1);
+function Historico({ s }: { s: Situacao }) {
+  const inicio = primeiroInicio(s);
+  const todas = [...s.futuras, ...s.valendo];
 
   return (
-    <section className="border-line bg-card shadow-card flex min-w-0 flex-col rounded-[var(--wu-radius)] border">
-      <header className="border-line flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b px-4 py-2.5">
-        <div className="flex min-w-0 items-center gap-2.5">
-          {distintivo}
-          <div className="min-w-0">
-            <div className="text-foreground truncate text-sm font-semibold">{titulo}</div>
-            {subtitulo && <div className="text-subtle truncate text-xs">{subtitulo}</div>}
-          </div>
-        </div>
-        <Button variant="outline" size="sm" onClick={onNovoPreco} className="gap-1.5">
-          <Plus className="h-3.5 w-3.5" />
-          Novo preço
-        </Button>
-      </header>
+    <div className="flex flex-col gap-3 pt-2">
+      {!s.atual && inicio && (
+        <p className="text-muted-foreground text-[13px]">
+          O primeiro preço só começa em {formatDateOnly(inicio)}. Até lá, o custo destes eventos
+          fica em branco no painel.
+        </p>
+      )}
+      {s.valendo.length >= 2 && <ReguaDeVigencia vigencias={[...s.valendo].reverse()} />}
+      <ol className="border-line bg-card divide-line divide-y rounded-[var(--wu-radius)] border">
+        {todas.map((v) => (
+          <li
+            key={v.id}
+            className="flex flex-wrap items-center gap-x-5 gap-y-1.5 px-3 py-2.5 text-[13px]"
+          >
+            <span className="text-muted-foreground w-[5.5rem] shrink-0">
+              {formatDateOnly(v.desde)}
+            </span>
+            <span className="w-[5.5rem] shrink-0">
+              {v === s.atual ? (
+                <StatusPill tom="done">Vigente</StatusPill>
+              ) : s.futuras.includes(v) ? (
+                <StatusPill tom="progress">Agendado</StatusPill>
+              ) : null}
+            </span>
+            <span className="flex flex-wrap gap-x-4 gap-y-1">
+              {v.leituras.map((l) => (
+                <span key={l.rotulo} className="flex items-baseline gap-1.5">
+                  <span className="text-subtle text-[12.5px]">{l.rotulo}</span>
+                  <span className="text-foreground font-medium">{l.valor}</span>
+                </span>
+              ))}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
 
-      <div className="p-4">
-        {atual ? (
-          <>
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusPill tom="done">Vigente</StatusPill>
-              <span className="text-subtle text-xs">desde {formatDateOnly(atual.desde)}</span>
+/**
+ * O botão que abre o histórico. A linha inteira também abre, mas uma `<tr>` com `onClick` não é
+ * focável: o botão é o caminho do teclado, e segura o próprio clique para a linha não alternar duas
+ * vezes. `comRotulo` é a forma do cartão, em que o ícone sozinho não diz o que abre.
+ */
+function BotaoDeHistorico({
+  aberto,
+  onClick,
+  comRotulo,
+}: {
+  aberto: boolean;
+  onClick: () => void;
+  comRotulo?: boolean;
+}) {
+  return (
+    <Button
+      variant="ghost"
+      size={comRotulo ? "sm" : "icon"}
+      className={comRotulo ? "-ml-2 h-8 px-2" : "h-8 w-8"}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      aria-expanded={aberto}
+      aria-label={aberto ? "Ocultar histórico" : "Ver histórico"}
+    >
+      <ChevronDown className={cn("h-4 w-4 transition-transform", aberto && "rotate-180")} />
+      {comRotulo && (aberto ? "Ocultar histórico" : "Ver histórico")}
+    </Button>
+  );
+}
+
+/**
+ * A tabela de preços: uma linha por **o que está sendo precificado** (um modelo, um par
+ * categoria/país), com as tarifas que valem hoje — e o histórico de vigências dentro da linha,
+ * aberto sob demanda.
+ *
+ * Não é a lista crua de `preco_modelo`: ela repetiria o mesmo modelo em cada reajuste e enterraria
+ * a pergunta que se faz aqui ("quanto custa hoje?") no meio do histórico, que é a pergunta rara.
+ * Abaixo de 700px vira lista de cartões, com as mesmas informações e sem rolagem lateral.
+ */
+export function TabelaDePrecos({
+  itens,
+  rotuloDoItem,
+  colunas,
+}: {
+  itens: ItemDePreco[];
+  /** O nome da primeira coluna: "Modelo", "Tarifa". */
+  rotuloDoItem: string;
+  /** Os rótulos das leituras de cada vigência, na ordem em que vêm em `leituras`. */
+  colunas: string[];
+}) {
+  const [abertos, setAbertos] = useState<Set<string>>(new Set());
+
+  const alternar = (chave: string) =>
+    setAbertos((atual) => {
+      const proximo = new Set(atual);
+      if (proximo.has(chave)) proximo.delete(chave);
+      else proximo.add(chave);
+      return proximo;
+    });
+
+  return (
+    <>
+      <ul className="divide-line divide-y min-[700px]:hidden">
+        {itens.map((item) => (
+          <PrecoCartao
+            key={item.chave}
+            item={item}
+            aberto={abertos.has(item.chave)}
+            onAlternar={alternar}
+          />
+        ))}
+      </ul>
+      <div className="hidden min-[700px]:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10 pl-3">
+                <span className="sr-only">Histórico</span>
+              </TableHead>
+              <TableHead>{rotuloDoItem}</TableHead>
+              <TableHead>Situação</TableHead>
+              {colunas.map((c) => (
+                <TableHead key={c} className="text-right">
+                  {c}
+                </TableHead>
+              ))}
+              <TableHead className="text-right">Desde</TableHead>
+              <TableHead className="w-12 pr-4">
+                <span className="sr-only">Ações</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {itens.map((item) => (
+              <PrecoLinha
+                key={item.chave}
+                item={item}
+                colunas={colunas}
+                aberto={abertos.has(item.chave)}
+                onAlternar={alternar}
+              />
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </>
+  );
+}
+
+function PrecoLinha({
+  item,
+  colunas,
+  aberto,
+  onAlternar,
+}: {
+  item: ItemDePreco;
+  colunas: string[];
+  aberto: boolean;
+  onAlternar: (chave: string) => void;
+}) {
+  const s = situacaoDe(item.vigencias);
+  const meta = linhaMeta(item, s);
+
+  return (
+    <>
+      <TableRow
+        onClick={() => {
+          if (haTextoSelecionado()) return;
+          onAlternar(item.chave);
+        }}
+        className={cn("group cursor-pointer", aberto && "bg-raised hover:bg-raised border-b-0")}
+      >
+        <TableCell className="pr-0 pl-3">
+          <BotaoDeHistorico aberto={aberto} onClick={() => onAlternar(item.chave)} />
+        </TableCell>
+        {/* O limite fica no `div`: `max-w` num `<td>` de layout automático é ignorado. */}
+        <TableCell>
+          <div className="max-w-[11rem] min-w-[8rem]">
+            <div className="text-foreground truncate font-medium" title={item.titulo}>
+              {item.titulo}
             </div>
-            <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
-              {atual.leituras.map((l) => (
-                <div key={l.rotulo}>
-                  <dt className="text-muted-foreground text-[12.5px]">{l.rotulo}</dt>
-                  <dd className="text-foreground mt-1 text-lg leading-tight font-semibold">
-                    {l.valor}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-            <div className="text-subtle mt-3 text-xs">{unidade}</div>
-          </>
-        ) : (
-          // Só preço agendado: nada aqui tem custo ainda, e é melhor a tela dizer isso do que
-          // exibir a tarifa futura como se ela já valesse.
-          <div className="flex flex-col items-start gap-2">
-            <StatusPill tom="pending">Sem preço vigente</StatusPill>
-            <p className="text-muted-foreground text-[13px]">
-              O primeiro preço só começa em {formatDateOnly(futuras[futuras.length - 1].desde)}. Até
-              lá, o custo destes eventos fica em branco no painel.
-            </p>
+            {meta && (
+              <div className="text-subtle truncate text-xs" title={meta}>
+                {meta}
+              </div>
+            )}
           </div>
-        )}
+        </TableCell>
+        <TableCell>
+          <PilulasDeSituacao s={s} className="flex-col items-start" />
+        </TableCell>
+        {colunas.map((c, i) => (
+          <TableCell key={c} className="text-foreground text-right whitespace-nowrap">
+            {s.atual ? (s.atual.leituras[i]?.valor ?? "—") : <span className="text-subtle">—</span>}
+          </TableCell>
+        ))}
+        <TableCell className="text-muted-foreground text-right whitespace-nowrap">
+          {s.atual ? formatDateOnly(s.atual.desde) : <span className="text-subtle">—</span>}
+        </TableCell>
+        <TableCell className="pr-4 text-right">
+          {/* Ação de linha do wide-ui: só ícone, aparece no hover ou no foco; sem hover (toque), fica. */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+            onClick={(e) => {
+              e.stopPropagation();
+              item.onNovoPreco();
+            }}
+            aria-label={`Novo preço para ${item.titulo}`}
+            title="Novo preço"
+          >
+            <Plus />
+          </Button>
+        </TableCell>
+      </TableRow>
 
-        {futuras.length > 0 && atual && (
-          <div className="border-line mt-4 border-t pt-3">
-            <StatusPill tom="progress">Agendado</StatusPill>
-            <ul className="mt-1.5 space-y-1">
-              {futuras.map((v) => (
-                <li key={v.id} className="text-[13px]">
-                  <span className="text-subtle">a partir de {formatDateOnly(v.desde)} · </span>
-                  {v.leituras.map((l) => `${l.rotulo} ${l.valor}`).join("  ")}
-                </li>
-              ))}
-            </ul>
+      {aberto && (
+        <TableRow className="bg-raised hover:bg-raised">
+          <TableCell colSpan={colunas.length + 5} className="h-auto px-4 pt-0 pb-4">
+            <Historico s={s} />
+          </TableCell>
+        </TableRow>
+      )}
+    </>
+  );
+}
+
+/** A mesma linha abaixo de 700px: nome e situação em cima, as tarifas, e as duas ações. */
+function PrecoCartao({
+  item,
+  aberto,
+  onAlternar,
+}: {
+  item: ItemDePreco;
+  aberto: boolean;
+  onAlternar: (chave: string) => void;
+}) {
+  const s = situacaoDe(item.vigencias);
+  const meta = [
+    linhaMeta(item, s) || null,
+    s.atual ? `desde ${formatDateOnly(s.atual.desde)}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    // O cartão inteiro abre o histórico, como a linha da tabela; o botão é o caminho do teclado.
+    <li
+      onClick={() => {
+        if (haTextoSelecionado()) return;
+        onAlternar(item.chave);
+      }}
+      className="flex cursor-pointer flex-col gap-2 px-4 py-3"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-foreground truncate font-medium" title={item.titulo}>
+            {item.titulo}
           </div>
-        )}
+          {meta && <div className="text-subtle text-xs">{meta}</div>}
+        </div>
+        <PilulasDeSituacao s={s} className="shrink-0 justify-end" />
       </div>
 
-      {anteriores.length > 0 && (
-        <Collapsible open={aberto} onOpenChange={setAberto}>
-          <ReguaDeVigencia vigencias={[...valendo].reverse()} />
-          <CollapsibleTrigger className="text-muted-foreground hover:bg-hover hover:text-foreground border-line flex w-full items-center gap-1.5 border-t px-4 py-2.5 text-left text-[13px] transition-colors">
-            <ChevronRight
-              className={cn("h-3.5 w-3.5 transition-transform", aberto && "rotate-90")}
-            />
-            {anteriores.length === 1
-              ? "1 vigência anterior"
-              : `${anteriores.length} vigências anteriores`}
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="border-line border-t">
-              {anteriores.map((v) => (
-                <div
-                  key={v.id}
-                  className="border-line flex flex-wrap items-baseline gap-x-5 gap-y-1 border-b px-4 py-2.5 last:border-b-0"
-                >
-                  <span className="text-muted-foreground w-24 shrink-0 text-[13px]">
-                    {formatDateOnly(v.desde)}
-                  </span>
-                  {v.leituras.map((l) => (
-                    <span key={l.rotulo} className="flex items-baseline gap-1.5">
-                      <span className="text-muted-foreground text-[12.5px]">{l.rotulo}</span>
-                      <span className="text-foreground text-[13.5px] font-medium">{l.valor}</span>
-                    </span>
-                  ))}
-                </div>
-              ))}
+      {s.atual && (
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
+          {s.atual.leituras.map((l) => (
+            <div key={l.rotulo} className="min-w-0">
+              <dt className="text-subtle text-xs">{l.rotulo}</dt>
+              <dd className="text-foreground text-[13.5px] font-medium">{l.valor}</dd>
             </div>
-          </CollapsibleContent>
-        </Collapsible>
+          ))}
+        </dl>
       )}
-    </section>
+
+      <div className="flex items-center justify-between gap-2">
+        <BotaoDeHistorico aberto={aberto} onClick={() => onAlternar(item.chave)} comRotulo />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            item.onNovoPreco();
+          }}
+          aria-label={`Novo preço para ${item.titulo}`}
+        >
+          <Plus />
+          Novo preço
+        </Button>
+      </div>
+
+      {aberto && <Historico s={s} />}
+    </li>
   );
 }

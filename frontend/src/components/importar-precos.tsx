@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Check, FileUp, Loader2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ChevronRight, FileUp, Info, Loader2, TriangleAlert, Upload } from "lucide-react";
 import { toast } from "sonner";
 
+import { StatusPill, type TomDeStatus } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,6 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { apiPost } from "@/lib/api";
 import {
@@ -22,7 +25,7 @@ import {
   paraNumero,
   type LinhaCsv,
 } from "@/lib/csv";
-import { formatDateOnly } from "@/lib/format";
+import { formatDateOnly, formatTarifa } from "@/lib/format";
 import {
   CATEGORIAS_COBRAVEIS,
   invalidarCusto,
@@ -48,8 +51,10 @@ import {
 interface Preparada {
   /** Como a linha se chama na tela: o que ela precifica. */
   rotulo: string;
-  /** O resumo das tarifas, para conferir antes de mandar. */
+  /** As tarifas como a tabela vai mostrá-las, para conferir antes de mandar. */
   detalhe: string;
+  /** A vigência lida, em ISO — a coluna de data da prévia. */
+  desde: string;
   corpo: Record<string, string | null>;
 }
 
@@ -93,6 +98,11 @@ function ehErro(v: string | { erro: string }): v is { erro: string } {
   return typeof v !== "string";
 }
 
+/** A tarifa já lida (texto com ponto decimal) no formato da tabela de preços. */
+function tarifa(valor: string, moeda: string): string {
+  return formatTarifa(Number(valor), moeda);
+}
+
 function prepararModelo(linha: LinhaCsv): Preparada | { erro: string } {
   const modelo = coluna(linha, "modelo", "model");
   if (!modelo) return { erro: "falta o modelo" };
@@ -130,18 +140,29 @@ function prepararModelo(linha: LinhaCsv): Preparada | { erro: string } {
   );
   if (ehErro(cacheEscrita)) return cacheEscrita;
 
+  const provedor = coluna(linha, "provedor", "provider") || null;
+  const moeda = coluna(linha, "moeda", "currency") || "USD";
+
   return {
     rotulo: modelo,
-    detalhe: `desde ${formatDateOnly(vigencia)} · entrada ${entrada} · saída ${saida} · cache ${cacheLeitura}/${cacheEscrita}`,
+    detalhe: [
+      provedor,
+      `entrada ${tarifa(entrada, moeda)}`,
+      `saída ${tarifa(saida, moeda)}`,
+      `cache ${tarifa(cacheLeitura, moeda)} / ${tarifa(cacheEscrita, moeda)}`,
+    ]
+      .filter(Boolean)
+      .join(" · "),
+    desde: vigencia,
     corpo: {
       modelo,
-      provedor: coluna(linha, "provedor", "provider") || null,
+      provedor,
       vigencia_inicio: vigencia,
       entrada_por_milhao: entrada,
       saida_por_milhao: saida,
       cache_leitura_por_milhao: cacheLeitura,
       cache_escrita_por_milhao: cacheEscrita,
-      moeda: coluna(linha, "moeda", "currency") || "USD",
+      moeda,
     },
   };
 }
@@ -152,7 +173,8 @@ function prepararMensagem(linha: LinhaCsv): Preparada | { erro: string } {
   if (categoria === "service") {
     return { erro: "service não tem tarifa: a Meta não cobra mensagem de serviço" };
   }
-  if (!CATEGORIAS_COBRAVEIS.some((c) => c.chave === categoria)) {
+  const cobravel = CATEGORIAS_COBRAVEIS.find((c) => c.chave === categoria);
+  if (!cobravel) {
     return {
       erro: `categoria "${categoria}": use ${CATEGORIAS_COBRAVEIS.map((c) => c.chave).join(", ")}`,
     };
@@ -171,15 +193,18 @@ function prepararMensagem(linha: LinhaCsv): Preparada | { erro: string } {
   const porMensagem = numeroObrigatorio(linha, "por mensagem", "por_mensagem", "preco", "price");
   if (ehErro(porMensagem)) return porMensagem;
 
+  const moeda = coluna(linha, "moeda", "currency") || "USD";
+
   return {
-    rotulo: `${categoria} · ${pais}`,
-    detalhe: `desde ${formatDateOnly(vigencia)} · ${porMensagem} por mensagem`,
+    rotulo: `${cobravel.nome} · ${pais}`,
+    detalhe: `${tarifa(porMensagem, moeda)} por mensagem`,
+    desde: vigencia,
     corpo: {
       categoria,
       pais,
       vigencia_inicio: vigencia,
       por_mensagem: porMensagem,
-      moeda: coluna(linha, "moeda", "currency") || "USD",
+      moeda,
     },
   };
 }
@@ -208,7 +233,7 @@ const FORMATOS = {
       "modelo,provedor,vigencia_inicio,entrada_por_milhao,saida_por_milhao,cache_leitura_por_milhao,cache_escrita_por_milhao\n" +
       "gpt-5.6-terra,openai,2026-01-01,1.25,10,0.125,1.5625",
     opcionais:
-      "provedor, cache_leitura_por_milhao, cache_escrita_por_milhao e moeda são opcionais — cache em branco vira zero, e a moeda em branco vira USD.",
+      "Provedor, as duas colunas de cache e moeda são opcionais: cache em branco vira zero, e moeda em branco vira USD.",
     preparar: prepararModelo,
   },
   mensagem: {
@@ -221,7 +246,7 @@ const FORMATOS = {
     exemplo:
       "categoria,pais,vigencia_inicio,por_mensagem\nutility,BR,2026-01-01,0.008\nmarketing,BR,2026-01-01,0.0625",
     opcionais:
-      "moeda é opcional e em branco vira USD. `service` não entra: a Meta não cobra mensagem de serviço.",
+      "Moeda é opcional e em branco vira USD. A categoria service não entra: a Meta não cobra mensagem de serviço.",
     preparar: prepararMensagem,
   },
 } satisfies Record<string, Formato>;
@@ -230,6 +255,7 @@ export type TipoDeImportacao = keyof typeof FORMATOS;
 
 /** O que aconteceu com uma linha depois de mandada. */
 interface Resultado {
+  numero: number;
   rotulo: string;
   erro: string | null;
 }
@@ -246,6 +272,7 @@ export function DialogoImportarPrecos({
   const formato: Formato = FORMATOS[tipo];
   const queryClient = useQueryClient();
   const arquivoRef = useRef<HTMLInputElement>(null);
+  const idDoTexto = `importar-${tipo}-csv`;
 
   const [texto, setTexto] = useState("");
   const [progresso, setProgresso] = useState(0);
@@ -272,7 +299,6 @@ export function DialogoImportarPrecos({
   }, [texto, formato]);
 
   const prontos = preparos.filter((p): p is Preparo & { item: Preparada } => p.item !== null);
-  const recusados = preparos.filter((p) => p.erro !== null);
 
   const importar = useMutation({
     mutationFn: async () => {
@@ -282,9 +308,9 @@ export function DialogoImportarPrecos({
       for (const p of prontos) {
         try {
           await apiPost(formato.rota, p.item.corpo);
-          feitos.push({ rotulo: p.item.rotulo, erro: null });
+          feitos.push({ numero: p.numero, rotulo: p.item.rotulo, erro: null });
         } catch (e) {
-          feitos.push({ rotulo: p.item.rotulo, erro: mensagemDoErro(e) });
+          feitos.push({ numero: p.numero, rotulo: p.item.rotulo, erro: mensagemDoErro(e) });
         }
         setProgresso(feitos.length);
       }
@@ -304,7 +330,7 @@ export function DialogoImportarPrecos({
       } else if (entraram === 0) {
         toast.error("Nenhuma linha entrou.");
       } else {
-        toast.warning(`${entraram} de ${feitos.length} linhas entraram.`);
+        toast.warning(`${entraram} de ${feitos.length} linhas enviadas entraram.`);
       }
     },
   });
@@ -323,63 +349,78 @@ export function DialogoImportarPrecos({
 
   return (
     <Dialog open={aberto} onOpenChange={trocarAbertura}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{formato.titulo}</DialogTitle>
-          <DialogDescription>{formato.descricao}</DialogDescription>
+          <DialogTitle>{resultados ? "Resultado da importação" : formato.titulo}</DialogTitle>
+          <DialogDescription>
+            {resultados
+              ? "Linha a linha, o que foi gravado e o que ficou de fora."
+              : formato.descricao}
+          </DialogDescription>
         </DialogHeader>
 
         {resultados ? (
-          <Relatorio resultados={resultados} />
+          <Relatorio preparos={preparos} resultados={resultados} />
         ) : (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                ref={arquivoRef}
-                type="file"
-                accept=".csv,.txt,text/csv,text/plain"
-                className="hidden"
-                onChange={(e) => {
-                  void escolherArquivo(e.target.files?.[0]);
-                  // Zerado para o mesmo arquivo, corrigido e escolhido de novo, disparar `change`.
-                  e.target.value = "";
-                }}
+          <div className="flex min-w-0 flex-col gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor={idDoTexto}>Tabela em CSV</Label>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pb-1">
+                <input
+                  ref={arquivoRef}
+                  type="file"
+                  accept=".csv,.txt,text/csv,text/plain"
+                  className="hidden"
+                  onChange={(e) => {
+                    void escolherArquivo(e.target.files?.[0]);
+                    // Zerado para o mesmo arquivo, corrigido e escolhido de novo, disparar `change`.
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => arquivoRef.current?.click()}
+                  disabled={importar.isPending}
+                >
+                  <FileUp />
+                  Escolher arquivo .csv
+                </Button>
+                <span className="text-subtle text-[12.5px]">ou cole o conteúdo abaixo</span>
+              </div>
+              {/* Mono só aqui e no exemplo: é o conteúdo literal do arquivo, coluna por coluna. */}
+              <Textarea
+                id={idDoTexto}
+                value={texto}
+                onChange={(e) => setTexto(e.target.value)}
+                placeholder={formato.exemplo}
+                spellCheck={false}
+                readOnly={importar.isPending}
+                className="h-32 font-mono"
               />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => arquivoRef.current?.click()}
-              >
-                <FileUp className="h-4 w-4" />
-                Escolher arquivo .csv
-              </Button>
-              <span className="text-muted-foreground text-xs">ou cole a tabela abaixo</span>
             </div>
 
-            <Textarea
-              value={texto}
-              onChange={(e) => setTexto(e.target.value)}
-              placeholder={formato.exemplo}
-              spellCheck={false}
-              className="h-40 font-mono text-xs"
-              aria-label="Tabela em CSV"
-            />
-
-            <details className="text-muted-foreground text-xs">
-              <summary className="cursor-pointer select-none">Colunas esperadas</summary>
-              <pre className="bg-muted mt-2 overflow-x-auto rounded-sm p-3 text-[0.6875rem] leading-relaxed">
-                {formato.exemplo}
-              </pre>
-              <p className="mt-2">{formato.opcionais}</p>
-              <p className="mt-1">
-                A primeira linha é o cabeçalho e dá nome às colunas — a ordem delas não importa.
-                Separador `,` ou `;`, e data em `2026-01-31` ou `31/01/2026`.
-              </p>
+            <details className="group text-[12.5px]">
+              <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer list-none items-center gap-1.5 select-none [&::-webkit-details-marker]:hidden">
+                <ChevronRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
+                Colunas esperadas
+              </summary>
+              <div className="text-muted-foreground mt-2 space-y-1.5">
+                <pre className="border-line bg-raised text-foreground overflow-x-auto rounded-[var(--wu-radius-sm)] border p-3 font-mono text-[11px] leading-relaxed">
+                  {formato.exemplo}
+                </pre>
+                <p>{formato.opcionais}</p>
+                <p>
+                  A primeira linha é o cabeçalho e dá nome às colunas, em qualquer ordem. Separador
+                  vírgula ou ponto e vírgula; data em 2026-01-31 ou 31/01/2026.
+                </p>
+              </div>
             </details>
 
-            {texto.trim() && <Previa prontos={prontos} recusados={recusados} />}
+            {preparos.length > 0 && (
+              <Previa preparos={preparos} importando={importar.isPending} progresso={progresso} />
+            )}
           </div>
         )}
 
@@ -403,10 +444,12 @@ export function DialogoImportarPrecos({
                 disabled={prontos.length === 0 || importar.isPending}
                 onClick={() => importar.mutate()}
               >
-                {importar.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {importar.isPending ? <Loader2 className="animate-spin" /> : <Upload />}
                 {importar.isPending
                   ? `Importando ${progresso} de ${prontos.length}…`
-                  : `Importar ${prontos.length} ${prontos.length === 1 ? "preço" : "preços"}`}
+                  : prontos.length === 0
+                    ? "Importar"
+                    : `Importar ${prontos.length} ${prontos.length === 1 ? "preço" : "preços"}`}
               </Button>
             </>
           )}
@@ -416,58 +459,176 @@ export function DialogoImportarPrecos({
   );
 }
 
+/** A primeira letra em maiúscula: os motivos de recusa nascem no meio de frase. */
+function frase(texto: string): string {
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+/** Uma linha da prévia ou do resultado, já com o estado decidido. */
+interface LinhaDoLote {
+  numero: number;
+  titulo: string;
+  /** O detalhe (as tarifas) ou o motivo da recusa — a linha meta. */
+  meta: string | null;
+  /** A vigência em ISO, quando a linha foi lida. */
+  desde: string | null;
+  tom: TomDeStatus;
+  situacao: string;
+}
+
+/**
+ * As linhas do lote, uma por linha do arquivo, na ordem do arquivo: o número à esquerda é o da
+ * planilha aberta ao lado. Tabela com cabeçalho fixo e rolagem dentro dela a partir de 700px;
+ * abaixo disso, cartões com as mesmas informações.
+ */
+function TabelaDoLote({ linhas, rotuloDoItem }: { linhas: LinhaDoLote[]; rotuloDoItem: string }) {
+  return (
+    <div className="border-line max-h-72 overflow-auto rounded-[var(--wu-radius)] border">
+      <ul className="divide-line divide-y min-[700px]:hidden">
+        {linhas.map((l) => (
+          <li key={l.numero} className="flex flex-col gap-1 px-3 py-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-subtle text-xs">
+                Linha {l.numero}
+                {l.desde && ` · desde ${formatDateOnly(l.desde)}`}
+              </span>
+              <StatusPill tom={l.tom}>{l.situacao}</StatusPill>
+            </div>
+            <div className="text-foreground text-[13.5px] font-medium [overflow-wrap:anywhere]">
+              {l.titulo}
+            </div>
+            {l.meta && <div className="text-subtle text-xs [overflow-wrap:anywhere]">{l.meta}</div>}
+          </li>
+        ))}
+      </ul>
+      {/* `<table>` direto, sem o embrulho de `ui/table` (que tem rolagem própria): a rolagem é a
+          deste quadro, e é contra ela que o cabeçalho fica preso. */}
+      <table className="hidden w-full text-[13.5px] min-[700px]:table">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-16 pl-3 text-right">Linha</TableHead>
+            <TableHead>{rotuloDoItem}</TableHead>
+            <TableHead className="text-right">Desde</TableHead>
+            <TableHead className="pr-3">Situação</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {linhas.map((l) => (
+            <TableRow key={l.numero} className="hover:bg-transparent">
+              <TableCell className="text-subtle pl-3 text-right">{l.numero}</TableCell>
+              <TableCell className="w-full max-w-0">
+                <div className="text-foreground truncate font-medium" title={l.titulo}>
+                  {l.titulo}
+                </div>
+                {l.meta && (
+                  <div className="text-subtle text-xs [overflow-wrap:anywhere]">{l.meta}</div>
+                )}
+              </TableCell>
+              <TableCell className="text-muted-foreground text-right whitespace-nowrap">
+                {l.desde ? formatDateOnly(l.desde) : "—"}
+              </TableCell>
+              <TableCell className="pr-3">
+                <StatusPill tom={l.tom}>{l.situacao}</StatusPill>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </table>
+    </div>
+  );
+}
+
+/** Contagens do lote em uma linha, cada número com o nome do estado que ele conta. */
+function Resumo({ partes }: { partes: (string | null)[] }) {
+  return <p className="text-muted-foreground text-[13px]">{partes.filter(Boolean).join(" · ")}</p>;
+}
+
+function plural(n: number, um: string, varios: string): string {
+  return `${n} ${n === 1 ? um : varios}`;
+}
+
+/** Uma nota curta com ícone, no tom de informação ou de alerta. */
+function Nota({ children, alerta }: { children: ReactNode; alerta?: boolean }) {
+  return (
+    <div
+      className={
+        alerta
+          ? "bg-danger-bg flex gap-2.5 rounded-[var(--wu-radius)] px-3 py-2"
+          : "bg-raised flex gap-2.5 rounded-[var(--wu-radius)] px-3 py-2"
+      }
+    >
+      {alerta ? (
+        <TriangleAlert className="text-danger mt-0.5 h-4 w-4 shrink-0" />
+      ) : (
+        <Info className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
+      )}
+      <p className="text-foreground text-[12.5px]">{children}</p>
+    </div>
+  );
+}
+
 /**
  * O que vai ser mandado, antes de mandar.
  *
  * Uma vigência entra e não sai pela tela: se a data estiver errada, o conserto é no banco. Ver as
  * linhas já traduzidas — a data como o painel a lê, a tarifa como ela ficou — é a última chance
- * barata de notar que a planilha tinha entrada e saída trocadas.
+ * barata de notar que a planilha tinha entrada e saída trocadas. As com defeito ficam na mesma
+ * lista, no lugar delas no arquivo, com o motivo.
+ *
+ * Status: "Pronta" é `neutral` (nada aconteceu ainda); "Com erro" é `danger`, porque é defeito que
+ * só se resolve no arquivo.
  */
 function Previa({
-  prontos,
-  recusados,
+  preparos,
+  importando,
+  progresso,
 }: {
-  prontos: (Preparo & { item: Preparada })[];
-  recusados: Preparo[];
+  preparos: Preparo[];
+  importando: boolean;
+  progresso: number;
 }) {
-  return (
-    <div className="space-y-3">
-      {recusados.length > 0 && (
-        <section className="border-destructive/40 rounded-sm border border-dashed p-3">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="text-destructive h-4 w-4 shrink-0" />
-            <h3 className="etiqueta">
-              {recusados.length === 1
-                ? "1 linha não será importada"
-                : `${recusados.length} linhas não serão importadas`}
-            </h3>
-          </div>
-          <ul className="mt-2 max-h-32 space-y-1 overflow-y-auto text-xs">
-            {recusados.map((p) => (
-              <li key={p.numero} className="text-muted-foreground">
-                <span className="font-mono">linha {p.numero}</span> — {p.erro}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+  const prontas = preparos.filter((p) => p.item).length;
+  const comErro = preparos.length - prontas;
 
-      {prontos.length > 0 && (
-        <section className="rounded-sm border p-3">
-          <h3 className="etiqueta">
-            {prontos.length === 1 ? "1 preço pronto" : `${prontos.length} preços prontos`}
-          </h3>
-          <ul className="mt-2 max-h-48 space-y-1.5 overflow-y-auto">
-            {prontos.map((p) => (
-              <li key={p.numero} className="flex flex-wrap items-baseline gap-x-2 text-xs">
-                <span className="font-mono font-medium">{p.item.rotulo}</span>
-                <span className="text-muted-foreground font-mono">{p.item.detalhe}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-    </div>
+  const linhas: LinhaDoLote[] = preparos.map((p) =>
+    p.item
+      ? {
+          numero: p.numero,
+          titulo: p.item.rotulo,
+          meta: p.item.detalhe,
+          desde: p.item.desde,
+          tom: "neutral",
+          situacao: "Pronta",
+        }
+      : {
+          numero: p.numero,
+          titulo: frase(p.erro ?? ""),
+          meta: "Corrija no arquivo e cole de novo; esta linha não será enviada.",
+          desde: null,
+          tom: "danger",
+          situacao: "Com erro",
+        },
+  );
+
+  return (
+    <section className="flex flex-col gap-2.5">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h3 className="text-foreground text-sm font-semibold">Prévia</h3>
+        <Resumo
+          partes={[
+            plural(preparos.length, "linha lida", "linhas lidas"),
+            plural(prontas, "pronta", "prontas"),
+            comErro > 0 ? plural(comErro, "com erro", "com erro") : null,
+          ]}
+        />
+      </div>
+      <TabelaDoLote linhas={linhas} rotuloDoItem="Preço" />
+      <Nota>
+        {importando
+          ? `Gravando ${progresso} de ${prontas}. As linhas vão uma de cada vez; não feche esta janela.`
+          : "As linhas vão uma de cada vez e nada é desfeito: se uma falhar, as que já entraram continuam gravadas. Depois do envio, o resultado mostra linha a linha o que entrou."}
+      </Nota>
+    </section>
   );
 }
 
@@ -475,42 +636,79 @@ function Previa({
  * O que entrou e o que não entrou, depois de mandado.
  *
  * As linhas vão uma a uma e nada é desfeito, então a importação pode parar no meio — com metade da
- * tabela gravada. Um toast de "deu erro" esconderia justamente o que importa saber: quais.
+ * tabela gravada. Um toast de "deu erro" esconderia justamente o que importa saber: quais. A lista
+ * é a mesma da prévia, na ordem do arquivo, com o estado final de cada linha:
+ * "Gravada" (`done`), "Falhou" (`danger`, com o motivo do servidor) e "Ignorada" (`neutral`: tinha
+ * defeito na prévia e não foi enviada — nada aconteceu com ela, como a "Pronta" da prévia).
  */
-function Relatorio({ resultados }: { resultados: Resultado[] }) {
-  const entraram = resultados.filter((r) => !r.erro);
-  const falharam = resultados.filter((r) => r.erro);
+function Relatorio({ preparos, resultados }: { preparos: Preparo[]; resultados: Resultado[] }) {
+  const porNumero = new Map(resultados.map((r) => [r.numero, r]));
+  const gravadas = resultados.filter((r) => !r.erro).length;
+  const falharam = resultados.length - gravadas;
+  const ignoradas = preparos.filter((p) => !p.item).length;
+  const total = preparos.length;
+
+  const linhas: LinhaDoLote[] = preparos.map((p) => {
+    const r = porNumero.get(p.numero);
+    if (p.item && r && !r.erro) {
+      return {
+        numero: p.numero,
+        titulo: r.rotulo,
+        meta: p.item.detalhe,
+        desde: p.item.desde,
+        tom: "done",
+        situacao: "Gravada",
+      };
+    }
+    if (p.item && r) {
+      return {
+        numero: p.numero,
+        titulo: r.rotulo,
+        meta: r.erro,
+        desde: p.item.desde,
+        tom: "danger",
+        situacao: "Falhou",
+      };
+    }
+    return {
+      numero: p.numero,
+      titulo: frase(p.erro ?? ""),
+      meta: "Tinha erro na prévia e não foi enviada.",
+      desde: null,
+      tom: "neutral",
+      situacao: "Ignorada",
+    };
+  });
+
+  const titulo =
+    gravadas === total
+      ? total === 1
+        ? "A linha foi gravada"
+        : `Todas as ${total} linhas foram gravadas`
+      : gravadas === 0
+        ? "Nenhuma linha foi gravada"
+        : `Importação parcial: ${gravadas} de ${total} linhas gravadas`;
 
   return (
-    <div className="space-y-3">
-      <p className="text-sm">
-        {entraram.length} de {resultados.length}{" "}
-        {resultados.length === 1 ? "linha entrou" : "linhas entraram"}.
-        {falharam.length > 0 && " As que falharam não foram gravadas — corrija e importe de novo."}
-      </p>
-
-      {falharam.length > 0 && (
-        <ul className="max-h-56 space-y-1.5 overflow-y-auto rounded-sm border p-3">
-          {falharam.map((r, i) => (
-            <li key={`${r.rotulo}-${i}`} className="flex items-baseline gap-2 text-xs">
-              <X className="text-destructive h-3.5 w-3.5 shrink-0 translate-y-0.5" />
-              <span className="font-mono font-medium">{r.rotulo}</span>
-              <span className="text-muted-foreground">{r.erro}</span>
-            </li>
-          ))}
-        </ul>
+    <div className="flex min-w-0 flex-col gap-3">
+      <div>
+        <h3 className="text-foreground text-sm font-semibold">{titulo}</h3>
+        <Resumo
+          partes={[
+            plural(gravadas, "gravada", "gravadas"),
+            falharam > 0 ? plural(falharam, "falhou", "falharam") : null,
+            ignoradas > 0 ? plural(ignoradas, "ignorada", "ignoradas") : null,
+          ]}
+        />
+      </div>
+      {gravadas < total && (
+        <Nota alerta={gravadas > 0}>
+          {gravadas > 0
+            ? "As gravadas já valem e não são desfeitas. Corrija no arquivo só as que falharam ou foram ignoradas e importe essas de novo — reenviar as gravadas daria conflito de vigência."
+            : "Nada mudou na tabela de preços. Corrija as linhas no arquivo e importe de novo."}
+        </Nota>
       )}
-
-      {entraram.length > 0 && (
-        <ul className="max-h-40 space-y-1.5 overflow-y-auto rounded-sm border p-3">
-          {entraram.map((r, i) => (
-            <li key={`${r.rotulo}-${i}`} className="flex items-baseline gap-2 text-xs">
-              <Check className="text-foreground h-3.5 w-3.5 shrink-0 translate-y-0.5" />
-              <span className="font-mono">{r.rotulo}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+      <TabelaDoLote linhas={linhas} rotuloDoItem="Preço" />
     </div>
   );
 }

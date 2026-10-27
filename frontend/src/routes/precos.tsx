@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Plus, Upload } from "lucide-react";
+import { Cpu, MessageSquare, Plus, TriangleAlert, Upload } from "lucide-react";
 
-import { EmptyBox, ErrorBox } from "@/components/empty-states";
-import { FaixaDePreco, type Vigencia } from "@/components/faixa-preco";
+import { CabecalhoDaPagina } from "@/components/cabecalho-da-pagina";
+import { TabelaDePrecos, type ItemDePreco, type Vigencia } from "@/components/faixa-preco";
 import {
   DialogoPrecoMensagem,
   DialogoPrecoModelo,
@@ -12,8 +12,8 @@ import {
   type BasePrecoModelo,
 } from "@/components/dialogo-preco";
 import { DialogoImportarPrecos } from "@/components/importar-precos";
+import { PainelCard } from "@/components/painel-card";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiGet } from "@/lib/api";
 import { formatTarifa, toISODate } from "@/lib/format";
@@ -38,6 +38,8 @@ export const Route = createFileRoute("/precos")({
   component: Precos,
 });
 
+type Aba = "modelos" | "mensagens";
+
 /**
  * A tela de preços — a única do painel que escreve.
  *
@@ -46,29 +48,216 @@ export const Route = createFileRoute("/precos")({
  * organizada por **o que está sendo precificado** (um modelo, um par categoria/país), não por linha
  * de tabela — a pergunta que se faz aqui é "quanto custa hoje", e a lista crua repetiria o mesmo
  * modelo em cada reajuste que ele já teve.
+ *
+ * As duas listas são buscadas na abertura (dois `GET` pequenos), e não só ao trocar de aba: a
+ * contagem de cada uma aparece na própria aba. Os diálogos moram aqui, e não dentro das abas, porque
+ * a importação grava linha a linha — se ela vivesse na aba e a aba desmontasse no meio de um lote,
+ * o relatório do que entrou e do que não entrou sumiria junto, com os `POST` ainda rodando.
  */
 function Precos() {
-  return (
-    <Tabs defaultValue="modelos" className="flex flex-col gap-4">
-      <TabsList>
-        <TabsTrigger value="modelos">Modelos</TabsTrigger>
-        <TabsTrigger value="mensagens">Mensagens</TabsTrigger>
-      </TabsList>
-      {/*
-        As duas abas ficam montadas (`forceMount`) porque a importação de CSV mora dentro delas e
-        grava linha a linha: desmontar a aba levaria junto o diálogo que está no meio de um lote, e
-        o relatório do que entrou e do que não entrou sumiria com ele — os `POST` continuariam
-        rodando sem ninguém para contar o resultado. O preço é a segunda lista buscada na abertura,
-        que são dois `GET` pequenos.
-      */}
-      <TabsContent value="modelos" className="mt-0" forceMount>
-        <PrecosDeModelo />
-      </TabsContent>
-      <TabsContent value="mensagens" className="mt-0" forceMount>
-        <PrecosDeMensagem />
-      </TabsContent>
-    </Tabs>
+  const [aba, setAba] = useState<Aba>("modelos");
+
+  const [abertoModelo, setAbertoModelo] = useState(false);
+  const [baseModelo, setBaseModelo] = useState<BasePrecoModelo | null>(null);
+  const [abertoMensagem, setAbertoMensagem] = useState(false);
+  const [baseMensagem, setBaseMensagem] = useState<BasePrecoMensagem | null>(null);
+  const [importandoModelo, setImportandoModelo] = useState(false);
+  const [importandoMensagem, setImportandoMensagem] = useState(false);
+
+  const precosModelo = useQuery({
+    queryKey: ["precos-modelo"],
+    queryFn: () => apiGet<PrecoModelo[]>("/v1/precos"),
+  });
+  const precosMensagem = useQuery({
+    queryKey: ["precos-mensagem"],
+    queryFn: () => apiGet<PrecoMensagem[]>("/v1/precos/mensagem"),
+  });
+
+  // Os modelos que já apareceram em evento. Servem à lista de sugestões do formulário e, antes
+  // disso, ao aviso: modelo com evento e sem preço é custo em branco no painel inteiro.
+  const modelosVistos = useQuery({
+    queryKey: ["modelos"],
+    queryFn: () => apiGet<string[]>("/v1/llm/modelos"),
+    staleTime: 60_000,
+  });
+
+  const gruposModelo = useMemo(
+    () => agrupar(precosModelo.data ?? [], (p) => p.modelo),
+    [precosModelo.data],
   );
+  // A tarifa é por categoria **e** país: as duas juntas são a chave, e separá-las em duas listas
+  // faria parecer que existe "o preço do marketing" ou "o preço do Brasil". O separador entra como
+  // escape e não como byte no fonte: gravado, ele faz o `grep` ler o arquivo como binário e pular a
+  // tela inteira na busca — é o mesmo cuidado do BOM em `lib/csv.ts`.
+  const gruposMensagem = useMemo(
+    () => agrupar(precosMensagem.data ?? [], (p) => `${p.categoria}\u0000${p.pais}`),
+    [precosMensagem.data],
+  );
+
+  const abrirModelo = (b: BasePrecoModelo | null) => {
+    setBaseModelo(b);
+    setAbertoModelo(true);
+  };
+  const abrirMensagem = (b: BasePrecoMensagem | null) => {
+    setBaseMensagem(b);
+    setAbertoMensagem(true);
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <CabecalhoDaPagina
+        titulo="Preços"
+        subtitulo="Quanto custa cada modelo e cada mensagem cobrável, e desde quando"
+        acoes={
+          // Importar fica contornado ao lado do primário: o caminho de todo dia é o reajuste de um
+          // preço só, e a importação é a de encher a tabela — a estreia do painel, ou o dia em que
+          // um provedor mexeu no preço de doze modelos de uma vez. Os dois agem na aba aberta.
+          <>
+            <Button
+              variant="outline"
+              onClick={() =>
+                aba === "modelos" ? setImportandoModelo(true) : setImportandoMensagem(true)
+              }
+            >
+              <Upload />
+              Importar CSV
+            </Button>
+            <Button onClick={() => (aba === "modelos" ? abrirModelo(null) : abrirMensagem(null))}>
+              <Plus />
+              {aba === "modelos" ? "Novo preço" : "Nova tarifa"}
+            </Button>
+          </>
+        }
+      />
+
+      <Tabs value={aba} onValueChange={(v) => setAba(v as Aba)} className="flex flex-col gap-4">
+        <TabsList>
+          <TabsTrigger value="modelos">
+            Modelos
+            <Contagem consulta={precosModelo} total={gruposModelo.size} />
+          </TabsTrigger>
+          <TabsTrigger value="mensagens">
+            Mensagens
+            <Contagem consulta={precosMensagem} total={gruposMensagem.size} />
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="modelos" className="mt-0 flex flex-col gap-4">
+          <SemPreco
+            modelos={(modelosVistos.data ?? []).filter((m) => !gruposModelo.has(m))}
+            visivel={!!precosModelo.data}
+            onEscolher={(m) => abrirModelo({ modelo: m })}
+          />
+          <PainelCard
+            title="Preços de modelo"
+            icon={Cpu}
+            hint="por milhão de tokens"
+            bleed
+            loading={precosModelo.isLoading}
+            error={precosModelo.error}
+            onRetry={() => void precosModelo.refetch()}
+            empty={gruposModelo.size === 0}
+            emptyMessage="Nenhum preço cadastrado. Enquanto a tabela estiver vazia, o custo de todo evento de LLM aparece em branco no painel. Cadastre um preço ou importe um CSV."
+          >
+            <TabelaDePrecos
+              rotuloDoItem="Modelo"
+              colunas={["Entrada", "Saída", "Cache leitura", "Cache escrita"]}
+              itens={[...gruposModelo].map(([modelo, linhas]) => {
+                const vigente = vigenteHoje(linhas);
+                return {
+                  chave: modelo,
+                  titulo: modelo,
+                  meta: vigente.provedor,
+                  vigencias: linhas.map(vigenciaDeModelo),
+                  onNovoPreco: () =>
+                    abrirModelo({
+                      modelo,
+                      provedor: vigente.provedor,
+                      moeda: vigente.moeda,
+                      entrada_por_milhao: vigente.entrada_por_milhao,
+                      saida_por_milhao: vigente.saida_por_milhao,
+                      cache_leitura_por_milhao: vigente.cache_leitura_por_milhao,
+                      cache_escrita_por_milhao: vigente.cache_escrita_por_milhao,
+                    }),
+                } satisfies ItemDePreco;
+              })}
+            />
+          </PainelCard>
+        </TabsContent>
+
+        <TabsContent value="mensagens" className="mt-0">
+          <PainelCard
+            title="Tarifas de mensagem"
+            icon={MessageSquare}
+            hint="por mensagem cobrável"
+            bleed
+            loading={precosMensagem.isLoading}
+            error={precosMensagem.error}
+            onRetry={() => void precosMensagem.refetch()}
+            empty={gruposMensagem.size === 0}
+            emptyMessage="Nenhuma tarifa cadastrada. Sem ela, mensagem cobrável aparece no painel com custo em branco. Cadastre uma tarifa ou importe um CSV."
+          >
+            <TabelaDePrecos
+              rotuloDoItem="Tarifa"
+              colunas={["Por mensagem"]}
+              itens={[...gruposMensagem].map(([chave, linhas]) => {
+                const vigente = vigenteHoje(linhas);
+                const { categoria, pais } = vigente;
+                return {
+                  chave,
+                  titulo: `${nomeDaCategoria(categoria)} · ${pais}`,
+                  vigencias: linhas.map(vigenciaDeMensagem),
+                  onNovoPreco: () =>
+                    abrirMensagem({
+                      categoria,
+                      pais,
+                      moeda: vigente.moeda,
+                      por_mensagem: vigente.por_mensagem,
+                    }),
+                } satisfies ItemDePreco;
+              })}
+            />
+          </PainelCard>
+        </TabsContent>
+      </Tabs>
+
+      <DialogoPrecoModelo
+        aberto={abertoModelo}
+        onOpenChange={setAbertoModelo}
+        base={baseModelo}
+        modelosConhecidos={modelosVistos.data ?? []}
+      />
+      <DialogoPrecoMensagem
+        aberto={abertoMensagem}
+        onOpenChange={setAbertoMensagem}
+        base={baseMensagem}
+      />
+      <DialogoImportarPrecos
+        tipo="modelo"
+        aberto={importandoModelo}
+        onOpenChange={setImportandoModelo}
+      />
+      <DialogoImportarPrecos
+        tipo="mensagem"
+        aberto={importandoMensagem}
+        onOpenChange={setImportandoMensagem}
+      />
+    </div>
+  );
+}
+
+/** A contagem da aba, na pílula `sel` do wide-ui. Só aparece quando a lista chegou. */
+function Contagem({ consulta, total }: { consulta: UseQueryResult<unknown>; total: number }) {
+  if (!consulta.data) return null;
+  return (
+    <span className="bg-sel text-muted-foreground rounded-full px-1.5 text-[11.5px] leading-[18px] font-medium">
+      {total}
+    </span>
+  );
+}
+
+function nomeDaCategoria(chave: string): string {
+  return CATEGORIAS.find((c) => c.chave === chave)?.nome ?? chave;
 }
 
 /**
@@ -76,7 +265,7 @@ function Precos() {
  *
  * As linhas chegam da mais nova para a mais antiga, e a mais nova nem sempre é a que vale: um preço
  * agendado para o mês que vem é a primeira da lista e ainda não vale nada. O formulário precisa
- * abrir com o mesmo número que a faixa exibe como vigente — senão "Novo preço" prefila uma tarifa
+ * abrir com o mesmo número que a tabela exibe como vigente — senão "Novo preço" prefila uma tarifa
  * que a tela não mostrou em lugar nenhum. Sem nenhuma vigente (só futuras), a mais nova serve de
  * ponto de partida.
  */
@@ -97,137 +286,6 @@ function agrupar<T>(itens: T[], chave: (item: T) => string): Map<string, T[]> {
   return grupos;
 }
 
-function Carregando() {
-  return (
-    <div className="flex flex-col gap-4">
-      <Skeleton className="h-40 w-full rounded-xl" />
-      <Skeleton className="h-40 w-full rounded-xl" />
-    </div>
-  );
-}
-
-/**
- * O cabeçalho de cada aba: o que a lista conta, e as duas portas para acrescentar.
- *
- * Importar fica em `outline` ao lado do primário de propósito: o caminho de todo dia é o reajuste
- * de um preço só, e a importação é a de encher a tabela — o dia em que o painel estreia, ou o dia em
- * que um provedor mexeu no preço de doze modelos de uma vez.
- */
-function Cabecalho({
-  contagem,
-  singular,
-  plural,
-  onNovo,
-  onImportar,
-}: {
-  contagem: number;
-  singular: string;
-  plural: string;
-  onNovo: () => void;
-  onImportar: () => void;
-}) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <p className="etiqueta">
-        {contagem} {contagem === 1 ? singular : plural}
-      </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" onClick={onImportar} className="gap-1.5">
-          <Upload className="h-4 w-4" />
-          Importar
-        </Button>
-        <Button onClick={onNovo} className="gap-1.5">
-          <Plus className="h-4 w-4" />
-          Novo preço
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function PrecosDeModelo() {
-  const [aberto, setAberto] = useState(false);
-  const [importando, setImportando] = useState(false);
-  const [base, setBase] = useState<BasePrecoModelo | null>(null);
-
-  const precos = useQuery({
-    queryKey: ["precos-modelo"],
-    queryFn: () => apiGet<PrecoModelo[]>("/v1/precos"),
-  });
-
-  // Os modelos que já apareceram em evento. Servem à lista de sugestões do formulário e, antes
-  // disso, ao aviso: modelo com evento e sem preço é custo em branco no painel inteiro.
-  const modelosVistos = useQuery({
-    queryKey: ["modelos"],
-    queryFn: () => apiGet<string[]>("/v1/llm/modelos"),
-    staleTime: 60_000,
-  });
-
-  const grupos = useMemo(() => agrupar(precos.data ?? [], (p) => p.modelo), [precos.data]);
-  const semPreco = (modelosVistos.data ?? []).filter((m) => !grupos.has(m));
-
-  const abrir = (b: BasePrecoModelo | null) => {
-    setBase(b);
-    setAberto(true);
-  };
-
-  if (precos.isLoading) return <Carregando />;
-  if (precos.error) return <ErrorBox error={precos.error} />;
-
-  return (
-    <div className="flex flex-col gap-4">
-      <Cabecalho
-        contagem={grupos.size}
-        singular="modelo precificado"
-        plural="modelos precificados"
-        onNovo={() => abrir(null)}
-        onImportar={() => setImportando(true)}
-      />
-
-      {semPreco.length > 0 && (
-        <SemPreco modelos={semPreco} onEscolher={(m) => abrir({ modelo: m })} />
-      )}
-
-      {grupos.size === 0 ? (
-        <EmptyBox message="Nenhum preço cadastrado. Enquanto a tabela estiver vazia, o custo de todo evento de LLM aparece em branco no painel." />
-      ) : (
-        [...grupos].map(([modelo, linhas]) => {
-          const vigente = vigenteHoje(linhas);
-
-          return (
-            <FaixaDePreco
-              key={modelo}
-              titulo={modelo}
-              subtitulo={vigente.provedor}
-              unidade="por milhão de tokens"
-              vigencias={linhas.map(vigenciaDeModelo)}
-              onNovoPreco={() =>
-                abrir({
-                  modelo,
-                  provedor: vigente.provedor,
-                  moeda: vigente.moeda,
-                  entrada_por_milhao: vigente.entrada_por_milhao,
-                  saida_por_milhao: vigente.saida_por_milhao,
-                  cache_leitura_por_milhao: vigente.cache_leitura_por_milhao,
-                  cache_escrita_por_milhao: vigente.cache_escrita_por_milhao,
-                })
-              }
-            />
-          );
-        })
-      )}
-
-      <DialogoPrecoModelo
-        aberto={aberto}
-        onOpenChange={setAberto}
-        base={base}
-        modelosConhecidos={modelosVistos.data ?? []}
-      />
-      <DialogoImportarPrecos tipo="modelo" aberto={importando} onOpenChange={setImportando} />
-    </div>
-  );
-}
-
 function vigenciaDeModelo(p: PrecoModelo): Vigencia {
   return {
     id: p.id,
@@ -241,118 +299,61 @@ function vigenciaDeModelo(p: PrecoModelo): Vigencia {
   };
 }
 
-/**
- * O buraco, dito em voz alta.
- *
- * Modelo sem preço não some do painel — ele aparece com os tokens e com o custo em branco, o que é
- * fácil de não notar num total que continua parecendo plausível. Esta é a tela que pode consertar
- * isso, então é aqui que a falta precisa estar visível.
- */
-function SemPreco({ modelos, onEscolher }: { modelos: string[]; onEscolher: (m: string) => void }) {
-  return (
-    <section className="border-destructive/40 bg-card rounded-xl border border-dashed p-5">
-      <h2 className="etiqueta">
-        {modelos.length === 1 ? "1 modelo sem preço" : `${modelos.length} modelos sem preço`}
-      </h2>
-      <p className="text-muted-foreground mt-1.5 text-sm">
-        Já apareceram em eventos e não têm tarifa cadastrada: o custo deles fica em branco no
-        painel, e o total do período sai menor do que foi.
-      </p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {modelos.map((m) => (
-          <Button
-            key={m}
-            variant="outline"
-            size="sm"
-            className="gap-1.5 font-mono"
-            onClick={() => onEscolher(m)}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            {m}
-          </Button>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function PrecosDeMensagem() {
-  const [aberto, setAberto] = useState(false);
-  const [importando, setImportando] = useState(false);
-  const [base, setBase] = useState<BasePrecoMensagem | null>(null);
-
-  const precos = useQuery({
-    queryKey: ["precos-mensagem"],
-    queryFn: () => apiGet<PrecoMensagem[]>("/v1/precos/mensagem"),
-  });
-
-  // A tarifa é por categoria **e** país: as duas juntas são a chave, e separá-las em duas listas
-  // faria parecer que existe "o preço do marketing" ou "o preço do Brasil". O separador entra como
-  // escape e não como byte no fonte: gravado, ele faz o `grep` ler o arquivo como binário e pular a
-  // tela inteira na busca — é o mesmo cuidado do BOM em `lib/csv.ts`.
-  const grupos = useMemo(
-    () => agrupar(precos.data ?? [], (p) => `${p.categoria}\u0000${p.pais}`),
-    [precos.data],
-  );
-
-  const abrir = (b: BasePrecoMensagem | null) => {
-    setBase(b);
-    setAberto(true);
-  };
-
-  if (precos.isLoading) return <Carregando />;
-  if (precos.error) return <ErrorBox error={precos.error} />;
-
-  return (
-    <div className="flex flex-col gap-4">
-      <Cabecalho
-        contagem={grupos.size}
-        singular="tarifa"
-        plural="tarifas"
-        onNovo={() => abrir(null)}
-        onImportar={() => setImportando(true)}
-      />
-
-      {grupos.size === 0 ? (
-        <EmptyBox message="Nenhuma tarifa cadastrada. Sem ela, mensagem cobrável aparece no painel com custo em branco." />
-      ) : (
-        [...grupos].map(([chave, linhas]) => {
-          const vigente = vigenteHoje(linhas);
-          const { categoria, pais } = vigente;
-          const cor = CATEGORIAS.find((c) => c.chave === categoria)?.cor;
-
-          return (
-            <FaixaDePreco
-              key={chave}
-              titulo={pais}
-              distintivo={
-                <span
-                  className="etiqueta rounded-sm px-2 py-1 text-[0.625rem]"
-                  style={cor ? { background: cor, color: "white" } : undefined}
-                >
-                  {categoria}
-                </span>
-              }
-              unidade="por mensagem cobrável"
-              vigencias={linhas.map(vigenciaDeMensagem)}
-              onNovoPreco={() =>
-                abrir({ categoria, pais, moeda: vigente.moeda, por_mensagem: vigente.por_mensagem })
-              }
-            />
-          );
-        })
-      )}
-
-      <DialogoPrecoMensagem aberto={aberto} onOpenChange={setAberto} base={base} />
-      <DialogoImportarPrecos tipo="mensagem" aberto={importando} onOpenChange={setImportando} />
-    </div>
-  );
-}
-
 function vigenciaDeMensagem(p: PrecoMensagem): Vigencia {
   return {
     id: p.id,
     desde: p.vigencia_inicio,
     leituras: [{ rotulo: "Por mensagem", valor: formatTarifa(p.por_mensagem, p.moeda) }],
   };
+}
+
+/**
+ * O buraco, dito em voz alta.
+ *
+ * Modelo sem preço não some do painel — ele aparece com os tokens e com o custo em branco, o que é
+ * fácil de não notar num total que continua parecendo plausível. Esta é a tela que pode consertar
+ * isso, então é aqui que a falta precisa estar visível: um alerta `danger-bg` no topo da aba, como o
+ * wide-ui pede para condição que bloqueia, com um botão por modelo que abre o cadastro dele.
+ */
+function SemPreco({
+  modelos,
+  visivel,
+  onEscolher,
+}: {
+  modelos: string[];
+  /** Só com a lista de preços carregada: antes dela, todo modelo visto pareceria sem preço. */
+  visivel: boolean;
+  onEscolher: (m: string) => void;
+}) {
+  if (!visivel || modelos.length === 0) return null;
+
+  return (
+    <section role="alert" className="bg-danger-bg flex gap-3 rounded-[var(--wu-radius)] px-4 py-3">
+      <TriangleAlert className="text-danger mt-0.5 h-4 w-4 shrink-0" />
+      <div className="min-w-0 flex-1">
+        <h2 className="text-danger text-[13.5px] font-semibold">
+          {modelos.length === 1 ? "1 modelo sem preço" : `${modelos.length} modelos sem preço`}
+        </h2>
+        <p className="text-foreground mt-0.5 text-[13px]">
+          Já apareceram em eventos e não têm tarifa: o custo deles fica em branco no painel, e o
+          total do período sai menor do que foi. Cadastre o preço de cada um.
+        </p>
+        <div className="mt-2.5 flex flex-wrap gap-2">
+          {modelos.map((m) => (
+            <Button
+              key={m}
+              variant="outline"
+              size="sm"
+              className="max-w-full"
+              onClick={() => onEscolher(m)}
+              aria-label={`Cadastrar preço de ${m}`}
+            >
+              <Plus />
+              <span className="truncate">{m}</span>
+            </Button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 }
