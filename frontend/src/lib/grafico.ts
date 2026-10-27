@@ -242,3 +242,59 @@ export function totalDaLinha(linha: Record<string, string | number>, eixo: strin
     0,
   );
 }
+
+/** O rótulo de valor na ponta de cada barra: é a legenda com valor de um gráfico de uma série só. */
+export const rotuloDeValor = { fill: "var(--wu-fg)", fontSize: 12 } as const;
+
+/**
+ * O total no centro da rosca (`components.md`: "total and unit in the center"), para o `content`
+ * de um `<Label position="center">`. `valor` já vem formatado, e sai do banco — não da soma das
+ * fatias.
+ */
+export function rotuloNoCentro(valor: string, legenda = "no período") {
+  return ({ viewBox }: { viewBox?: unknown }) => {
+    const { cx, cy } = (viewBox ?? {}) as { cx?: number; cy?: number };
+    if (cx === undefined || cy === undefined) return null;
+    return createElement(
+      "text",
+      { x: cx, y: cy, textAnchor: "middle" },
+      createElement(
+        "tspan",
+        { x: cx, dy: "-0.2em", fill: "var(--wu-fg)", fontSize: 15, fontWeight: 600 },
+        valor,
+      ),
+      createElement(
+        "tspan",
+        { x: cx, dy: "1.5em", fill: "var(--wu-muted)", fontSize: 12 },
+        legenda,
+      ),
+    );
+  };
+}
+
+/**
+ * A fatia de cada valor sobre `total`, com uma casa, pelo método do maior resto: arredondar cada
+ * uma por conta própria pode dar 99,9% ou 100,1%, e a legenda diria que o anel não fecha. Os
+ * décimos que faltam (ou sobram) vão para as fatias de maior resto. Sem total, não há fatia.
+ */
+export function porcentagensQueFecham(valores: number[], total: number | null): number[] {
+  if (total === null || total <= 0) return [];
+  const brutos = valores.map((v) => (v / total) * 1000); // em décimos de ponto percentual
+  const alvo = Math.round(brutos.reduce((s, b) => s + b, 0));
+  const pisos = brutos.map(Math.floor);
+  let falta = alvo - pisos.reduce((s, p) => s + p, 0);
+  const ordem = brutos
+    .map((b, i) => ({ i, resto: b - Math.floor(b) }))
+    .sort((a, b) => b.resto - a.resto);
+  for (const { i } of ordem) {
+    if (falta <= 0) break;
+    pisos[i] += 1;
+    falta -= 1;
+  }
+  return pisos.map((p) => p / 10);
+}
+
+/** A porcentagem de uma fatia como a legenda da rosca escreve: uma casa, vírgula decimal. */
+export function formatFatia(p: number): string {
+  return `${p.toFixed(1).replace(".", ",")}%`;
+}

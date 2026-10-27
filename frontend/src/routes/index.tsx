@@ -9,7 +9,6 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-  type TooltipProps,
 } from "recharts";
 
 import { AppWindow, ChartColumn, Layers, RefreshCw, Users, Wallet } from "lucide-react";
@@ -18,6 +17,7 @@ import { CabecalhoDaPagina } from "@/components/cabecalho-da-pagina";
 import { Cartao } from "@/components/cartao";
 import { GlobalFilters } from "@/components/global-filters";
 import { PainelCard } from "@/components/painel-card";
+import { TooltipDoTempo } from "@/components/tooltip-do-tempo";
 import { ErrorBox } from "@/components/empty-states";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,7 +37,6 @@ import {
   formatInstante,
   formatNumber,
   formatPeriodo,
-  formatPeriodoCompleto,
 } from "@/lib/format";
 import type { ConsolidadoBucket } from "@/lib/api-types";
 
@@ -211,49 +210,6 @@ function useLegendaDeOrigem(baseParams: Params, sufixo = "") {
 }
 
 /**
- * O tooltip do eixo de tempo: o balde com ano (só o mês dispensa o dia), uma linha por origem e o
- * total da pilha no rodapé. Conteúdo próprio porque o tooltip padrão do recharts não tem rodapé.
- */
-function TooltipDoTempo({
-  active,
-  payload,
-  label,
-  granularidade,
-  moeda,
-}: TooltipProps<number, string> & { granularidade: string; moeda: string }) {
-  if (!active || !payload?.length) return null;
-  const linha = payload[0]?.payload as Record<string, string | number> | undefined;
-  const rotulo = formatPeriodoCompleto(String(label), granularidade);
-
-  return (
-    <div style={{ ...tooltipEstilo.contentStyle, padding: "8px 10px" }}>
-      <div style={tooltipEstilo.labelStyle}>{rotulo}</div>
-      {payload.map((p) => (
-        <div key={String(p.dataKey)} className="flex items-center gap-1.5 py-px">
-          <span
-            aria-hidden
-            className="h-2 w-2 shrink-0 rounded-full"
-            style={{ background: p.color }}
-          />
-          <span className="text-muted-foreground">{p.name}</span>
-          <span className="ml-auto pl-4 tabular-nums">
-            {formatCurrency(Number(p.value), moeda)}
-          </span>
-        </div>
-      ))}
-      {linha && (
-        <div className="border-line mt-1 flex items-center gap-1.5 border-t pt-1 font-medium">
-          <span>Total</span>
-          <span className="ml-auto pl-4 tabular-nums">
-            {formatCurrency(totalDaLinha(linha, "periodo"), moeda)}
-          </span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/**
  * As duas séries empilhadas, na ordem e nas cores de `ORIGENS`.
  *
  * Função e não componente, chamada como `{barrasDeOrigem()}`: o recharts lê os próprios filhos
@@ -310,7 +266,12 @@ function CustoTemporal({
           <YAxis {...eixo} tickFormatter={(v) => formatCompact(v)} width={52} />
           <Tooltip
             cursor={tooltipEstilo.cursor}
-            content={<TooltipDoTempo granularidade={granularidade} moeda={moeda} />}
+            content={
+              <TooltipDoTempo
+                granularidade={granularidade}
+                formatar={(v) => formatCurrency(v, moeda)}
+              />
+            }
           />
           <Legend {...legenda} />
           {barrasDeOrigem()}

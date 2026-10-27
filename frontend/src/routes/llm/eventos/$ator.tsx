@@ -1,16 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
-import {
-  ArrowLeft,
-  Boxes,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ListOrdered,
-  MessagesSquare,
-} from "lucide-react";
+import { ArrowLeft, Boxes, ListOrdered, MessagesSquare } from "lucide-react";
 
+import { BotaoDeConteudo } from "@/components/botao-de-conteudo";
 import { CabecalhoDaPagina } from "@/components/cabecalho-da-pagina";
 import { Conteudo } from "@/components/conteudo";
 import { Conversa } from "@/components/conversa";
@@ -18,6 +11,7 @@ import { FiltroModelo } from "@/components/filtro-modelo";
 import { GlobalFilters } from "@/components/global-filters";
 import { Medidor } from "@/components/medidor";
 import { PainelCard } from "@/components/painel-card";
+import { Paginacao } from "@/components/paginacao";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -226,8 +220,6 @@ function Chamadas({ baseParams }: { baseParams: Params }) {
   const data = q.data;
   const itens = data?.itens ?? [];
   const total = data?.total ?? 0;
-  const pagina = Math.floor(offset / PAGE_SIZE) + 1;
-  const paginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="flex flex-col gap-3">
@@ -292,8 +284,7 @@ function Chamadas({ baseParams }: { baseParams: Params }) {
         <Paginacao
           offset={offset}
           total={total}
-          pagina={pagina}
-          paginas={paginas}
+          tamanho={PAGE_SIZE}
           ocupado={q.isFetching}
           onOffset={setOffset}
         />
@@ -330,57 +321,6 @@ function AlternadorDeModo({ modo, onModo }: { modo: Modo; onModo: (m: Modo) => v
   );
 }
 
-function Paginacao({
-  offset,
-  total,
-  pagina,
-  paginas,
-  ocupado,
-  onOffset,
-}: {
-  offset: number;
-  total: number;
-  pagina: number;
-  paginas: number;
-  ocupado: boolean;
-  onOffset: (o: number) => void;
-}) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="text-muted-foreground text-[13px]">
-        {total > 0
-          ? `${formatNumber(offset + 1)}–${formatNumber(
-              Math.min(offset + PAGE_SIZE, total),
-            )} de ${formatNumber(total)}`
-          : "Nenhum resultado"}
-      </div>
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onOffset(Math.max(0, offset - PAGE_SIZE))}
-          disabled={offset === 0 || ocupado}
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Anterior
-        </Button>
-        <div className="text-muted-foreground px-1 text-[13px]">
-          Página {formatNumber(pagina)} de {formatNumber(paginas)}
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onOffset(offset + PAGE_SIZE)}
-          disabled={offset + PAGE_SIZE >= total || ocupado}
-        >
-          Próxima
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 /** A mensagem do ator e a resposta do agente, lado a lado, com a cor do balde de cada uma. */
 function ConteudoDaChamada({ evento }: { evento: EventoItem }) {
   return (
@@ -390,34 +330,6 @@ function ConteudoDaChamada({ evento }: { evento: EventoItem }) {
       <Conteudo titulo="Mensagem do ator" texto={evento.mensagem} cor="var(--balde-entrada)" />
       <Conteudo titulo="Resposta do agente" texto={evento.resposta} cor="var(--balde-saida)" />
     </div>
-  );
-}
-
-function BotaoDeConteudo({
-  aberto,
-  onClick,
-  comRotulo,
-}: {
-  aberto: boolean;
-  onClick: () => void;
-  comRotulo?: boolean;
-}) {
-  return (
-    <Button
-      variant="ghost"
-      size={comRotulo ? "sm" : "icon"}
-      className={comRotulo ? "-ml-2 h-7 px-2" : "h-8 w-8"}
-      onClick={(e) => {
-        // Para aqui, e não na célula: o resto da célula continua abrindo a linha.
-        e.stopPropagation();
-        onClick();
-      }}
-      aria-expanded={aberto}
-      aria-label={aberto ? "Ocultar conteúdo" : "Ver conteúdo"}
-    >
-      <ChevronDown className={cn("h-4 w-4 transition-transform", aberto && "rotate-180")} />
-      {comRotulo && (aberto ? "Ocultar conteúdo" : "Ver conteúdo")}
-    </Button>
   );
 }
 

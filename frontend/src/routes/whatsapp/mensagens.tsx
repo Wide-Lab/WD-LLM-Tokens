@@ -1,13 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ListOrdered } from "lucide-react";
 
+import { BotaoDeConteudo } from "@/components/botao-de-conteudo";
+import { CabecalhoDaPagina } from "@/components/cabecalho-da-pagina";
 import { Conteudo } from "@/components/conteudo";
 import { FiltrosWhatsapp } from "@/components/filtros-whatsapp";
 import { GlobalFilters } from "@/components/global-filters";
+import { Paginacao } from "@/components/paginacao";
 import { PainelCard } from "@/components/painel-card";
-import { Button } from "@/components/ui/button";
+import { StatusPill } from "@/components/status-pill";
 import {
   Table,
   TableBody,
@@ -20,7 +23,7 @@ import { apiGet } from "@/lib/api";
 import { useFilters, whatsappToParams } from "@/lib/filters";
 import { formatCurrency, formatDateTime, formatNumber } from "@/lib/format";
 import { visualDaCategoria, visualDaDirecao } from "@/lib/grafico";
-import { cn } from "@/lib/utils";
+import { cn, haTextoSelecionado } from "@/lib/utils";
 import type { MensagemItem, MensagensResponse } from "@/lib/api-types";
 
 export const Route = createFileRoute("/whatsapp/mensagens")({
@@ -78,80 +81,80 @@ function MensagensPage() {
       return proximo;
     });
 
+  const itens = q.data?.itens ?? [];
   const total = q.data?.total ?? 0;
-  const pagina = Math.floor(offset / PAGE_SIZE) + 1;
-  const paginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="flex flex-col gap-4">
+      <CabecalhoDaPagina
+        titulo="Mensagens de WhatsApp"
+        subtitulo="Uma linha por mensagem: quem falou, se a Meta cobrou e quanto custou. Abra a linha para ler o texto"
+      />
       <GlobalFilters recortesDaSecao={["categoria", "direcao"]}>
         <FiltrosWhatsapp />
       </GlobalFilters>
 
-      <PainelCard
-        title="Mensagens"
-        hint={total > 0 ? `${formatNumber(total)} no período` : undefined}
-        bleed
-        loading={q.isLoading}
-        error={q.error}
-        empty={!q.isLoading && (q.data?.itens.length ?? 0) === 0}
-        emptyMessage="Nenhuma mensagem neste período. Amplie as datas ou limpe os filtros."
-      >
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="w-8 pl-3" />
-                <TableHead className="etiqueta py-3">Data/hora</TableHead>
-                <TableHead className="etiqueta py-3">Ator</TableHead>
-                <TableHead className="etiqueta py-3">Direção</TableHead>
-                <TableHead className="etiqueta py-3">Categoria</TableHead>
-                <TableHead className="etiqueta py-3">País</TableHead>
-                <TableHead className="etiqueta py-3">Cobrável</TableHead>
-                <TableHead className="etiqueta py-3 text-right">Custo</TableHead>
-                <TableHead className="etiqueta py-3 pr-5">Conteúdo</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(q.data?.itens ?? []).map((m) => (
-                <Linha key={m.id} mensagem={m} aberta={abertos.has(m.id)} onAlternar={alternar} />
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </PainelCard>
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-muted-foreground font-mono text-xs">
-          {total > 0
-            ? `${formatNumber(offset + 1)}–${formatNumber(
-                Math.min(offset + PAGE_SIZE, total),
-              )} de ${formatNumber(total)}`
-            : "Nenhum resultado"}
-        </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-            disabled={offset === 0 || q.isFetching}
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Anterior
-          </Button>
-          <div className="etiqueta">
-            {pagina} / {paginas}
+      <div className="flex flex-col gap-3">
+        <PainelCard
+          title="Mensagens"
+          icon={ListOrdered}
+          hint={total > 0 ? `${formatNumber(total)} no período` : undefined}
+          bleed
+          loading={q.isLoading}
+          error={q.error}
+          onRetry={() => void q.refetch()}
+          empty={!q.isLoading && itens.length === 0}
+          emptyMessage="Nenhuma mensagem neste período. Amplie as datas ou limpe os filtros."
+        >
+          {/* Abaixo de 700px a tabela vira lista de cartões: as mesmas linhas, sem rolagem lateral. */}
+          <ul className="divide-line divide-y min-[700px]:hidden">
+            {itens.map((m) => (
+              <MensagemCartao
+                key={m.id}
+                mensagem={m}
+                aberta={abertos.has(m.id)}
+                onAlternar={alternar}
+              />
+            ))}
+          </ul>
+          <div className="hidden min-[700px]:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10 pl-3" />
+                  <TableHead>Ator</TableHead>
+                  <TableHead>Direção</TableHead>
+                  <TableHead>Cobrança</TableHead>
+                  <TableHead>Conteúdo</TableHead>
+                  <TableHead className="text-right">Custo</TableHead>
+                  <TableHead className="pr-4 text-right">Data</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {itens.map((m) => (
+                  <MensagemLinha
+                    key={m.id}
+                    mensagem={m}
+                    aberta={abertos.has(m.id)}
+                    onAlternar={alternar}
+                  />
+                ))}
+              </TableBody>
+            </Table>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setOffset(offset + PAGE_SIZE)}
-            disabled={offset + PAGE_SIZE >= total || q.isFetching}
-          >
-            Próxima
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+        </PainelCard>
+
+        {/* O rodapé só existe quando há linhas: carregando, com erro ou vazio ele diria "Nenhum
+            resultado · Página 1 de 1" embaixo de um cartão que diz outra coisa. */}
+        {!q.isLoading && !q.error && itens.length > 0 && (
+          <Paginacao
+            offset={offset}
+            total={total}
+            tamanho={PAGE_SIZE}
+            ocupado={q.isFetching}
+            onOffset={setOffset}
+          />
+        )}
       </div>
     </div>
   );
@@ -159,7 +162,60 @@ function MensagensPage() {
 
 const CORTE_DA_PREVIA = 90;
 
-function Linha({
+/** A categoria em palavras. As recebidas não têm: a Meta categoriza o que sai, não o que entra. */
+function nomeDaCategoria(m: MensagemItem): string {
+  return visualDaCategoria(m.categoria)?.nome ?? "Sem categoria";
+}
+
+/**
+ * Se a Meta cobrou, como pílula — é estado da mensagem, e quem decide é a Meta (`pricing.billable`):
+ * o painel copia, não recalcula. "Grátis" fica no tom neutro de propósito: a maior parte da conversa
+ * cai na janela gratuita, e um marcador forte em quase toda linha deixaria de marcar coisa nenhuma.
+ */
+function Cobranca({ mensagem }: { mensagem: MensagemItem }) {
+  return mensagem.cobravel ? (
+    <StatusPill tom="progress">Cobrável</StatusPill>
+  ) : (
+    <StatusPill tom="neutral">Grátis</StatusPill>
+  );
+}
+
+/** A direção com o ponto na cor dela — a mesma da borda do texto quando a linha abre. */
+function Direcao({ mensagem }: { mensagem: MensagemItem }) {
+  const direcao = visualDaDirecao(mensagem.direcao);
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span
+        aria-hidden
+        className="h-1.5 w-1.5 shrink-0 rounded-full"
+        style={{ background: direcao?.cor ?? "var(--wu-line-strong)" }}
+      />
+      {direcao?.nome ?? mensagem.direcao}
+    </span>
+  );
+}
+
+/** O texto da mensagem e o `wamid` — o id técnico, em mono, para achar a mensagem do lado da Meta. */
+function ConteudoDaMensagem({ mensagem }: { mensagem: MensagemItem }) {
+  const cor = visualDaDirecao(mensagem.direcao)?.cor ?? "var(--wu-line-strong)";
+  return (
+    <div className="flex min-w-0 flex-col gap-3">
+      <Conteudo
+        titulo={mensagem.direcao === "recebida" ? "Mensagem do cliente" : "Mensagem enviada"}
+        texto={mensagem.conteudo}
+        cor={cor}
+      />
+      {mensagem.id_externo && (
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-subtle text-[12.5px]">wamid</span>
+          <span className="text-foreground font-mono text-xs break-all">{mensagem.id_externo}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MensagemLinha({
   mensagem,
   aberta,
   onAlternar,
@@ -168,100 +224,98 @@ function Linha({
   aberta: boolean;
   onAlternar: (id: string) => void;
 }) {
-  const direcao = visualDaDirecao(mensagem.direcao);
-  const categoria = visualDaCategoria(mensagem.categoria);
-  const cor = direcao?.cor ?? "var(--border)";
-
   return (
     <>
+      {/* A linha inteira abre o conteúdo, como no wide-ui; o botão continua sendo o caminho do
+          teclado. Clique que terminou uma seleção de texto é cópia, não pedido de abrir. */}
       <TableRow
-        // A linha inteira é o gatilho porque ler a mensagem é o motivo de estar aqui — mas o
-        // controle focável continua sendo o botão, que também alterna e por isso segura o clique
-        // para não alternar duas vezes.
-        onClick={() => onAlternar(mensagem.id)}
+        onClick={() => {
+          if (haTextoSelecionado()) return;
+          onAlternar(mensagem.id);
+        }}
         className={cn("cursor-pointer", aberta && "border-b-0")}
       >
-        {/* O filete na direção da mensagem: descendo a lista, quem falou se lê antes da coluna. */}
-        <TableCell className="border-l-2 p-1 pl-3" style={{ borderLeftColor: cor }}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={(e) => {
-              e.stopPropagation();
-              onAlternar(mensagem.id);
-            }}
-            aria-expanded={aberta}
-            aria-label={aberta ? "Ocultar conteúdo" : "Ver conteúdo"}
-          >
-            <ChevronDown className={cn("h-4 w-4 transition-transform", aberta && "rotate-180")} />
-          </Button>
+        <TableCell className="py-0 pr-0 pl-3">
+          <BotaoDeConteudo aberto={aberta} onClick={() => onAlternar(mensagem.id)} />
         </TableCell>
-        <TableCell className="text-muted-foreground font-mono text-xs whitespace-nowrap">
-          {formatDateTime(mensagem.criado_em, { segundos: true })}
+        <TableCell className="max-w-[16rem]">
+          <div className="text-foreground truncate font-medium" title={mensagem.ator}>
+            {mensagem.ator}
+          </div>
+          <div className="text-subtle truncate text-xs">
+            {mensagem.aplicacao} · {mensagem.pais}
+          </div>
         </TableCell>
-        <TableCell className="max-w-[10rem] truncate font-mono text-xs" title={mensagem.ator}>
-          {mensagem.ator}
+        <TableCell className="whitespace-nowrap">
+          <Direcao mensagem={mensagem} />
+          <div className="text-subtle text-xs">{nomeDaCategoria(mensagem)}</div>
         </TableCell>
-        <TableCell className="text-xs whitespace-nowrap">
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className="h-1.5 w-1.5 shrink-0 rounded-full"
-              style={{ background: cor }}
-              aria-hidden
-            />
-            {direcao?.nome ?? mensagem.direcao}
-          </span>
+        <TableCell>
+          <Cobranca mensagem={mensagem} />
         </TableCell>
-        <TableCell className="text-xs whitespace-nowrap">
-          {categoria ? (
-            <span className="inline-flex items-center gap-1.5">
-              <span
-                className="h-1.5 w-1.5 shrink-0 rounded-full"
-                style={{ background: categoria.cor }}
-                aria-hidden
-              />
-              {categoria.nome}
-            </span>
-          ) : (
-            // Recebida: a Meta categoriza o que sai, não o que entra.
-            <span className="text-muted-foreground">—</span>
-          )}
-        </TableCell>
-        <TableCell className="font-mono text-xs">{mensagem.pais}</TableCell>
-        <TableCell className="text-xs whitespace-nowrap">
-          {mensagem.cobravel ? (
-            "Cobrável"
-          ) : (
-            // Discreto de propósito: a maior parte da conversa cai na janela gratuita, e um
-            // marcador forte em quase toda linha deixaria de marcar coisa nenhuma.
-            <span className="text-muted-foreground">Grátis</span>
-          )}
-        </TableCell>
-        <TableCell className="leitura text-foreground pr-1 text-right text-sm whitespace-nowrap">
-          <CelulaCusto mensagem={mensagem} />
-        </TableCell>
-        <TableCell className="text-muted-foreground max-w-[22rem] truncate pr-5 text-xs">
+        <TableCell className="text-muted-foreground max-w-[22rem] truncate">
           {mensagem.conteudo ? (
             previa(mensagem.conteudo)
           ) : (
-            <span className="italic">sem conteúdo</span>
+            <span className="text-subtle">Sem conteúdo</span>
           )}
+        </TableCell>
+        <TableCell className="text-foreground text-right font-medium whitespace-nowrap">
+          <CelulaCusto mensagem={mensagem} />
+        </TableCell>
+        <TableCell className="text-muted-foreground pr-4 text-right whitespace-nowrap">
+          {formatDateTime(mensagem.criado_em, { segundos: true })}
         </TableCell>
       </TableRow>
 
       {aberta && (
         <TableRow className="hover:bg-transparent">
-          <TableCell colSpan={9} className="bg-raised px-5 pt-1 pb-5">
-            <Conteudo
-              titulo={mensagem.direcao === "recebida" ? "Mensagem do cliente" : "Mensagem enviada"}
-              texto={mensagem.conteudo}
-              cor={cor}
-            />
+          <TableCell colSpan={7} className="bg-raised h-auto px-4 pt-1 pb-4">
+            <ConteudoDaMensagem mensagem={mensagem} />
           </TableCell>
         </TableRow>
       )}
     </>
+  );
+}
+
+/** A mesma linha abaixo de 700px: data e cobrança em cima, o ator, e os fatos numa linha meta. */
+function MensagemCartao({
+  mensagem,
+  aberta,
+  onAlternar,
+}: {
+  mensagem: MensagemItem;
+  aberta: boolean;
+  onAlternar: (id: string) => void;
+}) {
+  return (
+    <li className="flex flex-col gap-1 px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-subtle text-xs">
+          {formatDateTime(mensagem.criado_em, { segundos: true })}
+        </span>
+        <Cobranca mensagem={mensagem} />
+      </div>
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-foreground min-w-0 truncate font-medium">{mensagem.ator}</span>
+        <span className="text-foreground shrink-0 font-medium">
+          <CelulaCusto mensagem={mensagem} />
+        </span>
+      </div>
+      <div className="text-subtle text-xs">
+        {visualDaDirecao(mensagem.direcao)?.nome ?? mensagem.direcao} · {nomeDaCategoria(mensagem)}{" "}
+        · {mensagem.pais} · {mensagem.aplicacao}
+      </div>
+      <div>
+        <BotaoDeConteudo aberto={aberta} onClick={() => onAlternar(mensagem.id)} comRotulo />
+      </div>
+      {aberta && (
+        <div className="pt-1">
+          <ConteudoDaMensagem mensagem={mensagem} />
+        </div>
+      )}
+    </li>
   );
 }
 
@@ -270,24 +324,26 @@ function Linha({
  *
  * `null` só acontece com mensagem **cobrável sem preço cadastrado** para `(categoria, país, data)`,
  * e é o caminho pelo qual alguém descobre que precisa cadastrar um preço — a mensagem some da soma
- * sem erro nenhum. Por isso o `title` diz qual preço falta, em vez de um traço mudo.
+ * sem erro nenhum. Por isso ela sai como pílula "Sem preço" (o mesmo tom do "Sem preço vigente" da
+ * tela de preços), com o `title` dizendo qual preço falta, em vez de um traço mudo.
  *
  * A não-cobrável fica em branco: o `0,00` dela competiria visualmente com os valores reais, e a
- * coluna ao lado já disse "grátis".
+ * pílula de cobrança já disse "grátis".
  */
 function CelulaCusto({ mensagem }: { mensagem: MensagemItem }) {
   if (!mensagem.cobravel) return null;
 
   if (mensagem.custo === null) {
     return (
-      <span
-        className="text-muted-foreground cursor-help"
+      <StatusPill
+        tom="pending"
+        className="cursor-help"
         title={`Sem preço cadastrado para ${mensagem.categoria ?? "esta categoria"} em ${
           mensagem.pais
         } nesta data. A mensagem é cobrável e fica fora da soma até o preço existir.`}
       >
-        —
-      </span>
+        Sem preço
+      </StatusPill>
     );
   }
 

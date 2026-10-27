@@ -30,7 +30,11 @@ import {
   OUTROS,
   SERIES,
   eixo,
+  formatFatia,
   legendaComValores,
+  porcentagensQueFecham,
+  rotuloDeValor,
+  rotuloNoCentro,
   tooltipEstilo,
   truncarRotulo,
 } from "@/lib/grafico";
@@ -314,8 +318,7 @@ function CustoPorModelo({ baseParams }: { baseParams: Params }) {
   const valores: Record<string, string> = {};
   fatias.forEach((f, i) => {
     const p = porcentagens[i];
-    valores[f.nome] =
-      dinheiro(f.custo, moeda) + (p !== undefined ? ` · ${p.toFixed(1).replace(".", ",")}%` : "");
+    valores[f.nome] = dinheiro(f.custo, moeda) + (p !== undefined ? ` · ${formatFatia(p)}` : "");
   });
   const legenda = legendaComValores(valores, { por: "nome" });
 
@@ -358,23 +361,7 @@ function CustoPorModelo({ baseParams }: { baseParams: Params }) {
               <Cell key={f.nome} fill={f.cor} />
             ))}
             {totalDoPeriodo !== null && (
-              <Label
-                position="center"
-                content={({ viewBox }) => {
-                  const { cx, cy } = (viewBox ?? {}) as { cx?: number; cy?: number };
-                  if (cx === undefined || cy === undefined) return null;
-                  return (
-                    <text x={cx} y={cy} textAnchor="middle">
-                      <tspan x={cx} dy="-0.2em" fill="var(--wu-fg)" fontSize={15} fontWeight={600}>
-                        {dinheiro(totalDoPeriodo, moeda)}
-                      </tspan>
-                      <tspan x={cx} dy="1.5em" fill="var(--wu-muted)" fontSize={12}>
-                        no período
-                      </tspan>
-                    </text>
-                  );
-                }}
-              />
+              <Label position="center" content={rotuloNoCentro(dinheiro(totalDoPeriodo, moeda))} />
             )}
           </Pie>
         </PieChart>
@@ -384,31 +371,6 @@ function CustoPorModelo({ baseParams }: { baseParams: Params }) {
 }
 
 type Fatia = { nome: string; custo: number; cor: string };
-
-/**
- * A fatia de cada valor sobre `total`, com uma casa, pelo método do maior resto: arredondar cada
- * uma por conta própria pode dar 99,9% ou 100,1%, e a legenda diria que o anel não fecha. Os
- * décimos que faltam (ou sobram) vão para as fatias de maior resto. Sem total, não há fatia.
- */
-function porcentagensQueFecham(valores: number[], total: number | null): number[] {
-  if (total === null || total <= 0) return [];
-  const brutos = valores.map((v) => (v / total) * 1000); // em décimos de ponto percentual
-  const alvo = Math.round(brutos.reduce((s, b) => s + b, 0));
-  const pisos = brutos.map(Math.floor);
-  let falta = alvo - pisos.reduce((s, p) => s + p, 0);
-  const ordem = brutos
-    .map((b, i) => ({ i, resto: b - Math.floor(b) }))
-    .sort((a, b) => b.resto - a.resto);
-  for (const { i } of ordem) {
-    if (falta <= 0) break;
-    pisos[i] += 1;
-    falta -= 1;
-  }
-  return pisos.map((p) => p / 10);
-}
-
-/** O rótulo de valor na ponta de cada barra: é a legenda com valor de um gráfico de uma série só. */
-const rotuloDeValor = { fill: "var(--wu-fg)", fontSize: 12 } as const;
 
 function TopAtores({ baseParams }: { baseParams: Params }) {
   const q = useMetricas({ ...baseParams, grupo: "ator" });
