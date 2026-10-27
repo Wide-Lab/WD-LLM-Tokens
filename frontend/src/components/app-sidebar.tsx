@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { GRUPOS, destinoAtivo, trilhaDaRota } from "@/lib/navegacao";
+import { GRUPOS, TRILHA_NAO_ENCONTRADA, destinoAtivo, trilhaDaRota } from "@/lib/navegacao";
 import { useTheme } from "@/lib/theme";
 import { useSessao } from "@/lib/sessao";
 
@@ -37,6 +37,8 @@ export function Moldura({ children }: { children: React.ReactNode }) {
     const aoTeclar = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
+        // Busca e gaveta são dois modais: abrir um sobre o outro deixaria o foco preso no de baixo.
+        setGavetaAberta(false);
         setBuscaAberta((aberta) => !aberta);
       }
     };
@@ -90,7 +92,12 @@ export function Moldura({ children }: { children: React.ReactNode }) {
 }
 
 function Trilha({ caminho }: { caminho: string }) {
-  const trilha = trilhaDaRota(caminho);
+  // Caminho que não existe ainda pode casar por prefixo com um item da barra (`/llm/qualquer`);
+  // quem sabe que é 404 é o roteador, não a lista de destinos.
+  const naoEncontrada = useRouterState({
+    select: (s) => s.matches.some((m) => m.globalNotFound || m.status === "notFound"),
+  });
+  const trilha = naoEncontrada ? TRILHA_NAO_ENCONTRADA : trilhaDaRota(caminho);
   return (
     <nav aria-label="Trilha" className="min-w-0">
       <ol className="flex min-w-0 items-center gap-1.5 text-[13px]">
@@ -103,13 +110,20 @@ function Trilha({ caminho }: { caminho: string }) {
             >
               {ultima ? (
                 <span aria-current="page" className="text-foreground truncate font-semibold">
+                  {m.contexto && (
+                    <span className="text-subtle font-normal sm:hidden">{m.contexto} · </span>
+                  )}
                   {m.rotulo}
                 </span>
               ) : (
                 <>
-                  <Link to={m.url} className="text-subtle hover:text-foreground truncate">
-                    {m.rotulo}
-                  </Link>
+                  {m.url ? (
+                    <Link to={m.url} className="text-subtle hover:text-foreground truncate">
+                      {m.rotulo}
+                    </Link>
+                  ) : (
+                    <span className="text-subtle truncate">{m.rotulo}</span>
+                  )}
                   <span aria-hidden className="text-subtle">
                     /
                   </span>
@@ -123,9 +137,33 @@ function Trilha({ caminho }: { caminho: string }) {
   );
 }
 
+/**
+ * O rótulo do atalho da busca. Começa em "Ctrl K" e só troca para "⌘ K" depois de montar: no SSR
+ * não há `navigator`, e decidir no primeiro render faria o HTML do servidor e o do cliente
+ * discordarem.
+ */
+function useRotuloDoAtalho(): string {
+  const [ehMac, setEhMac] = useState(false);
+  useEffect(() => {
+    const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
+    const plataforma = nav.userAgentData?.platform || nav.platform || "";
+    setEhMac(/mac/i.test(plataforma));
+  }, []);
+  return ehMac ? "⌘ K" : "Ctrl K";
+}
+
+/** Sem acento e em minúsculas, para "precos" achar "Preços" e "visao" achar "Visão geral". */
+function semAcento(texto: string): string {
+  return texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
 function BarraLateral({ aoBuscar }: { aoBuscar: () => void }) {
   const currentPath = useRouterState({ select: (r) => r.location.pathname });
   const ativo = destinoAtivo(currentPath);
+  const atalho = useRotuloDoAtalho();
 
   return (
     <div className="flex h-full w-full min-w-0 flex-col">
@@ -151,7 +189,9 @@ function BarraLateral({ aoBuscar }: { aoBuscar: () => void }) {
         >
           <Search className="h-4 w-4 shrink-0" />
           <span className="flex-1 truncate text-left">Buscar ou ir para...</span>
-          <kbd className="border-line rounded border px-1 font-sans text-[11px] font-medium">Ctrl K</kbd>
+          <kbd className="border-line rounded border px-1 font-sans text-[11px] font-medium">
+            {atalho}
+          </kbd>
         </button>
       </div>
 
@@ -277,6 +317,7 @@ function BuscaDeComando({ aberta, aoMudar }: { aberta: boolean; aoMudar: (v: boo
                     <CommandItem
                       key={item.url}
                       value={nome}
+                      keywords={[semAcento(nome)]}
                       onSelect={() => {
                         aoMudar(false);
                         navigate({ to: item.url });

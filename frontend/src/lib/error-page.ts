@@ -1,8 +1,9 @@
 /**
  * Página de falha do servidor, quando nem o React chegou a renderizar. É HTML cru, sem o CSS do
  * app, então repete à mão o estado de erro do wide-ui (cartão, tile `danger-bg`, botões de 36px)
- * com os valores claros do `tokens.css` — é a única cópia de valor fora dele, e por isso mesmo
- * fica restrita a esta página.
+ * com os valores claro e escuro do `tokens.css` — é a única cópia de valor fora dele, e por isso
+ * mesmo fica restrita a esta página. O escuro segue o sistema: sem JS, não há como ler o tema
+ * salvo.
  */
 export function renderErrorPage(): string {
   return `<!doctype html>
@@ -21,6 +22,14 @@ export function renderErrorPage(): string {
       a, button { height: 36px; padding: 0 14px; border-radius: 8px; font: inherit; font-weight: 500; cursor: pointer; text-decoration: none; border: 1px solid transparent; display: inline-flex; align-items: center; }
       .primary { background: #E30D4D; color: #fff; }
       .secondary { background: #fff; color: #18181B; border-color: #D4D4D8; }
+      /* Sem o script do tema aqui, quem decide é o sistema: os valores escuros do \`tokens.css\`. */
+      @media (prefers-color-scheme: dark) {
+        body { background: #0E0E10; color: #EDEDEF; }
+        .card { background: #17171A; border-color: #2A2A2F; }
+        .tile { background: rgba(248, 113, 113, .10); color: #F87171; }
+        p { color: #A1A1AA; }
+        .secondary { background: #17171A; color: #EDEDEF; border-color: #3A3A40; }
+      }
     </style>
   </head>
   <body>

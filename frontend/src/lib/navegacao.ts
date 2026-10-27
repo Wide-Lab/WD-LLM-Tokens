@@ -79,35 +79,51 @@ export function destinoAtivo(caminhoAtual: string): string | undefined {
 
 export interface Migalha {
   rotulo: string;
-  /** Ausente no último passo: a página atual não é link para ela mesma. */
+  /** Ausente no último passo (a página atual não é link para ela mesma) e no grupo que já é a
+   *  página atual. */
   url?: string;
+  /**
+   * Só no último passo, e só abaixo de 640px: de onde ele é. No celular os pais somem da trilha, e
+   * sem isto `/llm` e `/whatsapp` diriam os dois apenas "Painel", e o ator seria um id solto.
+   */
+  contexto?: string;
 }
+
+/** A trilha de um caminho que não existe — o topo não pode dizer "Painel" sobre o 404. */
+export const TRILHA_NAO_ENCONTRADA: Migalha[] = [{ rotulo: "Página não encontrada" }];
 
 /**
  * A trilha do topo: os pais em links, a página atual por último.
  *
  * Sai do destino ativo da barra, e não de uma tabela de títulos à parte, para o topo e a barra
  * nunca discordarem de onde se está. O grupo entra como primeiro passo (apontando para o painel
- * da origem); o ator, que não é item da barra, entra como o passo depois de "Eventos".
+ * da origem — ou sem link, quando o painel é a própria página); o ator, que não é item da barra,
+ * entra como o passo depois de "Eventos".
  */
 export function trilhaDaRota(caminhoAtual: string): Migalha[] {
   const url = destinoAtivo(caminhoAtual);
   const grupo = GRUPOS.find((g) => g.itens.some((i) => i.url === url));
   const item = grupo?.itens.find((i) => i.url === url);
-  if (!grupo || !item) return [{ rotulo: "Painel" }];
+  if (!grupo || !item) return TRILHA_NAO_ENCONTRADA;
 
+  const resto = caminhoAtual.slice(item.url.length).split("/").filter(Boolean);
   const trilha: Migalha[] = [];
   // Grupo sem rótulo não tem nome para virar passo da trilha.
   if (grupo.rotulo) {
-    trilha.push({ rotulo: grupo.rotulo, url: grupo.itens[0].url });
+    const ehAPropriaPagina = item === grupo.itens[0] && resto.length === 0;
+    trilha.push({ rotulo: grupo.rotulo, url: ehAPropriaPagina ? undefined : grupo.itens[0].url });
   }
   trilha.push({ rotulo: item.title, url: item.url });
-
-  const resto = caminhoAtual.slice(url!.length).split("/").filter(Boolean);
+  // Abaixo de um item da barra só existe o ator, em `/llm/eventos/$ator`.
   for (const parte of resto) trilha.push({ rotulo: decodificar(parte) });
 
-  // O último passo é a página atual, sem link.
-  trilha[trilha.length - 1] = { rotulo: trilha[trilha.length - 1].rotulo };
+  // O último passo é a página atual, sem link, e no celular diz de onde é.
+  const ultimo = trilha[trilha.length - 1];
+  const contexto = resto.length > 0 ? [grupo.rotulo, "Ator"] : [grupo.rotulo];
+  trilha[trilha.length - 1] = {
+    rotulo: ultimo.rotulo,
+    contexto: contexto.filter(Boolean).join(" · ") || undefined,
+  };
   return trilha;
 }
 

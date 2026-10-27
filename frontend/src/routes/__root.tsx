@@ -1,107 +1,24 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
-  Link,
   createRootRouteWithContext,
   useNavigate,
-  useRouter,
   useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { Compass, TriangleAlert } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { Moldura } from "@/components/app-sidebar";
-import { Button } from "@/components/ui/button";
+import { ErroNaRaiz, PaginaNaoEncontrada } from "@/components/pagina-de-estado";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
 import { SCRIPT_DO_TEMA, ThemeProvider } from "@/lib/theme";
 import { COR_DA_MARCA, variaveisDaMarca } from "@/lib/marca";
 import { applyAccent } from "@/styles/wide-ui/accent";
 import { SessaoProvider, useSessao } from "@/lib/sessao";
 import { FiltersProvider } from "@/lib/filters";
 import { Toaster } from "@/components/ui/sonner";
-
-/**
- * Cartão central das páginas fora da moldura (404 e falha), no estado "vazio/erro" do wide-ui:
- * tile de 48px com o ícone, título, uma linha de porquê e a ação que resolve.
- */
-function PaginaDeEstado({
-  icone,
-  tom,
-  titulo,
-  descricao,
-  children,
-}: {
-  icone: ReactNode;
-  tom: "neutro" | "erro";
-  titulo: string;
-  descricao: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="bg-background flex min-h-screen items-center justify-center px-4">
-      <div className="border-line bg-surface shadow-card w-full max-w-md rounded-[var(--wu-radius)] border p-8 text-center">
-        <div
-          className={cn(
-            "mx-auto grid h-12 w-12 place-items-center rounded-[var(--wu-radius)]",
-            tom === "erro" ? "bg-danger-bg text-danger" : "bg-sel text-muted-foreground",
-          )}
-        >
-          {icone}
-        </div>
-        <h1 className="text-foreground mt-4 text-base font-semibold">{titulo}</h1>
-        <p className="text-muted-foreground mt-1 text-[13px]">{descricao}</p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">{children}</div>
-      </div>
-    </div>
-  );
-}
-
-function NotFoundComponent() {
-  return (
-    <PaginaDeEstado
-      tom="neutro"
-      icone={<Compass className="h-6 w-6" />}
-      titulo="Página não encontrada"
-      descricao="Este endereço não existe no painel. Volte para a visão geral."
-    >
-      <Button asChild>
-        <Link to="/">Ir para a visão geral</Link>
-      </Button>
-    </PaginaDeEstado>
-  );
-}
-
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  // A mensagem crua vai para o console, não para a tela: quem lê a tela precisa saber o que
-  // fazer, não o stack.
-  console.error(error);
-  const router = useRouter();
-
-  return (
-    <PaginaDeEstado
-      tom="erro"
-      icone={<TriangleAlert className="h-6 w-6" />}
-      titulo="Esta página não carregou"
-      descricao="Tente de novo. Se continuar falhando, o serviço de métricas pode estar fora do ar."
-    >
-      <Button
-        onClick={() => {
-          router.invalidate();
-          reset();
-        }}
-      >
-        Tentar de novo
-      </Button>
-      <Button variant="outline" asChild>
-        <a href="/">Ir para a visão geral</a>
-      </Button>
-    </PaginaDeEstado>
-  );
-}
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
@@ -137,8 +54,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   }),
   shellComponent: RootShell,
   component: RootComponent,
-  notFoundComponent: NotFoundComponent,
-  errorComponent: ErrorComponent,
+  // As rotas filhas herdam os estados pelo `defaultNotFoundComponent`/`defaultErrorComponent` do
+  // roteador; aqui fica só o que é da raiz: o 404 (que ela desenha no próprio `<Outlet>`, dentro
+  // da moldura) e a falha dela mesma, que sai em tela cheia porque a moldura não existe.
+  notFoundComponent: PaginaNaoEncontrada,
+  errorComponent: ErroNaRaiz,
 });
 
 function RootShell({ children }: { children: ReactNode }) {
@@ -183,11 +103,8 @@ function RootComponent() {
  */
 function Carregando() {
   return (
-    <div
-      className="bg-background flex min-h-screen w-full"
-      aria-busy="true"
-      aria-label="Carregando"
-    >
+    <div role="status" aria-busy="true" className="bg-background flex min-h-screen w-full">
+      <span className="sr-only">Carregando</span>
       <div className="border-line bg-surface hidden w-[252px] shrink-0 flex-col gap-3 border-r p-4 min-[1000px]:flex">
         <div className="flex items-center gap-2.5">
           <Skeleton className="h-8 w-8" />
@@ -202,7 +119,11 @@ function Carregando() {
         ))}
       </div>
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="border-line bg-surface flex h-[52px] items-center border-b px-7">
+        <div className="border-line bg-surface flex h-[52px] items-center gap-2 border-b px-4 min-[700px]:px-7">
+          {/* O lugar do hambúrguer, para o conteúdo não pular quando a moldura chegar. */}
+          <div className="-ml-2 grid h-9 w-9 shrink-0 place-items-center min-[1000px]:hidden">
+            <Skeleton className="h-[18px] w-[18px]" />
+          </div>
           <Skeleton className="h-3.5 w-40" />
         </div>
         <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 pt-6 min-[700px]:px-7">

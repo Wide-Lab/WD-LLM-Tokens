@@ -20,6 +20,21 @@ export const Route = createFileRoute("/login")({
   component: Login,
 });
 
+/**
+ * O que a tela diz quando o login falha. Só as recusas do backend (credencial errada, sessão,
+ * excesso de tentativas) chegam com a mensagem dele, que já vem em pt-BR e diz o que fazer. Rede
+ * fora (`status` 0) e 5xx trazem texto técnico — "Falha de rede: Failed to fetch", "Erro 502" — e
+ * viram uma frase que a pessoa entende; a mensagem crua vai para o console.
+ */
+function mensagemDeFalha(e: unknown): string {
+  if (e instanceof ApiError && [400, 401, 403, 429].includes(e.status)) return e.message;
+  console.error(e);
+  if (e instanceof ApiError && (e.status === 0 || e.status >= 500)) {
+    return "Não foi possível falar com o servidor. Tente de novo em instantes.";
+  }
+  return "Não foi possível entrar. Confira o e-mail e a senha e tente de novo.";
+}
+
 function Login() {
   const { entrar } = useSessao();
   const [email, setEmail] = useState("");
@@ -37,11 +52,7 @@ function Login() {
     try {
       await entrar(email.trim(), senha);
     } catch (e) {
-      setErro(
-        e instanceof ApiError || e instanceof Error
-          ? e.message
-          : "Não foi possível entrar. Confira o e-mail e a senha e tente de novo.",
-      );
+      setErro(mensagemDeFalha(e));
       setEnviando(false);
     }
   };

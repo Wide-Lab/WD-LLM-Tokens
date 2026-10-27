@@ -3,6 +3,7 @@ import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 import { ApiError } from "./lib/api";
 import { SESSAO_QUERY_KEY } from "./lib/sessao";
+import { ErroNaRota, PaginaNaoEncontrada } from "./components/pagina-de-estado";
 
 export const getRouter = () => {
   // Sessão que vence no meio do uso volta como `401` em qualquer query — métricas, eventos,
@@ -26,6 +27,10 @@ export const getRouter = () => {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+    // Sem estes, rota filha que falha ou não acha o que procura cai no componente embutido do
+    // TanStack — em inglês e com a mensagem crua na tela. `errorComponent` da raiz não cobre filha.
+    defaultErrorComponent: ErroNaRota,
+    defaultNotFoundComponent: PaginaNaoEncontrada,
   });
 
   return router;
