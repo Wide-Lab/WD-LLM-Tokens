@@ -190,7 +190,7 @@ function Troca({
 /**
  * O traço que cruza a espinha: largura contra a troca mais pesada em tela, repartido nas
  * mesmas quatro cores do medidor. Sem animação de entrada — a fita do topo cresce uma vez
- * porque é uma font-medium só; cinquenta traços crescendo seria debandada.
+ * porque é uma só; cinquenta traços crescendo seria debandada.
  */
 function Perfil({ troca, proporcao }: { troca: EventoItem; proporcao: number }) {
   const total = tokensDaTroca(troca);

@@ -68,7 +68,9 @@ export function Cartao({
           {unidade && <span className="text-subtle shrink-0 text-sm font-medium">{unidade}</span>}
         </div>
       )}
-      {!carregando && children}
+      {/* O esqueleto segura o lugar do que vem em `children` (hoje, a fita de 3px dos cobráveis),
+        senão o tile cresce uma linha quando os dados chegam. */}
+      {children && (carregando ? <Skeleton className="h-[3px] w-full rounded-full" /> : children)}
       {nota && !carregando && <div className="text-muted-foreground text-xs">{nota}</div>}
       {nota && carregando && <Skeleton className="h-3.5 w-24" />}
     </section>

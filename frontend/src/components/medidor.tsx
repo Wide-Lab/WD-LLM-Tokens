@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import type { MetricaBucket } from "@/lib/api-types";
 
 /**
- * O medidor — a font-medium de cabeçalho do painel.
+ * O medidor — o número de cabeçalho do painel.
  *
  * Substitui a fileira de cartões idênticos porque ela escondia o fato mais característico
  * do modelo de dados: os quatro baldes de token **não se sobrepõem** e somam o total
@@ -25,8 +25,8 @@ export const BALDES = [
   { chave: "tokens_saida", nome: "Saída", cor: "var(--balde-saida)" },
   {
     chave: "tokens_cache_leitura",
-    nome: "Cache font-medium",
-    cor: "var(--balde-cache-font-medium)",
+    nome: "Cache leitura",
+    cor: "var(--balde-cache-leitura)",
   },
   {
     chave: "tokens_cache_escrita",
@@ -40,15 +40,18 @@ export function Medidor({
   carregando,
   erro,
   titulo = "Gasto no período",
+  onRetry,
 }: {
   totais?: MetricaBucket;
   carregando?: boolean;
   erro?: unknown;
   titulo?: string;
+  /** Normalmente o `refetch` da query: com ele o erro oferece "Tentar de novo". */
+  onRetry?: () => void;
 }) {
   const [destacado, setDestacado] = useState<string | null>(null);
 
-  if (erro) return <ErrorBox error={erro} />;
+  if (erro) return <ErrorBox error={erro} onRetry={onRetry} />;
 
   const moeda = totais?.moeda ?? "USD";
   const partes = BALDES.map((b) => ({ ...b, valor: totais?.[b.chave] ?? 0 }));

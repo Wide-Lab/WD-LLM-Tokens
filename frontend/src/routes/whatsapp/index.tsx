@@ -77,7 +77,7 @@ function PainelWhatsapp() {
 
   return (
     <div className="flex flex-col gap-4">
-      <GlobalFilters>
+      <GlobalFilters recortesDaSecao={["categoria", "direcao"]}>
         <FiltrosWhatsapp />
       </GlobalFilters>
       <Cartoes baseParams={base} />

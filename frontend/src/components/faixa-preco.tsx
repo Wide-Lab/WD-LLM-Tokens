@@ -71,7 +71,7 @@ function ReguaDeVigencia({ vigencias }: { vigencias: Vigencia[] }) {
 }
 
 /**
- * Um preço na tela: o que vale hoje em font-medium grande, e o resto como história.
+ * Um preço na tela: o que vale hoje em destaque, e o resto como história.
  *
  * A unidade da tela não é a linha da tabela, é **o que está sendo precificado** — um modelo, um par
  * categoria/país. Listar as linhas cruas repetiria o mesmo modelo cinco vezes e enterraria a

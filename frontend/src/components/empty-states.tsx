@@ -1,5 +1,5 @@
 import { Inbox, TriangleAlert, type LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -49,25 +49,34 @@ function EstadoDePagina({
 /**
  * Falha de carga. Nunca mostra a mensagem crua: ela vai para o console, e a tela diz o que
  * aconteceu em palavras e o que fazer. Com `onRetry`, oferece "Tentar de novo".
+ *
+ * O texto padrão é neutro de propósito: o mesmo erro aparece em métrica e em preço, e para
+ * qualquer status. Quem sabe dizer mais passa `descricao`.
  */
 export function ErrorBox({
   error,
   onRetry,
   titulo = "Não foi possível carregar os dados",
+  descricao = "Não conseguimos carregar estes dados. Tente de novo; se continuar falhando, o serviço pode estar fora do ar.",
   className,
 }: {
   error: unknown;
   onRetry?: () => void;
   titulo?: string;
+  descricao?: string;
   className?: string;
 }) {
-  if (error) console.error(error);
+  // No efeito, e não no render: senão cada re-render (hover num gráfico, digitar num filtro)
+  // loga o mesmo erro de novo.
+  useEffect(() => {
+    if (error) console.error(error);
+  }, [error]);
   return (
     <EstadoDePagina
       icone={TriangleAlert}
       tom="erro"
       titulo={titulo}
-      descricao="O serviço de métricas não respondeu. Tente de novo; se continuar falhando, ele pode estar fora do ar."
+      descricao={descricao}
       className={className}
     >
       {onRetry && (

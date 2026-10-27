@@ -48,7 +48,7 @@ export function Campo({
 }) {
   return (
     <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
-      <Label htmlFor={para} className="text-muted-foreground text-[12.5px]">
+      <Label htmlFor={para} className="text-muted-foreground text-[13px]">
         {rotulo}
       </Label>
       {children}
@@ -214,9 +214,8 @@ export function GlobalFilters({
             </span>
           ))}
           <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2"
+            variant="link"
+            className="h-7 px-1"
             onClick={() => setFilters(Object.fromEntries(ativos.map((k) => [k, ""])))}
           >
             Limpar filtros

@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import { VazioNoCartao } from "@/components/empty-states";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,10 @@ export function PainelCard({
   bleed?: boolean;
   className?: string;
 }) {
-  if (error) console.error(error);
+  // No efeito, e não no render, para não logar o mesmo erro a cada re-render.
+  useEffect(() => {
+    if (error) console.error(error);
+  }, [error]);
 
   return (
     <section
@@ -89,7 +92,7 @@ export function PainelCard({
             Não foi possível carregar este quadro.
           </p>
           {onRetry && (
-            <Button variant="outline" size="sm" onClick={onRetry}>
+            <Button variant="outline" onClick={onRetry}>
               Tentar de novo
             </Button>
           )}
