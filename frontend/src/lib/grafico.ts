@@ -1,3 +1,5 @@
+import { createElement } from "react";
+
 /**
  * Ajustes compartilhados do recharts.
  *
@@ -5,26 +7,41 @@
  * quebra o fast refresh do Vite.
  */
 
-/** Eixos sem linha e sem tick: a grade horizontal já dá a referência de leitura. */
+/** Eixos sem linha e sem tick, em `subtle` 12px: a grade horizontal já dá a referência de leitura. */
 export const eixo = {
-  stroke: "var(--muted-foreground)",
-  fontSize: 11,
+  stroke: "var(--wu-subtle)",
+  fontSize: 12,
   tickLine: false,
   axisLine: false,
   tickMargin: 8,
 } as const;
 
+/** Tooltip como superfície do wide-ui: `surface`, borda `line`, raio 8 e a única sombra permitida. */
 export const tooltipEstilo = {
   contentStyle: {
-    background: "var(--popover)",
-    border: "1px solid var(--border)",
-    borderRadius: 4,
-    color: "var(--popover-foreground)",
-    fontSize: 12,
-    boxShadow: "0 4px 16px oklch(0 0 0 / 12%)",
+    background: "var(--wu-surface)",
+    border: "1px solid var(--wu-line)",
+    borderRadius: 8,
+    color: "var(--wu-fg)",
+    fontSize: 12.5,
+    boxShadow: "var(--wu-shadow)",
   },
-  labelStyle: { color: "var(--muted-foreground)", fontSize: 11 },
-  cursor: { stroke: "var(--border)" },
+  labelStyle: { color: "var(--wu-muted)", fontSize: 12, marginBottom: 2 },
+  itemStyle: { color: "var(--wu-fg)" },
+  cursor: { fill: "var(--wu-hover)", stroke: "var(--wu-line)" },
+} as const;
+
+/**
+ * Legenda dos gráficos: o ponto na cor da série e o rótulo em `muted` 12px. O recharts pinta o
+ * texto com a cor da série por padrão; o `formatter` devolve o texto à cor de texto, porque a
+ * cor já está no ponto.
+ */
+export const legendaEstilo = {
+  wrapperStyle: { fontSize: 12, paddingTop: 4 },
+  iconSize: 8,
+  iconType: "circle",
+  formatter: (valor: string) =>
+    createElement("span", { style: { color: "var(--wu-muted)" } }, valor),
 } as const;
 
 /**

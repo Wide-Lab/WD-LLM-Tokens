@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { ChevronRight, Plus } from "lucide-react";
 
+import { StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { formatDateOnly } from "@/lib/format";
@@ -39,7 +40,7 @@ function ReguaDeVigencia({ vigencias }: { vigencias: Vigencia[] }) {
   const fim = hojeEmDias();
 
   return (
-    <div className="px-5 pb-4">
+    <div className="px-4 pb-4">
       <div className="flex h-1.5 w-full gap-px" aria-hidden="true">
         {vigencias.map((v, i) => {
           const proxima = i + 1 < vigencias.length ? emDias(vigencias[i + 1].desde) : fim;
@@ -57,7 +58,7 @@ function ReguaDeVigencia({ vigencias }: { vigencias: Vigencia[] }) {
           );
         })}
       </div>
-      <div className="text-muted-foreground mt-1.5 flex justify-between font-mono text-[0.6875rem]">
+      <div className="text-subtle mt-1.5 flex justify-between text-xs">
         <span>{formatDateOnly(vigencias[0].desde)}</span>
         <span>hoje</span>
       </div>
@@ -70,7 +71,7 @@ function ReguaDeVigencia({ vigencias }: { vigencias: Vigencia[] }) {
 }
 
 /**
- * Um preço na tela: o que vale hoje em leitura grande, e o resto como história.
+ * Um preço na tela: o que vale hoje em font-medium grande, e o resto como história.
  *
  * A unidade da tela não é a linha da tabela, é **o que está sendo precificado** — um modelo, um par
  * categoria/país. Listar as linhas cruas repetiria o mesmo modelo cinco vezes e enterraria a
@@ -106,13 +107,13 @@ export function FaixaDePreco({
   const anteriores = valendo.slice(1);
 
   return (
-    <section className="bg-card flex flex-col rounded-xl border shadow-sm">
-      <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b px-5 py-3">
+    <section className="border-line bg-card shadow-card flex min-w-0 flex-col rounded-[var(--wu-radius)] border">
+      <header className="border-line flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b px-4 py-2.5">
         <div className="flex min-w-0 items-center gap-2.5">
           {distintivo}
           <div className="min-w-0">
-            <div className="truncate font-mono text-sm font-medium">{titulo}</div>
-            {subtitulo && <div className="etiqueta mt-1 truncate">{subtitulo}</div>}
+            <div className="text-foreground truncate text-sm font-semibold">{titulo}</div>
+            {subtitulo && <div className="text-subtle truncate text-xs">{subtitulo}</div>}
           </div>
         </div>
         <Button variant="outline" size="sm" onClick={onNovoPreco} className="gap-1.5">
@@ -121,26 +122,31 @@ export function FaixaDePreco({
         </Button>
       </header>
 
-      <div className="px-5 py-4">
+      <div className="p-4">
         {atual ? (
           <>
-            <div className="etiqueta">Vigente desde {formatDateOnly(atual.desde)}</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusPill tom="done">Vigente</StatusPill>
+              <span className="text-subtle text-xs">desde {formatDateOnly(atual.desde)}</span>
+            </div>
             <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
               {atual.leituras.map((l) => (
                 <div key={l.rotulo}>
-                  <dt className="etiqueta">{l.rotulo}</dt>
-                  <dd className="leitura text-foreground mt-1.5 text-lg leading-none">{l.valor}</dd>
+                  <dt className="text-muted-foreground text-[12.5px]">{l.rotulo}</dt>
+                  <dd className="text-foreground mt-1 text-lg leading-tight font-semibold">
+                    {l.valor}
+                  </dd>
                 </div>
               ))}
             </dl>
-            <div className="text-muted-foreground mt-3 text-xs">{unidade}</div>
+            <div className="text-subtle mt-3 text-xs">{unidade}</div>
           </>
         ) : (
           // Só preço agendado: nada aqui tem custo ainda, e é melhor a tela dizer isso do que
           // exibir a tarifa futura como se ela já valesse.
-          <div className="border-border rounded-sm border border-dashed px-4 py-3">
-            <div className="etiqueta">Sem preço vigente</div>
-            <p className="text-muted-foreground mt-1.5 text-sm">
+          <div className="flex flex-col items-start gap-2">
+            <StatusPill tom="pending">Sem preço vigente</StatusPill>
+            <p className="text-muted-foreground text-[13px]">
               O primeiro preço só começa em {formatDateOnly(futuras[futuras.length - 1].desde)}. Até
               lá, o custo destes eventos fica em branco no painel.
             </p>
@@ -148,14 +154,12 @@ export function FaixaDePreco({
         )}
 
         {futuras.length > 0 && atual && (
-          <div className="border-line-strong mt-4 border-l-2 pl-3">
-            <div className="etiqueta">Agendado</div>
+          <div className="border-line mt-4 border-t pt-3">
+            <StatusPill tom="progress">Agendado</StatusPill>
             <ul className="mt-1.5 space-y-1">
               {futuras.map((v) => (
-                <li key={v.id} className="font-mono text-xs">
-                  <span className="text-muted-foreground">
-                    a partir de {formatDateOnly(v.desde)} ·{" "}
-                  </span>
+                <li key={v.id} className="text-[13px]">
+                  <span className="text-subtle">a partir de {formatDateOnly(v.desde)} · </span>
                   {v.leituras.map((l) => `${l.rotulo} ${l.valor}`).join("  ")}
                 </li>
               ))}
@@ -167,7 +171,7 @@ export function FaixaDePreco({
       {anteriores.length > 0 && (
         <Collapsible open={aberto} onOpenChange={setAberto}>
           <ReguaDeVigencia vigencias={[...valendo].reverse()} />
-          <CollapsibleTrigger className="text-muted-foreground hover:text-foreground flex w-full items-center gap-1.5 border-t px-5 py-2.5 text-left text-xs transition-colors">
+          <CollapsibleTrigger className="text-muted-foreground hover:bg-hover hover:text-foreground border-line flex w-full items-center gap-1.5 border-t px-4 py-2.5 text-left text-[13px] transition-colors">
             <ChevronRight
               className={cn("h-3.5 w-3.5 transition-transform", aberto && "rotate-90")}
             />
@@ -176,19 +180,19 @@ export function FaixaDePreco({
               : `${anteriores.length} vigências anteriores`}
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="border-t">
+            <div className="border-line border-t">
               {anteriores.map((v) => (
                 <div
                   key={v.id}
-                  className="flex flex-wrap items-baseline gap-x-5 gap-y-1 border-b px-5 py-2.5 last:border-b-0"
+                  className="border-line flex flex-wrap items-baseline gap-x-5 gap-y-1 border-b px-4 py-2.5 last:border-b-0"
                 >
-                  <span className="text-muted-foreground w-24 shrink-0 font-mono text-xs">
+                  <span className="text-muted-foreground w-24 shrink-0 text-[13px]">
                     {formatDateOnly(v.desde)}
                   </span>
                   {v.leituras.map((l) => (
                     <span key={l.rotulo} className="flex items-baseline gap-1.5">
-                      <span className="etiqueta">{l.rotulo}</span>
-                      <span className="leitura text-sm">{l.valor}</span>
+                      <span className="text-muted-foreground text-[12.5px]">{l.rotulo}</span>
+                      <span className="text-foreground text-[13.5px] font-medium">{l.valor}</span>
                     </span>
                   ))}
                 </div>

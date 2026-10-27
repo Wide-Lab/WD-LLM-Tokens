@@ -32,7 +32,7 @@ export function FiltrosWhatsapp() {
           value={filters.categoria || TODAS}
           onValueChange={(v) => setFilters({ categoria: v === TODAS ? "" : v })}
         >
-          <SelectTrigger id="filtro-categoria" className="h-9 w-[11rem]">
+          <SelectTrigger id="filtro-categoria" className="w-[11rem]">
             <SelectValue placeholder="Todas" />
           </SelectTrigger>
           <SelectContent>
@@ -51,7 +51,7 @@ export function FiltrosWhatsapp() {
           value={filters.direcao || TODAS}
           onValueChange={(v) => setFilters({ direcao: v === TODAS ? "" : v })}
         >
-          <SelectTrigger id="filtro-direcao" className="h-9 w-[9rem]">
+          <SelectTrigger id="filtro-direcao" className="w-[9rem]">
             <SelectValue placeholder="Todas" />
           </SelectTrigger>
           <SelectContent>

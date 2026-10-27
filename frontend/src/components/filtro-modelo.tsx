@@ -36,7 +36,7 @@ export function FiltroModelo() {
         value={filters.modelo || TODOS}
         onValueChange={(v) => setFilters({ modelo: v === TODOS ? "" : v })}
       >
-        <SelectTrigger id="filtro-modelo" className="h-9 w-[12rem]">
+        <SelectTrigger id="filtro-modelo" className="w-[12rem]">
           <SelectValue placeholder="Todos" />
         </SelectTrigger>
         <SelectContent>

@@ -3,7 +3,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { ArrowUp } from "lucide-react";
 
 import { BALDES } from "@/components/medidor";
-import { EmptyBox, ErrorBox } from "@/components/empty-states";
+import { ErrorBox, VazioNoCartao } from "@/components/empty-states";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiGet } from "@/lib/api";
@@ -51,7 +51,7 @@ export function Conversa({ baseParams }: { baseParams: Params }) {
   if (q.error)
     return (
       <div className="p-4">
-        <ErrorBox error={q.error} />
+        <ErrorBox error={q.error} onRetry={() => void q.refetch()} />
       </div>
     );
 
@@ -68,7 +68,7 @@ export function Conversa({ baseParams }: { baseParams: Params }) {
   if (trocas.length === 0) {
     return (
       <div className="p-4">
-        <EmptyBox message="Este ator não fez chamadas no período selecionado." />
+        <VazioNoCartao>Este ator não fez chamadas no período selecionado.</VazioNoCartao>
       </div>
     );
   }
@@ -110,7 +110,7 @@ export function Conversa({ baseParams }: { baseParams: Params }) {
         );
       })}
 
-      <p className="text-muted-foreground border-t pt-4 text-center font-mono text-[0.6875rem]">
+      <p className="text-subtle border-line border-t pt-4 text-center text-xs">
         {formatNumber(trocas.length)} de {formatNumber(total)} {total === 1 ? "troca" : "trocas"} no
         período
       </p>
@@ -130,8 +130,10 @@ function mudouODia(anterior: EventoItem | undefined, atual: EventoItem): boolean
 function ReguaDoDia({ iso, primeira }: { iso: string; primeira: boolean }) {
   return (
     <div className={cn("flex items-center gap-3 pb-5", !primeira && "pt-3")}>
-      <div className="etiqueta shrink-0">{formatDayLabel(iso)}</div>
-      <div className="bg-border h-px flex-1" />
+      <div className="text-subtle shrink-0 text-[11px] font-semibold tracking-[0.04em] uppercase">
+        {formatDayLabel(iso)}
+      </div>
+      <div className="bg-line h-px flex-1" />
     </div>
   );
 }
@@ -151,22 +153,20 @@ function Troca({
     <article className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3 sm:grid-cols-[5.5rem_minmax(0,1fr)] sm:gap-x-4">
       {/* A calha de instrumento: hora e dinheiro, as duas leituras que não são texto. */}
       <div className="pt-px text-right">
-        <div className="leitura text-muted-foreground text-[0.6875rem]">
-          {formatTime(troca.criado_em)}
-        </div>
+        <div className="text-subtle text-xs">{formatTime(troca.criado_em)}</div>
         {/* Não quebra no meio da quantia, pela mesma razão do medidor: valor partido em duas
             linhas deixa de ser legível como dinheiro. */}
-        <div className="leitura text-foreground mt-0.5 overflow-hidden text-[0.6875rem] text-ellipsis whitespace-nowrap">
+        <div className="text-foreground mt-0.5 overflow-hidden text-xs font-medium text-ellipsis whitespace-nowrap">
           {formatCurrency(troca.custo, troca.moeda)}
         </div>
       </div>
 
       {/* A espinha da fita, e o que cresce dela. */}
-      <div className="border-l pb-7 pl-4 sm:pl-5">
+      <div className="border-line border-l pb-7 pl-4 sm:pl-5">
         <Perfil troca={troca} proporcao={proporcao} />
 
         {semConteudo ? (
-          <div className="text-muted-foreground rounded-sm border border-dashed px-3 py-2 text-xs">
+          <div className="border-line-strong text-subtle rounded-[var(--wu-radius-sm)] border border-dashed px-3 py-2 text-xs">
             Chamada sem conteúdo registrado. Os tokens contam no período; o texto não veio no
             evento.
           </div>
@@ -190,7 +190,7 @@ function Troca({
 /**
  * O traço que cruza a espinha: largura contra a troca mais pesada em tela, repartido nas
  * mesmas quatro cores do medidor. Sem animação de entrada — a fita do topo cresce uma vez
- * porque é uma leitura só; cinquenta traços crescendo seria debandada.
+ * porque é uma font-medium só; cinquenta traços crescendo seria debandada.
  */
 function Perfil({ troca, proporcao }: { troca: EventoItem; proporcao: number }) {
   const total = tokensDaTroca(troca);
@@ -203,7 +203,7 @@ function Perfil({ troca, proporcao }: { troca: EventoItem; proporcao: number }) 
       aria-label={`${formatNumber(total)} tokens nesta troca`}
     >
       <div
-        className="bg-muted flex h-[3px] overflow-hidden rounded-full"
+        className="bg-sel flex h-[3px] overflow-hidden rounded-full"
         // Piso de 8%: uma troca curta perto de uma longa desapareceria, e some com ela a
         // única marca de que a chamada aconteceu.
         style={{ width: `${Math.max(proporcao * 100, 8)}%` }}
@@ -238,10 +238,8 @@ function Turno({
   return (
     <div className={cn("min-w-0", recuado && "ml-4 sm:ml-8")}>
       <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="etiqueta">{papel}</span>
-        {modelo && (
-          <span className="text-muted-foreground font-mono text-[0.6875rem]">{modelo}</span>
-        )}
+        <span className="text-muted-foreground text-[12.5px] font-medium">{papel}</span>
+        {modelo && <span className="text-subtle text-xs">{modelo}</span>}
       </div>
       {texto ? (
         <>
@@ -249,7 +247,7 @@ function Turno({
               agente devolveu virou token de saída. */}
           <p
             className={cn(
-              "border-l-2 pl-3 text-[0.9375rem] leading-relaxed break-words whitespace-pre-wrap",
+              "border-l-[3px] pl-3 text-[13.5px] leading-relaxed break-words whitespace-pre-wrap",
               longo && !inteiro && "line-clamp-[8]",
             )}
             style={{ borderLeftColor: cor }}
@@ -260,14 +258,16 @@ function Turno({
             <button
               type="button"
               onClick={() => setInteiro((v) => !v)}
-              className="text-muted-foreground hover:text-foreground mt-1.5 ml-3 font-mono text-[0.6875rem] underline underline-offset-2 transition-colors"
+              className="text-brand-ink mt-1.5 ml-3 text-xs font-medium hover:underline"
             >
               {inteiro ? "Recolher" : "Mostrar tudo"}
             </button>
           )}
         </>
       ) : (
-        <p className="text-muted-foreground border-l-2 border-dashed pl-3 text-sm">Não informado</p>
+        <p className="border-line-strong text-subtle border-l-2 border-dashed pl-3 text-[13px]">
+          Não informado
+        </p>
       )}
     </div>
   );

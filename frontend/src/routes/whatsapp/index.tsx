@@ -25,6 +25,7 @@ import {
   SERIES_DE_CATEGORIA,
   eixo,
   pivotarPorGrupo,
+  legendaEstilo,
   tooltipEstilo,
   visualDaCategoria,
 } from "@/lib/grafico";
@@ -143,12 +144,7 @@ function Cartoes({ baseParams }: { baseParams: Params }) {
       >
         <Fita fracao={fracao} />
       </Cartao>
-      <Cartao
-        rotulo="Custo"
-        valor={formatCurrency(custo, moeda)}
-        destaque
-        carregando={q.isLoading}
-      />
+      <Cartao rotulo="Custo" valor={formatCurrency(custo, moeda)} carregando={q.isLoading} />
       <Cartao
         rotulo="Custo por mensagem cobrável"
         valor={formatCurrency(unitario, moeda)}
@@ -252,7 +248,7 @@ function MensagensTemporal({
             cursor={{ fill: "var(--muted)" }}
             formatter={(v: number) => formatNumber(v)}
           />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Legend {...legendaEstilo} />
           {series.map((s, i) => (
             <Bar
               key={s.chave}
@@ -292,7 +288,7 @@ function CustoPorCategoria({ baseParams }: { baseParams: Params }) {
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Tooltip {...tooltipEstilo} formatter={(v: number) => formatCurrency(v, moeda)} />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Legend {...legendaEstilo} />
           <Pie
             data={dados}
             dataKey="custo"
@@ -382,7 +378,12 @@ function CustoPorPais({ baseParams }: { baseParams: Params }) {
             cursor={{ fill: "var(--muted)" }}
             formatter={(v: number) => [formatCurrency(v, moeda), "Custo"]}
           />
-          <Bar dataKey="custo" fill="var(--origem-whatsapp)" radius={[2, 2, 0, 0]} maxBarSize={64} />
+          <Bar
+            dataKey="custo"
+            fill="var(--origem-whatsapp)"
+            radius={[2, 2, 0, 0]}
+            maxBarSize={64}
+          />
         </BarChart>
       </ResponsiveContainer>
     </PainelCard>

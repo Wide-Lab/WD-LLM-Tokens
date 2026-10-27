@@ -15,7 +15,14 @@ import { Cartao } from "@/components/cartao";
 import { GlobalFilters } from "@/components/global-filters";
 import { PainelCard } from "@/components/painel-card";
 import { ErrorBox } from "@/components/empty-states";
-import { ORIGENS, eixo, pivotarPorGrupo, tooltipEstilo, totalDaLinha } from "@/lib/grafico";
+import {
+  ORIGENS,
+  eixo,
+  pivotarPorGrupo,
+  legendaEstilo,
+  tooltipEstilo,
+  totalDaLinha,
+} from "@/lib/grafico";
 import { apiGet } from "@/lib/api";
 import { useFilters, filtersToParams } from "@/lib/filters";
 import { formatCompact, formatCurrency, formatNumber } from "@/lib/format";
@@ -103,8 +110,6 @@ function Cartoes({ baseParams }: { baseParams: Params }) {
       <Cartao
         rotulo="Custo total"
         valor={formatCurrency(geral?.custo, moeda)}
-        cor="var(--wu-fg)"
-        destaque
         carregando={carregando}
       />
       {ORIGENS.map((o) => {
@@ -185,7 +190,7 @@ function CustoTemporal({
             cursor={{ fill: "var(--muted)" }}
             formatter={(v: number) => formatCurrency(v, moeda)}
           />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Legend {...legendaEstilo} />
           {barrasDeOrigem()}
         </BarChart>
       </ResponsiveContainer>
@@ -218,7 +223,7 @@ function CustoPorAplicacao({ baseParams }: { baseParams: Params }) {
             cursor={{ fill: "var(--muted)" }}
             formatter={(v: number) => formatCurrency(v, moeda)}
           />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Legend {...legendaEstilo} />
           {barrasDeOrigem()}
         </BarChart>
       </ResponsiveContainer>
@@ -251,7 +256,7 @@ function TopAtores({ baseParams }: { baseParams: Params }) {
             cursor={{ fill: "var(--muted)" }}
             formatter={(v: number) => formatCurrency(v, moeda)}
           />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Legend {...legendaEstilo} />
           {barrasDeOrigem({ vertical: true })}
         </BarChart>
       </ResponsiveContainer>

@@ -17,18 +17,18 @@ export function Conteudo({
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
-      <div className="etiqueta">{titulo}</div>
+      <div className="text-muted-foreground text-[12.5px] font-medium">{titulo}</div>
       {texto ? (
         // `whitespace-pre-wrap` porque prompt e resposta vêm com quebra de linha, e a altura é
         // limitada para uma resposta longa não empurrar a tabela inteira para fora da tela.
         <div
-          className="bg-card max-h-64 overflow-y-auto rounded-sm border border-l-2 p-3 text-sm break-words whitespace-pre-wrap"
+          className="border-line bg-card max-h-64 overflow-y-auto rounded-[var(--wu-radius-sm)] border border-l-[3px] p-3 text-[13.5px] break-words whitespace-pre-wrap"
           style={{ borderLeftColor: cor }}
         >
           {texto}
         </div>
       ) : (
-        <div className="text-muted-foreground rounded-sm border border-dashed p-3 text-sm">
+        <div className="border-line-strong text-subtle rounded-[var(--wu-radius-sm)] border border-dashed p-3 text-[13px]">
           Não informado
         </div>
       )}

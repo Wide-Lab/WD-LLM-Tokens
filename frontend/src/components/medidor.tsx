@@ -7,14 +7,14 @@ import { cn } from "@/lib/utils";
 import type { MetricaBucket } from "@/lib/api-types";
 
 /**
- * O medidor — a leitura de cabeçalho do painel.
+ * O medidor — a font-medium de cabeçalho do painel.
  *
  * Substitui a fileira de cartões idênticos porque ela escondia o fato mais característico
  * do modelo de dados: os quatro baldes de token **não se sobrepõem** e somam o total
  * (`docs/modelo-de-dados.md`). Cinco números soltos não mostram isso; uma barra única
  * repartida em quatro mostra — a proporção é a informação.
  *
- * Custo fica de fora da fita, e em violeta, porque é outra substância: não é uma quinta
+ * Custo fica de fora da fita, numa coluna própria, porque é outra substância: não é uma quinta
  * fatia de token, é o que a soma custou.
  */
 
@@ -25,8 +25,8 @@ export const BALDES = [
   { chave: "tokens_saida", nome: "Saída", cor: "var(--balde-saida)" },
   {
     chave: "tokens_cache_leitura",
-    nome: "Cache leitura",
-    cor: "var(--balde-cache-leitura)",
+    nome: "Cache font-medium",
+    cor: "var(--balde-cache-font-medium)",
   },
   {
     chave: "tokens_cache_escrita",
@@ -58,16 +58,16 @@ export function Medidor({
   const porRequisicao = custo !== null && requisicoes > 0 ? custo / requisicoes : null;
 
   return (
-    <section className="grid grid-cols-1 overflow-hidden rounded-xl border bg-card shadow-sm lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+    <section className="border-line bg-card shadow-card grid grid-cols-1 overflow-hidden rounded-[var(--wu-radius)] border min-[1100px]:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
       {/* Leitura de custo */}
-      <div className="flex flex-col justify-center gap-2 border-b p-5 lg:border-b-0 lg:border-r">
-        <div className="etiqueta">{titulo}</div>
+      <div className="border-line flex flex-col justify-center gap-1 border-b p-4 min-[1100px]:border-r min-[1100px]:border-b-0">
+        <div className="text-muted-foreground text-[13px]">{titulo}</div>
         {carregando ? (
           <Skeleton className="h-9 w-40" />
         ) : (
           // Nunca quebra no meio do número: um valor partido em duas linhas deixa de ser
           // legível como quantia. Se estourar a coluna, corta na borda.
-          <div className="leitura text-foreground overflow-hidden text-2xl leading-none text-ellipsis whitespace-nowrap sm:text-[1.75rem]">
+          <div className="text-foreground overflow-hidden text-[22px] leading-tight font-semibold tracking-[-0.02em] text-ellipsis whitespace-nowrap min-[700px]:text-[28px]">
             {formatCurrency(custo, moeda)}
           </div>
         )}
@@ -90,24 +90,27 @@ export function Medidor({
       </div>
 
       {/* A fita: os quatro baldes em proporção */}
-      <div className="flex flex-col gap-3 p-5">
+      <div className="flex flex-col gap-3 p-4">
         <div className="flex items-baseline justify-between gap-3">
-          <div className="etiqueta">Tokens no período</div>
+          <div className="text-muted-foreground text-[13px]">Tokens no período</div>
           {carregando ? (
             <Skeleton className="h-5 w-24" />
           ) : (
-            <div className="leitura text-lg">{formatNumber(totalTokens)}</div>
+            <div className="text-foreground text-lg font-semibold">{formatNumber(totalTokens)}</div>
           )}
         </div>
 
         {carregando ? (
           <Skeleton className="h-9 w-full" />
         ) : totalTokens === 0 ? (
-          <div className="border-border text-muted-foreground flex h-9 items-center justify-center rounded-sm border border-dashed text-xs">
+          <div className="border-line-strong text-subtle flex h-9 items-center justify-center rounded-[var(--wu-radius-sm)] border border-dashed text-xs">
             Nenhum token registrado neste período.
           </div>
         ) : (
-          <div className="bg-muted flex h-9 w-full overflow-hidden rounded-sm" aria-hidden="true">
+          <div
+            className="bg-sel flex h-9 w-full gap-px overflow-hidden rounded-[var(--wu-radius-sm)]"
+            aria-hidden="true"
+          >
             {partes
               .filter((p) => p.valor > 0)
               .map((p, i) => (
@@ -155,8 +158,10 @@ export function Medidor({
                   <Skeleton className="h-4 w-16" />
                 ) : (
                   <>
-                    <span className="leitura text-sm">{formatNumber(p.valor)}</span>
-                    <span className="text-muted-foreground ml-1.5 font-mono text-[0.6875rem] tabular-nums">
+                    <span className="text-foreground text-[13.5px] font-medium">
+                      {formatNumber(p.valor)}
+                    </span>
+                    <span className="text-subtle ml-1.5 text-xs">
                       {totalTokens > 0 ? `${((p.valor / totalTokens) * 100).toFixed(1)}%` : "—"}
                     </span>
                   </>

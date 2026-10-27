@@ -20,7 +20,7 @@ import { FiltroModelo } from "@/components/filtro-modelo";
 import { GlobalFilters } from "@/components/global-filters";
 import { Medidor } from "@/components/medidor";
 import { PainelCard } from "@/components/painel-card";
-import { SERIES, eixo, tooltipEstilo } from "@/lib/grafico";
+import { SERIES, eixo, legendaEstilo, tooltipEstilo } from "@/lib/grafico";
 import { apiGet } from "@/lib/api";
 import { useFilters, filtersToParams } from "@/lib/filters";
 import { formatCompact, formatCurrency, formatNumber } from "@/lib/format";
@@ -188,7 +188,7 @@ function CustoPorModelo({ baseParams }: { baseParams: Record<string, string | un
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Tooltip {...tooltipEstilo} formatter={(v: number) => formatCurrency(v, moeda)} />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Legend {...legendaEstilo} />
           <Pie
             data={data}
             dataKey="custo"
