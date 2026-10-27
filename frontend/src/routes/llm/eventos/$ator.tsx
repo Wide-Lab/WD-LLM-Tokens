@@ -145,7 +145,7 @@ function PorModelo({ baseParams }: { baseParams: Params }) {
                 <TableCell className="text-muted-foreground text-right font-mono text-xs">
                   {formatNumber(m.tokens_cache_leitura)} / {formatNumber(m.tokens_cache_escrita)}
                 </TableCell>
-                <TableCell className="leitura text-custo pr-5 text-right text-sm whitespace-nowrap">
+                <TableCell className="leitura text-foreground pr-5 text-right text-sm whitespace-nowrap">
                   {formatCurrency(m.custo, m.moeda)}
                 </TableCell>
               </TableRow>
@@ -353,7 +353,7 @@ function Chamada({
         <TableCell className="text-muted-foreground text-right font-mono text-xs">
           {formatNumber(evento.tokens_cache_leitura)} / {formatNumber(evento.tokens_cache_escrita)}
         </TableCell>
-        <TableCell className="leitura text-custo pr-5 text-right text-sm whitespace-nowrap">
+        <TableCell className="leitura text-foreground pr-5 text-right text-sm whitespace-nowrap">
           {formatCurrency(evento.custo, evento.moeda)}
         </TableCell>
       </TableRow>

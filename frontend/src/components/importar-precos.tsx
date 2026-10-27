@@ -505,7 +505,7 @@ function Relatorio({ resultados }: { resultados: Resultado[] }) {
         <ul className="max-h-40 space-y-1.5 overflow-y-auto rounded-sm border p-3">
           {entraram.map((r, i) => (
             <li key={`${r.rotulo}-${i}`} className="flex items-baseline gap-2 text-xs">
-              <Check className="text-custo h-3.5 w-3.5 shrink-0 translate-y-0.5" />
+              <Check className="text-foreground h-3.5 w-3.5 shrink-0 translate-y-0.5" />
               <span className="font-mono">{r.rotulo}</span>
             </li>
           ))}

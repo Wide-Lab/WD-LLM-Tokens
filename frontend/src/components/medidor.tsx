@@ -67,7 +67,7 @@ export function Medidor({
         ) : (
           // Nunca quebra no meio do número: um valor partido em duas linhas deixa de ser
           // legível como quantia. Se estourar a coluna, corta na borda.
-          <div className="leitura text-custo overflow-hidden text-2xl leading-none text-ellipsis whitespace-nowrap sm:text-[1.75rem]">
+          <div className="leitura text-foreground overflow-hidden text-2xl leading-none text-ellipsis whitespace-nowrap sm:text-[1.75rem]">
             {formatCurrency(custo, moeda)}
           </div>
         )}

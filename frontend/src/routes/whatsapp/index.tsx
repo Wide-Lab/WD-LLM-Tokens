@@ -138,7 +138,7 @@ function Cartoes({ baseParams }: { baseParams: Params }) {
             ? `de ${formatNumber(mensagens)} · ${(fracao * 100).toFixed(0)}%`
             : "nada no período"
         }
-        cor="var(--custo)"
+        cor="var(--origem-whatsapp)"
         carregando={q.isLoading}
       >
         <Fita fracao={fracao} />
@@ -163,7 +163,7 @@ function Cartoes({ baseParams }: { baseParams: Params }) {
 function Fita({ fracao }: { fracao: number }) {
   return (
     <div className="bg-muted h-[3px] w-full overflow-hidden rounded-full" aria-hidden>
-      <div className="bg-custo h-full" style={{ width: `${fracao * 100}%` }} />
+      <div className="bg-foreground h-full" style={{ width: `${fracao * 100}%` }} />
     </div>
   );
 }
@@ -205,7 +205,7 @@ function CustoTemporal({
           <Line
             type="monotone"
             dataKey="custo"
-            stroke="var(--custo)"
+            stroke="var(--origem-whatsapp)"
             strokeWidth={2}
             dot={false}
             activeDot={{ r: 4, strokeWidth: 0 }}
@@ -308,7 +308,7 @@ function CustoPorCategoria({ baseParams }: { baseParams: Params }) {
             {dados.map((b) => (
               <Cell
                 key={b.grupo}
-                fill={visualDaCategoria(b.grupo)?.cor ?? "var(--muted-foreground)"}
+                fill={visualDaCategoria(b.grupo)?.cor ?? "var(--categoria-nenhuma)"}
               />
             ))}
           </Pie>
@@ -344,7 +344,7 @@ function TopAtores({ baseParams }: { baseParams: Params }) {
             cursor={{ fill: "var(--muted)" }}
             formatter={(v: number) => [formatCurrency(v, moeda), "Custo"]}
           />
-          <Bar dataKey="custo" fill="var(--custo)" radius={[0, 2, 2, 0]} barSize={14} />
+          <Bar dataKey="custo" fill="var(--origem-whatsapp)" radius={[0, 2, 2, 0]} barSize={14} />
         </BarChart>
       </ResponsiveContainer>
     </PainelCard>
@@ -382,7 +382,7 @@ function CustoPorPais({ baseParams }: { baseParams: Params }) {
             cursor={{ fill: "var(--muted)" }}
             formatter={(v: number) => [formatCurrency(v, moeda), "Custo"]}
           />
-          <Bar dataKey="custo" fill="var(--custo)" radius={[2, 2, 0, 0]} maxBarSize={64} />
+          <Bar dataKey="custo" fill="var(--origem-whatsapp)" radius={[2, 2, 0, 0]} maxBarSize={64} />
         </BarChart>
       </ResponsiveContainer>
     </PainelCard>

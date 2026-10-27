@@ -28,32 +28,45 @@ export const tooltipEstilo = {
 } as const;
 
 /**
+ * As séries categóricas do wide-ui, na ordem do pacote. Para gráfico cujas fatias não têm papel
+ * fixo (um modelo, um ator): a cor só separa as fatias, e quem diz qual é qual é a legenda.
+ */
+export const SERIES = [
+  "var(--wu-c1)",
+  "var(--wu-c2)",
+  "var(--wu-c3)",
+  "var(--wu-c4)",
+  "var(--wu-c5)",
+] as const;
+
+/**
  * As duas origens, na ordem e nas cores que valem na tela inteira.
  *
  * Sai daqui e não de cada gráfico porque a regra é essa: LLM e WhatsApp têm de ter **sempre** a
  * mesma cor nos três quadros do consolidado. É o que permite ler o terceiro gráfico sem voltar na
  * legenda do primeiro — e o que se perde na primeira vez que alguém escolher a cor no lugar do uso.
  *
- * As duas são violeta porque as duas são dinheiro (`styles.css`): LLM fica com o tom de custo já
- * usado no resto do painel, WhatsApp com outro degrau da mesma rampa.
+ * O papel é fixo no painel todo: LLM é a primeira série do wide-ui, WhatsApp a segunda
+ * (`--origem-*`, em `styles.css`). Os gráficos de custo dentro de cada origem usam a cor dela.
  */
 export const ORIGENS = [
-  { chave: "llm", nome: "LLM", cor: "var(--custo)" },
-  { chave: "whatsapp", nome: "WhatsApp", cor: "var(--chart-4)" },
+  { chave: "llm", nome: "LLM", cor: "var(--origem-llm)" },
+  { chave: "whatsapp", nome: "WhatsApp", cor: "var(--origem-whatsapp)" },
 ] as const;
 
 /**
- * As quatro categorias de mensagem, na rampa do dinheiro.
+ * As quatro categorias de mensagem, cada uma com uma série fixa (`--categoria-*`, em `styles.css`).
  *
- * `service` fica com o tom mais apagado da rampa de propósito: é a única das quatro que a Meta não
- * cobra, e a cor precisa dizer isso antes da legenda. As outras três seguem a ordem da rampa sem
- * hierarquia embutida — nenhuma é "mais cara" por natureza, o preço é por país.
+ * `service` fica com a série mais apagada (a cinza-azulada) de propósito: é a única das quatro que
+ * a Meta não cobra, e a cor precisa dizer isso antes da legenda. As outras três não têm hierarquia
+ * embutida — nenhuma é "mais cara" por natureza, o preço é por país. A segunda série fica de fora
+ * porque é a do WhatsApp, e a rampa dos baldes (as direções) sai dela.
  */
 export const CATEGORIAS = [
-  { chave: "marketing", nome: "Marketing", cor: "var(--chart-1)" },
-  { chave: "utility", nome: "Utility", cor: "var(--chart-2)" },
-  { chave: "authentication", nome: "Authentication", cor: "var(--chart-3)" },
-  { chave: "service", nome: "Service", cor: "var(--chart-5)" },
+  { chave: "marketing", nome: "Marketing", cor: "var(--categoria-marketing)" },
+  { chave: "utility", nome: "Utility", cor: "var(--categoria-utility)" },
+  { chave: "authentication", nome: "Authentication", cor: "var(--categoria-authentication)" },
+  { chave: "service", nome: "Service", cor: "var(--categoria-service)" },
 ] as const;
 
 /** O rótulo que o backend dá ao balde de `grupo=categoria` sem categoria — as recebidas. */
@@ -62,12 +75,12 @@ export const SEM_CATEGORIA = "sem categoria";
 /**
  * As séries do empilhado de mensagens: as quatro categorias mais o balde das recebidas.
  *
- * As recebidas saem em cinza e não num degrau do violeta porque violeta é dinheiro em todo o
- * painel, e mensagem recebida não custa. Cinza aqui é a afirmação, não a falta de escolha.
+ * As recebidas saem na cor de linha forte, e não numa série, porque mensagem recebida não é
+ * categoria nenhuma e não custa: cinza claro aqui é a afirmação, não a falta de escolha.
  */
 export const SERIES_DE_CATEGORIA = [
   ...CATEGORIAS,
-  { chave: SEM_CATEGORIA, nome: "Sem categoria", cor: "var(--muted-foreground)" },
+  { chave: SEM_CATEGORIA, nome: "Sem categoria", cor: "var(--categoria-nenhuma)" },
 ] as const;
 
 /** As duas direções, nas cores dos baldes de token do LLM — ver `conversa.tsx`. */

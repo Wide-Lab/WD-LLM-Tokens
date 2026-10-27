@@ -1,45 +1,49 @@
+/*
+ * Ordem importa: os tokens do wide-ui vêm antes de tudo (o pacote pede que eles carreguem uma vez,
+ * globalmente, antes de qualquer CSS de componente), depois o Tailwind, depois o adaptador do
+ * wide-ui para o Tailwind 4.
+ */
+@import "./styles/wide-ui/tokens.css";
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import "./styles/wide-ui/tailwind-v4.css";
 
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design system definition.
+ * Design system: wide-ui (ver `docs/ui-patterns.md`).
  *
- * O painel é um **medidor**: mede quanto passou pelo modelo e quanto isso custou.
- * A paleta separa as duas substâncias e nunca as mistura:
+ * Os valores moram só em `styles/wide-ui/tokens.css`. Este arquivo faz três coisas:
  *
- * - **Dinheiro é violeta** (`--custo`). Nenhum dado usa esse tom — quando aparece violeta
- *   num número, num gráfico ou numa barra, é dinheiro. Por isso o `--primary` é tinta, não
- *   violeta: botão primário violeta gastaria o sinal em coisa que não é custo. A única
- *   exceção é o `--ring`, que é afordância de foco e ninguém lê como valor.
- * - **Token é petróleo** (`--balde-*`), uma rampa de um tom só porque os quatro baldes
- *   são partes de um mesmo todo (nunca se sobrepõem — ver `docs/modelo-de-dados.md`).
- *   Os dois baldes de cache são de propósito os mais apagados da rampa: cache é a faixa
- *   com desconto, e a cor carrega essa hierarquia de preço.
+ * 1. Liga as variáveis do shadcn (`--background`, `--primary`, `--border`...) aos tokens `--wu-*`,
+ *    para os componentes de `components/ui/` seguirem o wide-ui sem ser editados um a um.
+ * 2. Resolve o único conflito de nome entre os dois (abaixo).
+ * 3. Declara os tokens do projeto — as cores com papel fixo nos gráficos —, todos derivados das
+ *    séries do wide-ui.
  *
- * O @theme inline mapeia as custom properties para utilitários Tailwind
- * (ex.: --color-custo -> bg-custo, text-custo).
- *
- * As cores vivem em :root (claro) e .dark (escuro), sempre em oklch.
- *
- * Para adicionar uma cor semântica:
- * 1. Declare a variável em :root e em .dark
- * 2. Registre em @theme inline como --color-<nome>: var(--<nome>)
+ * O conflito do `muted`: no wide-ui, `--color-muted` é **texto** secundário (`text-muted`); no
+ * shadcn, `muted` é **fundo** apagado (`bg-muted`, com o texto em `text-muted-foreground`). Os
+ * componentes do shadcn dependem do segundo sentido, então ele vence: o `@theme` daqui redeclara
+ * `--color-muted` depois do adaptador do wide-ui e o utilitário passa a ser só fundo.
+ * Regra do projeto: texto secundário é `text-muted-foreground`; `text-muted` não se usa (pintaria
+ * texto na cor de fundo). O resto do adaptador (`bg-surface`, `bg-raised`, `border-line`,
+ * `text-subtle`, `bg-sel`, `text-brand-ink`, `bg-danger-bg`...) vale como está.
  */
 
 @theme inline {
-  --font-sans: "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "Spline Sans Mono", ui-monospace, "SFMono-Regular", "Menlo", monospace;
+  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", "Menlo", monospace;
 
-  --radius-sm: calc(var(--radius) - 2px);
-  --radius-md: calc(var(--radius) - 1px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 2px);
-  --radius-2xl: calc(var(--radius) + 6px);
-  --radius-3xl: calc(var(--radius) + 10px);
-  --radius-4xl: calc(var(--radius) + 14px);
+  /* 8px em tudo que o wide-ui manda arredondar (cartão, botão, campo, diálogo); 6px em chip e item
+     de navegação. O shadcn usa rounded-md/lg/xl indistintamente para essas peças. */
+  --radius-sm: var(--wu-radius-sm);
+  --radius-md: var(--wu-radius);
+  --radius-lg: var(--wu-radius);
+  --radius-xl: var(--wu-radius);
+
+  /* Redeclarado de propósito — ver o conflito do `muted` acima. */
+  --color-muted: var(--muted);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -50,7 +54,6 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
@@ -60,17 +63,6 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-ring-offset-background: var(--background);
-  --color-custo: var(--custo);
-  --color-custo-suave: var(--custo-suave);
-  --color-balde-entrada: var(--balde-entrada);
-  --color-balde-saida: var(--balde-saida);
-  --color-balde-cache-leitura: var(--balde-cache-leitura);
-  --color-balde-cache-escrita: var(--balde-cache-escrita);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -79,104 +71,79 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-balde-entrada: var(--balde-entrada);
+  --color-balde-saida: var(--balde-saida);
+  --color-balde-cache-leitura: var(--balde-cache-leitura);
+  --color-balde-cache-escrita: var(--balde-cache-escrita);
 }
 
+/*
+ * shadcn → wide-ui. Uma vez só, sem bloco escuro: os `--wu-*` já trocam de valor com o tema,
+ * e quem aponta para eles troca junto.
+ */
 :root {
-  --radius: 0.25rem;
+  --radius: var(--wu-radius);
 
-  --background: oklch(0.948 0.008 286.246);
-  --foreground: oklch(0.199 0.022 292.624);
-  --card: oklch(0.992 0.003 286.352);
-  --card-foreground: oklch(0.199 0.022 292.624);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.199 0.022 292.624);
-  --primary: oklch(0.233 0.031 292.456);
-  --primary-foreground: oklch(0.977 0.004 286.326);
-  --secondary: oklch(0.919 0.012 291.275);
-  --secondary-foreground: oklch(0.233 0.031 292.456);
-  --muted: oklch(0.928 0.011 291.943);
-  --muted-foreground: oklch(0.509 0.038 292.641);
-  --accent: oklch(0.906 0.016 293.728);
-  --accent-foreground: oklch(0.233 0.031 292.456);
-  --destructive: oklch(0.501 0.178 28.705);
-  --destructive-foreground: oklch(0.978 0.011 24.318);
-  --border: oklch(0.893 0.015 294.441);
-  --input: oklch(0.893 0.015 294.441);
-  --ring: oklch(0.478 0.258 277.989);
+  --background: var(--wu-bg);
+  --foreground: var(--wu-fg);
+  --card: var(--wu-surface);
+  --card-foreground: var(--wu-fg);
+  --popover: var(--wu-surface);
+  --popover-foreground: var(--wu-fg);
+  --primary: var(--wu-brand);
+  --primary-foreground: var(--wu-on-brand);
+  --secondary: var(--wu-sel);
+  --secondary-foreground: var(--wu-fg);
+  --muted: var(--wu-sel);
+  --muted-foreground: var(--wu-muted);
+  --accent: var(--wu-hover);
+  --accent-foreground: var(--wu-fg);
+  --destructive: var(--wu-danger);
+  /* `surface`, e não branco fixo: no escuro o danger é um vermelho claro e pede texto escuro. */
+  --destructive-foreground: var(--wu-surface);
+  --border: var(--wu-line);
+  --input: var(--wu-line-strong);
+  --ring: var(--wu-brand);
 
-  /* Dinheiro. Só dinheiro. */
-  --custo: oklch(0.478 0.258 277.989);
-  --custo-suave: oklch(0.925 0.037 294.166);
+  --sidebar: var(--wu-surface);
+  --sidebar-foreground: var(--wu-muted);
+  --sidebar-primary: var(--wu-brand);
+  --sidebar-primary-foreground: var(--wu-on-brand);
+  --sidebar-accent: var(--wu-sel);
+  --sidebar-accent-foreground: var(--wu-fg);
+  --sidebar-border: var(--wu-line);
+  --sidebar-ring: var(--wu-brand);
 
-  /* Os quatro baldes de token, do mais caro ao mais barato. */
-  --balde-entrada: oklch(0.433 0.072 209.592);
-  --balde-saida: oklch(0.605 0.1 201.822);
-  /* Apagados em relação ao par de cima, mas ainda claramente preenchidos: mais claros que
-     isso e a fita passa a parecer trilho vazio em vez de token contabilizado. */
-  --balde-cache-leitura: oklch(0.699 0.066 198.296);
-  --balde-cache-escrita: oklch(0.797 0.047 187.678);
+  /*
+   * Tokens do projeto: cor com papel fixo. Os nomes dizem o papel, o valor vem sempre de uma
+   * série do wide-ui (`--wu-c1`..`--wu-c5`) — nenhuma cor nova entra aqui. Quem lê os papéis é
+   * `src/lib/grafico.ts`; componente nenhum escolhe cor de dado por conta própria.
+   */
 
-  /* Gráficos de custo: rampa do violeta, porque todo gráfico com --chart-* é de dinheiro. */
-  --chart-1: oklch(0.407 0.227 277.481);
-  --chart-2: oklch(0.518 0.249 280.842);
-  --chart-3: oklch(0.603 0.207 286.056);
-  --chart-4: oklch(0.709 0.149 288.164);
-  --chart-5: oklch(0.819 0.091 290.588);
+  /* As duas origens de custo, iguais em todo o painel. */
+  --origem-llm: var(--wu-c1);
+  --origem-whatsapp: var(--wu-c2);
 
-  --sidebar: oklch(0.922 0.011 291.941);
-  --sidebar-foreground: oklch(0.199 0.022 292.624);
-  --sidebar-primary: oklch(0.233 0.031 292.456);
-  --sidebar-primary-foreground: oklch(0.977 0.004 286.326);
-  --sidebar-accent: oklch(0.885 0.018 293.103);
-  --sidebar-accent-foreground: oklch(0.199 0.022 292.624);
-  --sidebar-border: oklch(0.872 0.018 293.096);
-  --sidebar-ring: oklch(0.478 0.258 277.989);
-}
+  /* As categorias de mensagem. `service` é a que a Meta não cobra e fica com a série mais
+     apagada; mensagem sem categoria (as recebidas) não é série, é linha. */
+  --categoria-marketing: var(--wu-c1);
+  --categoria-utility: var(--wu-c3);
+  --categoria-authentication: var(--wu-c4);
+  --categoria-service: var(--wu-c5);
+  --categoria-nenhuma: var(--wu-line-strong);
 
-.dark {
-  --background: oklch(0.173 0.014 291.359);
-  --foreground: oklch(0.931 0.011 291.943);
-  --card: oklch(0.215 0.02 289.224);
-  --card-foreground: oklch(0.931 0.011 291.943);
-  --popover: oklch(0.233 0.021 288.812);
-  --popover-foreground: oklch(0.931 0.011 291.943);
-  --primary: oklch(0.931 0.011 291.943);
-  --primary-foreground: oklch(0.199 0.022 292.624);
-  --secondary: oklch(0.272 0.026 287.824);
-  --secondary-foreground: oklch(0.931 0.011 291.943);
-  --muted: oklch(0.258 0.022 288.544);
-  --muted-foreground: oklch(0.684 0.034 293.466);
-  --accent: oklch(0.293 0.029 287.333);
-  --accent-foreground: oklch(0.931 0.011 291.943);
-  --destructive: oklch(0.701 0.156 26.019);
-  --destructive-foreground: oklch(0.183 0.019 24.897);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.652 0.196 286.676);
-
-  --custo: oklch(0.69 0.174 288.907);
-  --custo-suave: oklch(0.261 0.055 289.67);
-
-  /* No escuro "apagado" é escuro, não claro: o cache continua sendo o par de baixo contraste. */
-  --balde-entrada: oklch(0.646 0.104 203.996);
-  --balde-saida: oklch(0.801 0.116 189.53);
-  --balde-cache-leitura: oklch(0.54 0.058 201.782);
-  --balde-cache-escrita: oklch(0.437 0.046 205.955);
-
-  --chart-1: oklch(0.69 0.174 288.907);
-  --chart-2: oklch(0.773 0.126 291.413);
-  --chart-3: oklch(0.597 0.207 285.93);
-  --chart-4: oklch(0.506 0.213 282.474);
-  --chart-5: oklch(0.853 0.079 291.87);
-
-  --sidebar: oklch(0.195 0.026 287.243);
-  --sidebar-foreground: oklch(0.931 0.011 291.943);
-  --sidebar-primary: oklch(0.931 0.011 291.943);
-  --sidebar-primary-foreground: oklch(0.199 0.022 292.624);
-  --sidebar-accent: oklch(0.288 0.025 287.963);
-  --sidebar-accent-foreground: oklch(0.931 0.011 291.943);
-  --sidebar-border: oklch(0.281 0.027 287.544);
-  --sidebar-ring: oklch(0.652 0.196 286.676);
+  /*
+   * Os quatro baldes de token, do mais caro ao mais barato: uma rampa de um tom só, porque os
+   * quatro são partes de um mesmo todo (nunca se sobrepõem — ver `docs/modelo-de-dados.md`). Os
+   * dois de cache são os mais apagados de propósito: cache é a faixa com desconto. A rampa
+   * mistura a série com `surface`, então "apagado" funciona nos dois temas sem bloco escuro.
+   */
+  --balde-entrada: var(--wu-c2);
+  --balde-saida: color-mix(in oklch, var(--wu-c2) 65%, var(--wu-surface));
+  /* Mais claros que isso e a fita passa a parecer trilho vazio em vez de token contabilizado. */
+  --balde-cache-leitura: color-mix(in oklch, var(--wu-c2) 42%, var(--wu-surface));
+  --balde-cache-escrita: color-mix(in oklch, var(--wu-c2) 28%, var(--wu-surface));
 }
 
 @layer base {
@@ -185,15 +152,7 @@
   }
 
   body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
-    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
-  }
-
-  /* Números são o conteúdo deste app: sempre no mono, sempre alinhados na coluna. */
-  :where(table) {
-    font-variant-numeric: tabular-nums;
   }
 
   /* O ícone do seletor de data é um glifo escuro fixo do navegador: no tema escuro ele
@@ -205,34 +164,27 @@
 }
 
 @layer components {
-  /*
-   * Etiqueta de instrumento. Marca o que uma leitura é, sem competir com a leitura:
-   * mono, caixa alta, entrelinha larga, tamanho pequeno.
-   */
+  /* Temporárias: saem ao fim da migração das telas. Rótulo de seção em caixa alta do wide-ui. */
   .etiqueta {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    font-weight: 500;
+    font-size: 11px;
+    font-weight: 600;
     line-height: 1;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: var(--color-muted-foreground);
+    color: var(--wu-muted);
   }
 
-  /* Leitura do medidor: o número em si. */
   .leitura {
-    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.02em;
-    font-weight: 500;
+    font-weight: 600;
   }
 
   /* A barra do menu rola (a lista de destinos só cresce), e a barra crua do Windows/Chrome —
-     grossa, com seta — briga com ícone de 16px do lado. Fina e sem seta, na mesma tinta do
-     texto apagado da barra, ela lê como acabamento do menu, não como widget do navegador. */
+     grossa, com seta — briga com o ícone ao lado. Fina e sem seta, na tinta das linhas fortes. */
   [data-sidebar="content"] {
     scrollbar-width: thin;
-    scrollbar-color: color-mix(in oklch, var(--color-sidebar-foreground) 25%, transparent) transparent;
+    scrollbar-color: var(--wu-line-strong) transparent;
   }
 
   [data-sidebar="content"]::-webkit-scrollbar {
@@ -244,12 +196,12 @@
   }
 
   [data-sidebar="content"]::-webkit-scrollbar-thumb {
-    background-color: color-mix(in oklch, var(--color-sidebar-foreground) 25%, transparent);
+    background-color: var(--wu-line-strong);
     border-radius: 999px;
   }
 
   [data-sidebar="content"]::-webkit-scrollbar-thumb:hover {
-    background-color: color-mix(in oklch, var(--color-sidebar-foreground) 45%, transparent);
+    background-color: var(--wu-subtle);
   }
 }
 
@@ -281,7 +233,7 @@
 /*
  * Foco de teclado, fora de qualquer @layer de propósito: vários componentes do shadcn trazem
  * `focus-visible:outline-none` e só um anel de 1px, e regra sem camada vence utilitário em
- * camada. Aqui todo controle focado ganha o mesmo contorno de 2px, visível nos dois temas.
+ * camada. Aqui todo controle focado ganha o mesmo contorno de 2px no accent, nos dois temas.
  */
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
   outline: 2px solid var(--color-ring);

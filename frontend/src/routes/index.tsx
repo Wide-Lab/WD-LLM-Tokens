@@ -103,7 +103,7 @@ function Cartoes({ baseParams }: { baseParams: Params }) {
       <Cartao
         rotulo="Custo total"
         valor={formatCurrency(geral?.custo, moeda)}
-        cor="var(--custo)"
+        cor="var(--wu-fg)"
         destaque
         carregando={carregando}
       />

@@ -1,0 +1,33 @@
+/* Cópia de wide-ui/integrations/tailwind-v4.css (pacote em ~/.claude/plugins/marketplaces/widelab/design-systems/wide-ui).
+   Não edite valor aqui: muda no pacote e copia de novo. O que é do projeto fica em src/styles.css. */
+
+/* wide-ui for Tailwind 4. Import tokens.css first, then this file, after @import "tailwindcss".
+   Utilities: bg-surface, text-muted, border-line, text-brand-ink, bg-brand text-on-brand, shadow-card... */
+
+@theme inline {
+  --font-sans: var(--wu-font);
+  --radius-DEFAULT: var(--wu-radius);
+  --radius-sm: var(--wu-radius-sm);
+  --shadow-card: var(--wu-shadow);
+
+  --color-bg: var(--wu-bg);
+  --color-surface: var(--wu-surface);
+  --color-raised: var(--wu-raised);
+  --color-line: var(--wu-line);
+  --color-line-strong: var(--wu-line-strong);
+  --color-fg: var(--wu-fg);
+  --color-muted: var(--wu-muted);
+  --color-subtle: var(--wu-subtle);
+  --color-hover: var(--wu-hover);
+  --color-sel: var(--wu-sel);
+
+  --color-brand: var(--wu-brand);
+  --color-on-brand: var(--wu-on-brand);
+  --color-brand-ink: var(--wu-brand-ink);
+
+  --color-danger: var(--wu-danger);
+  --color-danger-bg: var(--wu-danger-bg);
+  --color-warn: var(--wu-warn);
+  --color-ok: var(--wu-ok);
+  --color-info: var(--wu-info);
+}

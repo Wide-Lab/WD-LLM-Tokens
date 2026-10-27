@@ -15,7 +15,9 @@ import { Loader2 } from "lucide-react";
 import appCss from "../styles.css?url";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-import { ThemeProvider } from "@/lib/theme";
+import { SCRIPT_DO_TEMA, ThemeProvider } from "@/lib/theme";
+import { COR_DA_MARCA, variaveisDaMarca } from "@/lib/marca";
+import { applyAccent } from "@/styles/wide-ui/accent";
 import { SessaoProvider, useSessao } from "@/lib/sessao";
 import { FiltersProvider } from "@/lib/filters";
 import { Toaster } from "@/components/ui/sonner";
@@ -24,7 +26,7 @@ function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <div className="leitura text-custo text-6xl">404</div>
+        <div className="leitura text-foreground text-6xl">404</div>
         <h2 className="text-foreground mt-4 text-xl font-semibold tracking-tight">
           Página não encontrada
         </h2>
@@ -100,13 +102,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
-      // Archivo carrega a interface, Spline Sans Mono carrega os números. Vem por <link> e
-      // não por @import no CSS para não bloquear o parse da folha de estilo principal.
+      // Inter em tudo, números inclusive (o `tokens.css` liga os algarismos tabulares). Vem por
+      // <link> e não por @import no CSS para não bloquear o parse da folha de estilo principal.
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
       },
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
@@ -120,8 +122,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR">
+    // O script e o `style` mexem no `<html>` antes do React: o atributo de tema e as variáveis do
+    // accent podem não bater com o SSR, e é de propósito.
+    <html lang="pt-BR" style={variaveisDaMarca(COR_DA_MARCA)} suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_DO_TEMA }} />
         <HeadContent />
       </head>
       <body>
@@ -134,6 +139,9 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  // O accent sai no SSR pelo `style` do `<html>`; no cliente quem manda é o `applyAccent`.
+  useEffect(() => applyAccent(COR_DA_MARCA), []);
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -238,7 +238,7 @@ function Linha({
             <span className="text-muted-foreground">Grátis</span>
           )}
         </TableCell>
-        <TableCell className="leitura text-custo pr-1 text-right text-sm whitespace-nowrap">
+        <TableCell className="leitura text-foreground pr-1 text-right text-sm whitespace-nowrap">
           <CelulaCusto mensagem={mensagem} />
         </TableCell>
         <TableCell className="text-muted-foreground max-w-[22rem] truncate pr-5 text-xs">

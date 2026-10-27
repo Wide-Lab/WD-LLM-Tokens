@@ -156,7 +156,7 @@ function Troca({
         </div>
         {/* Não quebra no meio da quantia, pela mesma razão do medidor: valor partido em duas
             linhas deixa de ser legível como dinheiro. */}
-        <div className="leitura text-custo mt-0.5 overflow-hidden text-[0.6875rem] text-ellipsis whitespace-nowrap">
+        <div className="leitura text-foreground mt-0.5 overflow-hidden text-[0.6875rem] text-ellipsis whitespace-nowrap">
           {formatCurrency(troca.custo, troca.moeda)}
         </div>
       </div>

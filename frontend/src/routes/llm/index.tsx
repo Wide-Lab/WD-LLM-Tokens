@@ -20,7 +20,7 @@ import { FiltroModelo } from "@/components/filtro-modelo";
 import { GlobalFilters } from "@/components/global-filters";
 import { Medidor } from "@/components/medidor";
 import { PainelCard } from "@/components/painel-card";
-import { eixo, tooltipEstilo } from "@/lib/grafico";
+import { SERIES, eixo, tooltipEstilo } from "@/lib/grafico";
 import { apiGet } from "@/lib/api";
 import { useFilters, filtersToParams } from "@/lib/filters";
 import { formatCompact, formatCurrency, formatNumber } from "@/lib/format";
@@ -43,15 +43,6 @@ export const Route = createFileRoute("/llm/")({
   }),
   component: Overview,
 });
-
-/** A rampa violeta: todo gráfico de dinheiro sai daqui. */
-const RAMPA_CUSTO = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-];
 
 function useMetricas(params: Record<string, string | undefined>) {
   return useQuery({
@@ -122,7 +113,7 @@ function CustoTemporal({
           <Line
             type="monotone"
             dataKey="custo"
-            stroke="var(--custo)"
+            stroke="var(--origem-llm)"
             strokeWidth={2}
             dot={false}
             activeDot={{ r: 4, strokeWidth: 0 }}
@@ -211,7 +202,7 @@ function CustoPorModelo({ baseParams }: { baseParams: Record<string, string | un
             strokeWidth={2}
           >
             {data.map((_, i) => (
-              <Cell key={i} fill={RAMPA_CUSTO[i % RAMPA_CUSTO.length]} />
+              <Cell key={i} fill={SERIES[i % SERIES.length]} />
             ))}
           </Pie>
         </PieChart>
@@ -245,7 +236,7 @@ function TopAtores({ baseParams }: { baseParams: Record<string, string | undefin
             cursor={{ fill: "var(--muted)" }}
             formatter={(v: number) => [formatCurrency(v, moeda), "Custo"]}
           />
-          <Bar dataKey="custo" fill="var(--custo)" radius={[0, 2, 2, 0]} barSize={14} />
+          <Bar dataKey="custo" fill="var(--origem-llm)" radius={[0, 2, 2, 0]} barSize={14} />
         </BarChart>
       </ResponsiveContainer>
     </PainelCard>
@@ -276,7 +267,7 @@ function UsoPorAplicacao({ baseParams }: { baseParams: Record<string, string | u
             cursor={{ fill: "var(--muted)" }}
             formatter={(v: number) => [formatCurrency(v, moeda), "Custo"]}
           />
-          <Bar dataKey="custo" fill="var(--custo)" radius={[2, 2, 0, 0]} maxBarSize={64} />
+          <Bar dataKey="custo" fill="var(--origem-llm)" radius={[2, 2, 0, 0]} maxBarSize={64} />
         </BarChart>
       </ResponsiveContainer>
     </PainelCard>

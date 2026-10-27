@@ -52,7 +52,7 @@ function ReguaDeVigencia({ vigencias }: { vigencias: Vigencia[] }) {
               // `flexBasis: 0` com `flexGrow` proporcional: a largura sai da duração, não do
               // conteúdo. O mínimo em pixel evita que uma vigência de um dia suma da régua.
               style={{ flexGrow: duracao, flexBasis: 0, minWidth: "0.375rem" }}
-              className={cn("rounded-[1px]", atual ? "bg-custo" : "bg-custo-suave")}
+              className={cn("rounded-[1px]", atual ? "bg-foreground" : "bg-line-strong")}
             />
           );
         })}
@@ -129,7 +129,7 @@ export function FaixaDePreco({
               {atual.leituras.map((l) => (
                 <div key={l.rotulo}>
                   <dt className="etiqueta">{l.rotulo}</dt>
-                  <dd className="leitura text-custo mt-1.5 text-lg leading-none">{l.valor}</dd>
+                  <dd className="leitura text-foreground mt-1.5 text-lg leading-none">{l.valor}</dd>
                 </div>
               ))}
             </dl>
@@ -148,7 +148,7 @@ export function FaixaDePreco({
         )}
 
         {futuras.length > 0 && atual && (
-          <div className="border-custo-suave mt-4 border-l-2 pl-3">
+          <div className="border-line-strong mt-4 border-l-2 pl-3">
             <div className="etiqueta">Agendado</div>
             <ul className="mt-1.5 space-y-1">
               {futuras.map((v) => (

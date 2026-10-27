@@ -1,0 +1,123 @@
+/* Cópia de wide-ui/integrations/tokens.css (pacote em ~/.claude/plugins/marketplaces/widelab/design-systems/wide-ui).
+   Não edite valor aqui: muda no pacote e copia de novo. O que é do projeto fica em src/styles.css. */
+
+/* wide-ui tokens: the only place where wide-ui values live.
+   Light by default, dark from the OS, and data-theme="light|dark" on <html> overrides the OS.
+   The dark block appears twice (media query and attribute) because CSS cannot share one block between them;
+   check.mjs asserts both copies are identical. */
+
+:root {
+  --wu-font: 'Inter', system-ui, sans-serif;
+  --wu-radius: 8px;
+  --wu-radius-sm: 6px;
+
+  --wu-bg: #F7F7F8;           /* page */
+  --wu-surface: #FFFFFF;      /* cards, sidebar, topbar, dialogs */
+  --wu-raised: #FBFBFC;       /* table header, search box */
+  --wu-line: #E4E4E7;         /* borders, dividers */
+  --wu-line-strong: #D4D4D8;  /* input borders, chips, inactive bars */
+  --wu-fg: #18181B;           /* primary text */
+  --wu-muted: #52525B;        /* secondary text, labels */
+  --wu-subtle: #71717A;       /* meta, placeholders, axis labels */
+  --wu-hover: rgba(24, 24, 27, .04);
+  --wu-sel: rgba(24, 24, 27, .06);
+  --wu-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 1px 3px rgba(0, 0, 0, .06);
+
+  --wu-danger: #B91C1C;
+  --wu-danger-bg: #FEF2F2;
+  --wu-warn: #A16207;
+  --wu-ok: #15803D;
+  --wu-info: #1D4ED8;
+
+  /* status tones: each project maps its domain statuses to these */
+  --wu-t-neutral: #334155;   --wu-t-neutral-bg: #F1F5F9;
+  --wu-t-pending: #92400E;   --wu-t-pending-bg: #FEF3C7;
+  --wu-t-progress: #1E40AF;  --wu-t-progress-bg: #DBEAFE;
+  --wu-t-done: #166534;      --wu-t-done-bg: #DCFCE7;
+  --wu-t-archived: #115E59;  --wu-t-archived-bg: #CCFBF1;
+  --wu-t-void: #52525B;      --wu-t-void-bg: #F4F4F5;
+
+  --wu-p-critical: #DC2626;
+  --wu-p-high: #EA580C;
+  --wu-p-medium: #CA8A04;
+  --wu-p-low: #A1A1AA;
+
+  /* categorical chart series, used in this order */
+  --wu-c1: #2563EB;
+  --wu-c2: #0D9488;
+  --wu-c3: #9333EA;
+  --wu-c4: #CA8A04;
+  --wu-c5: #64748B;
+
+  /* accent: neutral fallback, replaced at runtime by applyAccent() (accent.js) */
+  --wu-brand: #18181B;
+  --wu-on-brand: #FFFFFF;
+  --wu-brand-ink-light: #18181B;
+  --wu-brand-ink-dark: #EDEDEF;
+  --wu-brand-ink: var(--wu-brand-ink-light);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --wu-bg: #0E0E10;
+    --wu-surface: #17171A;
+    --wu-raised: #1C1C20;
+    --wu-line: #2A2A2F;
+    --wu-line-strong: #3A3A40;
+    --wu-fg: #EDEDEF;
+    --wu-muted: #A1A1AA;
+    --wu-subtle: #8B8B94;
+    --wu-hover: rgba(255, 255, 255, .04);
+    --wu-sel: rgba(255, 255, 255, .07);
+    --wu-shadow: none;
+    --wu-danger: #F87171;
+    --wu-danger-bg: rgba(248, 113, 113, .10);
+    --wu-warn: #FBBF24;
+    --wu-ok: #4ADE80;
+    --wu-info: #93C5FD;
+    --wu-t-neutral: #CBD5E1;   --wu-t-neutral-bg: rgba(148, 163, 184, .14);
+    --wu-t-pending: #FCD34D;   --wu-t-pending-bg: rgba(245, 158, 11, .14);
+    --wu-t-progress: #93C5FD;  --wu-t-progress-bg: rgba(59, 130, 246, .16);
+    --wu-t-done: #86EFAC;      --wu-t-done-bg: rgba(34, 197, 94, .14);
+    --wu-t-archived: #5EEAD4;  --wu-t-archived-bg: rgba(20, 184, 166, .14);
+    --wu-t-void: #A1A1AA;      --wu-t-void-bg: rgba(161, 161, 170, .12);
+    --wu-brand-ink: var(--wu-brand-ink-dark);
+  }
+}
+
+:root[data-theme="dark"] {
+  --wu-bg: #0E0E10;
+  --wu-surface: #17171A;
+  --wu-raised: #1C1C20;
+  --wu-line: #2A2A2F;
+  --wu-line-strong: #3A3A40;
+  --wu-fg: #EDEDEF;
+  --wu-muted: #A1A1AA;
+  --wu-subtle: #8B8B94;
+  --wu-hover: rgba(255, 255, 255, .04);
+  --wu-sel: rgba(255, 255, 255, .07);
+  --wu-shadow: none;
+  --wu-danger: #F87171;
+  --wu-danger-bg: rgba(248, 113, 113, .10);
+  --wu-warn: #FBBF24;
+  --wu-ok: #4ADE80;
+  --wu-info: #93C5FD;
+  --wu-t-neutral: #CBD5E1;   --wu-t-neutral-bg: rgba(148, 163, 184, .14);
+  --wu-t-pending: #FCD34D;   --wu-t-pending-bg: rgba(245, 158, 11, .14);
+  --wu-t-progress: #93C5FD;  --wu-t-progress-bg: rgba(59, 130, 246, .16);
+  --wu-t-done: #86EFAC;      --wu-t-done-bg: rgba(34, 197, 94, .14);
+  --wu-t-archived: #5EEAD4;  --wu-t-archived-bg: rgba(20, 184, 166, .14);
+  --wu-t-void: #A1A1AA;      --wu-t-void-bg: rgba(161, 161, 170, .12);
+  --wu-brand-ink: var(--wu-brand-ink-dark);
+}
+
+html,
+body {
+  background: var(--wu-bg);
+  color: var(--wu-fg);
+  font-family: var(--wu-font);
+}
+
+body {
+  font-feature-settings: 'tnum' 1, 'cv11' 1;
+}

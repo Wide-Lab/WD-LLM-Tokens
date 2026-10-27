@@ -113,7 +113,7 @@ function AtoresPage() {
                   <TableCell className="text-muted-foreground text-right font-mono text-xs">
                     {formatNumber(a.tokens_cache_leitura)} / {formatNumber(a.tokens_cache_escrita)}
                   </TableCell>
-                  <TableCell className="leitura text-custo pr-5 text-right text-sm whitespace-nowrap">
+                  <TableCell className="leitura text-foreground pr-5 text-right text-sm whitespace-nowrap">
                     {formatCurrency(a.custo, a.moeda)}
                   </TableCell>
                   <TableCell className="pr-4">

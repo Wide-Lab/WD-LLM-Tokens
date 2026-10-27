@@ -40,7 +40,7 @@ export function Cartao({
         <div
           className={
             destaque
-              ? "leitura text-custo overflow-hidden text-2xl leading-none text-ellipsis whitespace-nowrap sm:text-[1.75rem]"
+              ? "leitura text-foreground overflow-hidden text-2xl leading-none text-ellipsis whitespace-nowrap sm:text-[1.75rem]"
               : "leitura overflow-hidden text-xl leading-none text-ellipsis whitespace-nowrap"
           }
         >
