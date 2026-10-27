@@ -27,17 +27,17 @@ import {
   pivotarPorGrupo,
   tooltipEstilo,
   totalDaLinha,
+  truncarRotulo,
 } from "@/lib/grafico";
 import { apiGet } from "@/lib/api";
 import { useFilters, filtersToParams } from "@/lib/filters";
 import {
   formatCompact,
   formatCurrency,
-  formatDateOnly,
+  formatInstante,
   formatNumber,
   formatPeriodo,
-  formatTime,
-  toISODate,
+  formatPeriodoCompleto,
 } from "@/lib/format";
 import type { ConsolidadoBucket } from "@/lib/api-types";
 
@@ -94,7 +94,7 @@ function Consolidado() {
         subtitulo={
           <>
             Quanto custou atender: LLM e WhatsApp somados no mesmo período
-            {total.dataUpdatedAt > 0 && <> · dados de {dataEHora(total.dataUpdatedAt)}</>}
+            {total.dataUpdatedAt > 0 && <> · dados de {formatInstante(total.dataUpdatedAt)}</>}
           </>
         }
         acoes={
@@ -117,12 +117,6 @@ function Consolidado() {
       </div>
     </div>
   );
-}
-
-/** `dd/mm/aaaa HH:mm` de um instante, no fuso do navegador — quando o painel recebeu os dados. */
-function dataEHora(ms: number): string {
-  const d = new Date(ms);
-  return `${formatDateOnly(toISODate(d))} ${formatTime(d.toISOString())}`;
 }
 
 /* ------------------------------------------------------------------ cartões */
@@ -229,10 +223,7 @@ function TooltipDoTempo({
 }: TooltipProps<number, string> & { granularidade: string; moeda: string }) {
   if (!active || !payload?.length) return null;
   const linha = payload[0]?.payload as Record<string, string | number> | undefined;
-  const rotulo =
-    granularidade === "mes"
-      ? formatPeriodo(String(label), granularidade)
-      : formatDateOnly(String(label).slice(0, 10));
+  const rotulo = formatPeriodoCompleto(String(label), granularidade);
 
   return (
     <div style={{ ...tooltipEstilo.contentStyle, padding: "8px 10px" }}>
@@ -260,11 +251,6 @@ function TooltipDoTempo({
       )}
     </div>
   );
-}
-
-/** Corta o nome do ator com reticências para caber no eixo; o nome inteiro está no tooltip. */
-function truncar(texto: string, max = 18): string {
-  return texto.length > max ? `${texto.slice(0, max - 1)}…` : texto;
 }
 
 /**
@@ -394,7 +380,7 @@ function TopAtores({ baseParams }: { baseParams: Params }) {
             dataKey="grupo"
             {...eixo}
             width={128}
-            tickFormatter={(v) => truncar(String(v))}
+            tickFormatter={(v) => truncarRotulo(String(v))}
           />
           <Tooltip {...tooltipEstilo} formatter={(v: number) => formatCurrency(v, moeda)} />
           <Legend {...legenda} />

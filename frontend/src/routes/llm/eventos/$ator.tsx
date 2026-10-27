@@ -1,8 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, type ReactNode } from "react";
-import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ArrowLeft,
+  Boxes,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ListOrdered,
+  MessagesSquare,
+} from "lucide-react";
 
+import { CabecalhoDaPagina } from "@/components/cabecalho-da-pagina";
 import { Conteudo } from "@/components/conteudo";
 import { Conversa } from "@/components/conversa";
 import { FiltroModelo } from "@/components/filtro-modelo";
@@ -18,7 +27,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { apiGet } from "@/lib/api";
 import { useFilters, filtersToParams } from "@/lib/filters";
 import { formatCurrency, formatDateTime, formatNumber } from "@/lib/format";
@@ -58,19 +66,20 @@ function AtorPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex min-w-0 flex-wrap items-center gap-3">
-        <Button variant="ghost" size="sm" asChild className="-ml-2 gap-1.5">
-          <Link to="/llm/eventos">
-            <ArrowLeft className="h-4 w-4" />
-            Atores
-          </Link>
-        </Button>
-        <h2 className="min-w-0 truncate font-mono text-lg font-medium" title={ator}>
-          {ator}
-        </h2>
-      </div>
+      <CabecalhoDaPagina
+        titulo={ator}
+        subtitulo="Chamadas de LLM deste ator no período, com o que foi dito e quanto custou"
+        acoes={
+          <Button variant="outline" asChild>
+            <Link to="/llm/eventos">
+              <ArrowLeft className="h-4 w-4" />
+              Voltar para atores
+            </Link>
+          </Button>
+        }
+      />
 
-      <GlobalFilters>
+      <GlobalFilters recortesDaSecao={["modelo"]}>
         <FiltroModelo />
       </GlobalFilters>
       <Leitura baseParams={base} />
@@ -93,6 +102,7 @@ function Leitura({ baseParams }: { baseParams: Params }) {
       totais={q.data?.[0]}
       carregando={q.isLoading}
       erro={q.error}
+      onRetry={() => void q.refetch()}
       titulo="Gasto deste ator"
     />
   );
@@ -110,42 +120,58 @@ function PorModelo({ baseParams }: { baseParams: Params }) {
   return (
     <PainelCard
       title="Modelos usados"
-      hint={modelos.length > 0 ? `${modelos.length} no período` : undefined}
+      icon={Boxes}
+      hint={modelos.length > 0 ? `${formatNumber(modelos.length)} no período` : undefined}
       bleed
       loading={q.isLoading}
       error={q.error}
+      onRetry={() => void q.refetch()}
       empty={!q.isLoading && modelos.length === 0}
       emptyMessage="Este ator não chamou nenhum modelo no período."
     >
-      <div className="overflow-x-auto">
+      <ul className="divide-line divide-y min-[700px]:hidden">
+        {modelos.map((m) => (
+          <li key={m.grupo} className="flex items-center gap-3 px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <div className="text-foreground truncate font-medium">{m.grupo}</div>
+              <div className="text-subtle mt-0.5 text-xs">
+                {formatNumber(m.requisicoes)} {m.requisicoes === 1 ? "requisição" : "requisições"} ·{" "}
+                {formatNumber(m.tokens_entrada)} entrada · {formatNumber(m.tokens_saida)} saída
+              </div>
+            </div>
+            <div className="text-foreground shrink-0 font-medium">
+              {formatCurrency(m.custo, m.moeda)}
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div className="hidden min-[700px]:block">
         <Table>
           <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="etiqueta py-3 pl-5">Modelo</TableHead>
-              <TableHead className="etiqueta py-3 text-right">Reqs.</TableHead>
-              <TableHead className="etiqueta py-3 text-right">Entrada</TableHead>
-              <TableHead className="etiqueta py-3 text-right">Saída</TableHead>
-              <TableHead className="etiqueta py-3 text-right">Cache L/E</TableHead>
-              <TableHead className="etiqueta py-3 pr-5 text-right">Custo</TableHead>
+            <TableRow>
+              <TableHead className="pl-4">Modelo</TableHead>
+              <TableHead className="text-right">Entrada</TableHead>
+              <TableHead className="text-right">Saída</TableHead>
+              <TableHead className="text-right">Cache leitura / escrita</TableHead>
+              <TableHead className="pr-4 text-right">Custo</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {modelos.map((m) => (
               <TableRow key={m.grupo}>
-                <TableCell className="pl-5 font-mono text-xs font-medium">{m.grupo}</TableCell>
-                <TableCell className="text-right font-mono text-xs">
-                  {formatNumber(m.requisicoes)}
+                <TableCell className="pl-4">
+                  <div className="text-foreground font-medium">{m.grupo}</div>
+                  <div className="text-subtle text-xs">
+                    {formatNumber(m.requisicoes)}{" "}
+                    {m.requisicoes === 1 ? "requisição" : "requisições"}
+                  </div>
                 </TableCell>
-                <TableCell className="text-right font-mono text-xs">
-                  {formatNumber(m.tokens_entrada)}
-                </TableCell>
-                <TableCell className="text-right font-mono text-xs">
-                  {formatNumber(m.tokens_saida)}
-                </TableCell>
-                <TableCell className="text-muted-foreground text-right font-mono text-xs">
+                <TableCell className="text-right">{formatNumber(m.tokens_entrada)}</TableCell>
+                <TableCell className="text-right">{formatNumber(m.tokens_saida)}</TableCell>
+                <TableCell className="text-muted-foreground text-right">
                   {formatNumber(m.tokens_cache_leitura)} / {formatNumber(m.tokens_cache_escrita)}
                 </TableCell>
-                <TableCell className="leitura text-foreground pr-5 text-right text-sm whitespace-nowrap">
+                <TableCell className="text-foreground pr-4 text-right font-medium whitespace-nowrap">
                   {formatCurrency(m.custo, m.moeda)}
                 </TableCell>
               </TableRow>
@@ -170,7 +196,7 @@ function Chamadas({ baseParams }: { baseParams: Params }) {
 
   if (modo === "conversa") {
     return (
-      <PainelCard title="Chamadas" action={alternador} bleed>
+      <PainelCard title="Chamadas" icon={MessagesSquare} action={alternador} bleed>
         <Conversa baseParams={baseParams} />
       </PainelCard>
     );
@@ -179,9 +205,14 @@ function Chamadas({ baseParams }: { baseParams: Params }) {
   return <ChamadasTabela baseParams={baseParams} acao={alternador} />;
 }
 
+/** Controle segmentado: duas formas da mesma leitura, a ativa em `surface` sobre o trilho `sel`. */
 function AlternadorDeModo({ modo, onModo }: { modo: Modo; onModo: (m: Modo) => void }) {
   return (
-    <div className="bg-muted flex items-center gap-0.5 rounded-sm p-0.5">
+    <div
+      role="group"
+      aria-label="Forma de leitura"
+      className="bg-sel flex h-8 items-center gap-0.5 rounded-[var(--wu-radius)] p-0.5"
+    >
       {(["tabela", "conversa"] as const).map((m) => (
         <button
           key={m}
@@ -189,8 +220,10 @@ function AlternadorDeModo({ modo, onModo }: { modo: Modo; onModo: (m: Modo) => v
           aria-pressed={modo === m}
           onClick={() => onModo(m)}
           className={cn(
-            "etiqueta rounded-[3px] px-2.5 py-1 transition-colors",
-            modo === m ? "bg-card text-foreground shadow-sm" : "hover:text-foreground",
+            "h-full rounded-[var(--wu-radius-sm)] px-2.5 text-[13px] font-medium transition-colors",
+            modo === m
+              ? "bg-surface text-foreground shadow-card"
+              : "text-muted-foreground hover:text-foreground",
           )}
         >
           {m === "tabela" ? "Tabela" : "Conversa"}
@@ -225,82 +258,157 @@ function ChamadasTabela({ baseParams, acao }: { baseParams: Params; acao: ReactN
     });
 
   const data = q.data;
+  const itens = data?.itens ?? [];
   const total = data?.total ?? 0;
   const pagina = Math.floor(offset / PAGE_SIZE) + 1;
   const paginas = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <>
+    <div className="flex flex-col gap-3">
       <PainelCard
         title="Chamadas"
+        icon={ListOrdered}
         hint={total > 0 ? `${formatNumber(total)} no período` : undefined}
         action={acao}
         bleed
         loading={q.isLoading}
         error={q.error}
-        empty={!q.isLoading && (!data || data.itens.length === 0)}
+        onRetry={() => void q.refetch()}
+        empty={!q.isLoading && itens.length === 0}
         emptyMessage="Este ator não fez chamadas no período selecionado."
       >
-        <div className="overflow-x-auto">
+        <ul className="divide-line divide-y min-[700px]:hidden">
+          {itens.map((e) => (
+            <ChamadaCartao key={e.id} evento={e} aberto={abertos.has(e.id)} onAlternar={alternar} />
+          ))}
+        </ul>
+        <div className="hidden min-[700px]:block">
           <Table>
             <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="w-8 pl-3" />
-                <TableHead className="etiqueta py-3">Data/hora</TableHead>
-                <TableHead className="etiqueta py-3">Aplicação</TableHead>
-                <TableHead className="etiqueta py-3">Modelo</TableHead>
-                <TableHead className="etiqueta py-3 text-right">Entrada</TableHead>
-                <TableHead className="etiqueta py-3 text-right">Saída</TableHead>
-                <TableHead className="etiqueta py-3 text-right">Cache L/E</TableHead>
-                <TableHead className="etiqueta py-3 pr-5 text-right">Custo</TableHead>
+              <TableRow>
+                <TableHead className="w-10 pl-3" />
+                <TableHead>Modelo</TableHead>
+                <TableHead className="text-right">Entrada</TableHead>
+                <TableHead className="text-right">Saída</TableHead>
+                <TableHead className="text-right">Cache leitura / escrita</TableHead>
+                <TableHead className="text-right">Custo</TableHead>
+                <TableHead className="pr-4 text-right">Data</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(data?.itens ?? []).map((e) => (
-                <Chamada key={e.id} evento={e} aberto={abertos.has(e.id)} onAlternar={alternar} />
+              {itens.map((e) => (
+                <ChamadaLinha
+                  key={e.id}
+                  evento={e}
+                  aberto={abertos.has(e.id)}
+                  onAlternar={alternar}
+                />
               ))}
             </TableBody>
           </Table>
         </div>
       </PainelCard>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-muted-foreground font-mono text-xs">
-          {total > 0
-            ? `${formatNumber(offset + 1)}–${formatNumber(
-                Math.min(offset + PAGE_SIZE, total),
-              )} de ${formatNumber(total)}`
-            : "Nenhum resultado"}
-        </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-            disabled={offset === 0 || q.isFetching}
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Anterior
-          </Button>
-          <div className="etiqueta">
-            {pagina} / {paginas}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setOffset(offset + PAGE_SIZE)}
-            disabled={offset + PAGE_SIZE >= total || q.isFetching}
-          >
-            Próxima
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </>
+      <Paginacao
+        offset={offset}
+        total={total}
+        pagina={pagina}
+        paginas={paginas}
+        ocupado={q.isFetching}
+        onOffset={setOffset}
+      />
+    </div>
   );
 }
 
-function Chamada({
+function Paginacao({
+  offset,
+  total,
+  pagina,
+  paginas,
+  ocupado,
+  onOffset,
+}: {
+  offset: number;
+  total: number;
+  pagina: number;
+  paginas: number;
+  ocupado: boolean;
+  onOffset: (o: number) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="text-muted-foreground text-[13px]">
+        {total > 0
+          ? `${formatNumber(offset + 1)}–${formatNumber(
+              Math.min(offset + PAGE_SIZE, total),
+            )} de ${formatNumber(total)}`
+          : "Nenhum resultado"}
+      </div>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onOffset(Math.max(0, offset - PAGE_SIZE))}
+          disabled={offset === 0 || ocupado}
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Anterior
+        </Button>
+        <div className="text-muted-foreground px-1 text-[13px]">
+          Página {formatNumber(pagina)} de {formatNumber(paginas)}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onOffset(offset + PAGE_SIZE)}
+          disabled={offset + PAGE_SIZE >= total || ocupado}
+        >
+          Próxima
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** A mensagem do ator e a resposta do agente, lado a lado, com a cor do balde de cada uma. */
+function ConteudoDaChamada({ evento }: { evento: EventoItem }) {
+  return (
+    <div className="grid grid-cols-1 gap-3 min-[1100px]:grid-cols-2">
+      {/* A borda de cada painel usa a cor do balde correspondente: o que o ator mandou
+          virou token de entrada, o que o agente devolveu virou token de saída. */}
+      <Conteudo titulo="Mensagem do ator" texto={evento.mensagem} cor="var(--balde-entrada)" />
+      <Conteudo titulo="Resposta do agente" texto={evento.resposta} cor="var(--balde-saida)" />
+    </div>
+  );
+}
+
+function BotaoDeConteudo({
+  aberto,
+  onClick,
+  comRotulo,
+}: {
+  aberto: boolean;
+  onClick: () => void;
+  comRotulo?: boolean;
+}) {
+  return (
+    <Button
+      variant="ghost"
+      size={comRotulo ? "sm" : "icon"}
+      className={comRotulo ? "-ml-2 h-7 px-2" : "h-8 w-8"}
+      onClick={onClick}
+      aria-expanded={aberto}
+      aria-label={aberto ? "Ocultar conteúdo" : "Ver conteúdo"}
+    >
+      <ChevronDown className={cn("h-4 w-4 transition-transform", aberto && "rotate-180")} />
+      {comRotulo && (aberto ? "Ocultar conteúdo" : "Ver conteúdo")}
+    </Button>
+  );
+}
+
+function ChamadaLinha({
   evento,
   aberto,
   onAlternar,
@@ -313,70 +421,83 @@ function Chamada({
 
   return (
     <>
-      <TableRow className={aberto ? "border-b-0" : undefined}>
-        <TableCell className="p-1 pl-3">
-          {temConteudo && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => onAlternar(evento.id)}
-              aria-expanded={aberto}
-              aria-label={aberto ? "Ocultar conteúdo" : "Ver conteúdo"}
-            >
-              <ChevronDown
-                className={`h-4 w-4 transition-transform ${aberto ? "rotate-180" : ""}`}
-              />
-            </Button>
-          )}
-        </TableCell>
-        <TableCell className="text-muted-foreground font-mono text-xs whitespace-nowrap">
-          {formatDateTime(evento.criado_em)}
-        </TableCell>
-        <TableCell>
-          <Badge variant="secondary" className="font-mono text-[0.6875rem] font-normal">
-            {evento.aplicacao}
-          </Badge>
+      {/* A linha inteira abre o conteúdo, como no wide-ui; o botão continua sendo o caminho do
+          teclado e do leitor de tela, e para o clique para ele não alternar duas vezes. */}
+      <TableRow
+        className={cn(aberto && "border-b-0", temConteudo && "cursor-pointer")}
+        onClick={temConteudo ? () => onAlternar(evento.id) : undefined}
+      >
+        <TableCell className="py-0 pr-0 pl-3" onClick={(e) => e.stopPropagation()}>
+          {temConteudo && <BotaoDeConteudo aberto={aberto} onClick={() => onAlternar(evento.id)} />}
         </TableCell>
         <TableCell className="whitespace-nowrap">
-          <div className="font-mono text-xs font-medium">{evento.modelo}</div>
-          {evento.provedor && (
-            <div className="text-muted-foreground text-[0.6875rem]">{evento.provedor}</div>
-          )}
+          <div className="text-foreground font-medium">{evento.modelo}</div>
+          <div className="text-subtle text-xs">
+            {[evento.aplicacao, evento.provedor].filter(Boolean).join(" · ")}
+          </div>
         </TableCell>
-        <TableCell className="text-right font-mono text-xs">
-          {formatNumber(evento.tokens_entrada)}
-        </TableCell>
-        <TableCell className="text-right font-mono text-xs">
-          {formatNumber(evento.tokens_saida)}
-        </TableCell>
-        <TableCell className="text-muted-foreground text-right font-mono text-xs">
+        <TableCell className="text-right">{formatNumber(evento.tokens_entrada)}</TableCell>
+        <TableCell className="text-right">{formatNumber(evento.tokens_saida)}</TableCell>
+        <TableCell className="text-muted-foreground text-right">
           {formatNumber(evento.tokens_cache_leitura)} / {formatNumber(evento.tokens_cache_escrita)}
         </TableCell>
-        <TableCell className="leitura text-foreground pr-5 text-right text-sm whitespace-nowrap">
+        <TableCell className="text-foreground text-right font-medium whitespace-nowrap">
           {formatCurrency(evento.custo, evento.moeda)}
+        </TableCell>
+        <TableCell className="text-muted-foreground pr-4 text-right whitespace-nowrap">
+          {formatDateTime(evento.criado_em, { segundos: true })}
         </TableCell>
       </TableRow>
       {aberto && (
         <TableRow className="hover:bg-transparent">
-          <TableCell colSpan={8} className="bg-raised px-5 pt-1 pb-5">
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              {/* A borda de cada painel usa a cor do balde correspondente: o que o ator mandou
-                  virou token de entrada, o que o agente devolveu virou token de saída. */}
-              <Conteudo
-                titulo="Mensagem do ator"
-                texto={evento.mensagem}
-                cor="var(--balde-entrada)"
-              />
-              <Conteudo
-                titulo="Resposta do agente"
-                texto={evento.resposta}
-                cor="var(--balde-saida)"
-              />
-            </div>
+          <TableCell colSpan={7} className="bg-raised h-auto px-4 pt-1 pb-4">
+            <ConteudoDaChamada evento={evento} />
           </TableCell>
         </TableRow>
       )}
     </>
+  );
+}
+
+function ChamadaCartao({
+  evento,
+  aberto,
+  onAlternar,
+}: {
+  evento: EventoItem;
+  aberto: boolean;
+  onAlternar: (id: string) => void;
+}) {
+  const temConteudo = Boolean(evento.mensagem || evento.resposta);
+  const tokens =
+    evento.tokens_entrada +
+    evento.tokens_saida +
+    evento.tokens_cache_leitura +
+    evento.tokens_cache_escrita;
+
+  return (
+    <li className="flex flex-col gap-1 px-4 py-3">
+      <div className="flex items-center justify-between gap-3 text-xs">
+        <span className="text-subtle">{formatDateTime(evento.criado_em, { segundos: true })}</span>
+        <span className="text-foreground text-[13.5px] font-medium">
+          {formatCurrency(evento.custo, evento.moeda)}
+        </span>
+      </div>
+      <div className="text-foreground truncate font-medium">{evento.modelo}</div>
+      <div className="text-subtle text-xs">
+        {[evento.aplicacao, evento.provedor].filter(Boolean).join(" · ")} · {formatNumber(tokens)}{" "}
+        tokens
+      </div>
+      {temConteudo && (
+        <div>
+          <BotaoDeConteudo aberto={aberto} onClick={() => onAlternar(evento.id)} comRotulo />
+        </div>
+      )}
+      {aberto && (
+        <div className="pt-1">
+          <ConteudoDaChamada evento={evento} />
+        </div>
+      )}
+    </li>
   );
 }

@@ -1,7 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Users } from "lucide-react";
 
+import { CabecalhoDaPagina } from "@/components/cabecalho-da-pagina";
 import { FiltroModelo } from "@/components/filtro-modelo";
 import { GlobalFilters } from "@/components/global-filters";
 import { PainelCard } from "@/components/painel-card";
@@ -46,6 +47,7 @@ export const Route = createFileRoute("/llm/eventos/")({
  */
 function AtoresPage() {
   const { filters } = useFilters();
+  const navigate = useNavigate();
   const params = {
     ...filtersToParams(filters),
     modelo: filters.modelo || undefined,
@@ -61,63 +63,106 @@ function AtoresPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <GlobalFilters>
+      <CabecalhoDaPagina
+        titulo="Eventos de LLM"
+        subtitulo="Quem consumiu quanto no período. Abra um ator para ver as chamadas dele"
+      />
+      <GlobalFilters recortesDaSecao={["modelo"]}>
         <FiltroModelo />
       </GlobalFilters>
       <PainelCard
         title="Atores"
-        hint={atores.length > 0 ? `${atores.length} no período` : undefined}
+        icon={Users}
+        hint={atores.length > 0 ? `${formatNumber(atores.length)} no período` : undefined}
         bleed
         loading={q.isLoading}
         error={q.error}
+        onRetry={() => void q.refetch()}
         empty={!q.isLoading && atores.length === 0}
         emptyMessage="Nenhum ator registrou chamadas neste período. Amplie as datas ou limpe os filtros."
       >
-        <div className="overflow-x-auto">
+        {/* Abaixo de 700px a tabela vira lista de cartões: as mesmas linhas, sem rolagem lateral. */}
+        <ul className="divide-line divide-y min-[700px]:hidden">
+          {atores.map((a) => (
+            <li key={a.grupo}>
+              <Link
+                to="/llm/eventos/$ator"
+                params={{ ator: a.grupo ?? "" }}
+                className="hover:bg-hover flex items-center gap-3 px-4 py-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="text-foreground truncate font-medium">{a.grupo}</div>
+                  <div className="text-subtle mt-0.5 text-xs">
+                    {formatNumber(a.requisicoes)}{" "}
+                    {a.requisicoes === 1 ? "requisição" : "requisições"} ·{" "}
+                    {formatNumber(
+                      a.tokens_entrada +
+                        a.tokens_saida +
+                        a.tokens_cache_leitura +
+                        a.tokens_cache_escrita,
+                    )}{" "}
+                    tokens
+                  </div>
+                </div>
+                <div className="text-foreground shrink-0 font-medium">
+                  {formatCurrency(a.custo, a.moeda)}
+                </div>
+                <ChevronRight className="text-subtle h-4 w-4 shrink-0" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+
+        <div className="hidden min-[700px]:block">
           <Table>
             <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="etiqueta py-3 pl-5">Ator</TableHead>
-                <TableHead className="etiqueta py-3 text-right">Reqs.</TableHead>
-                <TableHead className="etiqueta py-3 text-right">Entrada</TableHead>
-                <TableHead className="etiqueta py-3 text-right">Saída</TableHead>
-                <TableHead className="etiqueta py-3 text-right">Cache L/E</TableHead>
-                <TableHead className="etiqueta py-3 pr-5 text-right">Custo</TableHead>
-                <TableHead className="w-8 pr-4" />
+              <TableRow>
+                <TableHead className="pl-4">Ator</TableHead>
+                <TableHead className="text-right">Entrada</TableHead>
+                <TableHead className="text-right">Saída</TableHead>
+                <TableHead className="text-right">Cache leitura / escrita</TableHead>
+                <TableHead className="text-right">Custo</TableHead>
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {atores.map((a) => (
-                <TableRow key={a.grupo} className="group">
-                  <TableCell className="max-w-[280px] truncate p-0">
-                    {/* O link cobre a célula inteira: linha clicável sem `onClick` num
-                        `<tr>`, que não é focável nem abre em nova aba. */}
+                <TableRow
+                  key={a.grupo}
+                  className="group cursor-pointer"
+                  // A linha inteira abre o ator, como no wide-ui. O clique que já caiu no link
+                  // passa reto: ele navega sozinho (e abre em nova aba com Ctrl).
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest("a")) return;
+                    void navigate({ to: "/llm/eventos/$ator", params: { ator: a.grupo ?? "" } });
+                  }}
+                >
+                  <TableCell className="max-w-[320px] p-0">
+                    {/* O link é o caminho do teclado e do "abrir em nova aba": um `<tr>` com
+                        `onClick` não é focável. */}
                     <Link
                       to="/llm/eventos/$ator"
                       params={{ ator: a.grupo ?? "" }}
-                      className="focus-visible:ring-ring block truncate py-2.5 pl-5 font-medium focus-visible:ring-2 focus-visible:outline-none"
+                      className="block py-2 pl-4"
                       title={a.grupo}
                     >
-                      {a.grupo}
+                      <span className="text-foreground block truncate font-medium">{a.grupo}</span>
+                      <span className="text-subtle block text-xs">
+                        {formatNumber(a.requisicoes)}{" "}
+                        {a.requisicoes === 1 ? "requisição" : "requisições"}
+                      </span>
                     </Link>
                   </TableCell>
-                  <TableCell className="text-right font-mono text-xs">
-                    {formatNumber(a.requisicoes)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-xs">
-                    {formatNumber(a.tokens_entrada)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-xs">
-                    {formatNumber(a.tokens_saida)}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-right font-mono text-xs">
+                  <TableCell className="text-right">{formatNumber(a.tokens_entrada)}</TableCell>
+                  <TableCell className="text-right">{formatNumber(a.tokens_saida)}</TableCell>
+                  <TableCell className="text-muted-foreground text-right">
                     {formatNumber(a.tokens_cache_leitura)} / {formatNumber(a.tokens_cache_escrita)}
                   </TableCell>
-                  <TableCell className="leitura text-foreground pr-5 text-right text-sm whitespace-nowrap">
+                  <TableCell className="text-foreground text-right font-medium whitespace-nowrap">
                     {formatCurrency(a.custo, a.moeda)}
                   </TableCell>
-                  <TableCell className="pr-4">
-                    <ChevronRight className="text-muted-foreground group-hover:text-foreground h-4 w-4 transition-colors" />
+                  <TableCell className="pr-3">
+                    <ChevronRight className="text-subtle group-hover:text-foreground h-4 w-4 transition-colors" />
                   </TableCell>
                 </TableRow>
               ))}

@@ -123,3 +123,18 @@ export function formatPeriodo(periodo: string, granularidade?: string): string {
   if (granularidade === "mes" || !dia) return `${mes}/${ano}`;
   return `${dia}/${mes}`;
 }
+
+/**
+ * O mesmo balde de tempo com o ano, para o tooltip: no eixo `dd/mm` basta porque o ano está no
+ * filtro, mas o tooltip é lido sozinho. Por mês continua `mm/aaaa` — o dia ali não existe.
+ */
+export function formatPeriodoCompleto(periodo: string, granularidade?: string): string {
+  if (granularidade === "mes") return formatPeriodo(periodo, granularidade);
+  return formatDateOnly(String(periodo).slice(0, 10));
+}
+
+/** `dd/mm/aaaa HH:mm` de um instante em ms, no fuso do navegador — quando o painel recebeu os dados. */
+export function formatInstante(ms: number): string {
+  const d = new Date(ms);
+  return `${formatDateOnly(toISODate(d))} ${formatTime(d.toISOString())}`;
+}

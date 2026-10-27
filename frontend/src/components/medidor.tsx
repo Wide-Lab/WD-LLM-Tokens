@@ -15,7 +15,8 @@ import type { MetricaBucket } from "@/lib/api-types";
  * repartida em quatro mostra — a proporção é a informação.
  *
  * Custo fica de fora da fita, numa coluna própria, porque é outra substância: não é uma quinta
- * fatia de token, é o que a soma custou.
+ * fatia de token, é o que a soma custou. Ele é o KPI da tela e sai com duas casas, como os tiles;
+ * o custo por requisição fica com até quatro, senão uma chamada de centavos viraria `US$ 0,00`.
  */
 
 /** Exportado porque a conversa desenha a mesma fita por troca: a ordem e as cores dos quatro
@@ -71,7 +72,7 @@ export function Medidor({
           // Nunca quebra no meio do número: um valor partido em duas linhas deixa de ser
           // legível como quantia. Se estourar a coluna, corta na borda.
           <div className="text-foreground overflow-hidden text-[22px] leading-tight font-semibold tracking-[-0.02em] text-ellipsis whitespace-nowrap min-[700px]:text-[28px]">
-            {formatCurrency(custo, moeda)}
+            {formatCurrency(custo, moeda, { casas: 2 })}
           </div>
         )}
         {carregando ? (
@@ -165,7 +166,9 @@ export function Medidor({
                       {formatNumber(p.valor)}
                     </span>
                     <span className="text-subtle ml-1.5 text-xs">
-                      {totalTokens > 0 ? `${((p.valor / totalTokens) * 100).toFixed(1)}%` : "—"}
+                      {totalTokens > 0
+                        ? `${((p.valor / totalTokens) * 100).toFixed(1).replace(".", ",")}%`
+                        : "—"}
                     </span>
                   </>
                 )}

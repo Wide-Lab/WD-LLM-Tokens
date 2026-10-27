@@ -50,12 +50,18 @@ export const legendaEstilo = {
  *
  * `valores` vem por `dataKey` e já formatado: quem chama sabe de onde saiu o número — e ele tem de
  * sair do banco, não de uma soma das barras no browser. Série sem valor mostra só o nome.
+ *
+ * Na rosca todas as fatias têm o mesmo `dataKey` (a medida), e o que as distingue é o nome: ali
+ * `por: "nome"` faz `valores` ser lido pelo nome da fatia.
  */
-export function legendaComValores(valores: Record<string, string | undefined>) {
+export function legendaComValores(
+  valores: Record<string, string | undefined>,
+  { por = "dataKey" }: { por?: "dataKey" | "nome" } = {},
+) {
   return {
     ...legendaEstilo,
     formatter: (nome: string, entrada: { dataKey?: unknown }) => {
-      const valor = valores[String(entrada?.dataKey)];
+      const valor = valores[por === "nome" ? nome : String(entrada?.dataKey)];
       return createElement(
         "span",
         { style: { color: "var(--wu-muted)" } },
@@ -76,6 +82,11 @@ export function legendaComValores(valores: Record<string, string | undefined>) {
       );
     },
   };
+}
+
+/** Corta um rótulo de eixo com reticências para caber; o nome inteiro continua no tooltip. */
+export function truncarRotulo(texto: string, max = 18): string {
+  return texto.length > max ? `${texto.slice(0, max - 1)}…` : texto;
 }
 
 /**
