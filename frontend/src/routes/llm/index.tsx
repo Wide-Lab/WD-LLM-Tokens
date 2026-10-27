@@ -395,6 +395,7 @@ function TopAtores({ baseParams }: { baseParams: Params }) {
           <XAxis type="number" {...eixo} tickFormatter={(v) => formatCompact(v)} />
           <YAxis
             type="category"
+            interval={0}
             dataKey="grupo"
             {...eixo}
             width={120}

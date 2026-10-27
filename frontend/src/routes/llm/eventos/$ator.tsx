@@ -251,7 +251,9 @@ function Chamadas({ baseParams }: { baseParams: Params }) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-10 pl-3" />
+                    <TableHead className="w-10 pl-3">
+                      <span className="sr-only">Conteúdo</span>
+                    </TableHead>
                     <TableHead>Modelo</TableHead>
                     <TableHead className="text-right">Entrada</TableHead>
                     <TableHead className="text-right">Saída</TableHead>

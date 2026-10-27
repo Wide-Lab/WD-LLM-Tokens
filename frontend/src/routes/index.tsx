@@ -338,10 +338,11 @@ function TopAtores({ baseParams }: { baseParams: Params }) {
           <XAxis type="number" {...eixo} tickFormatter={(v) => formatCompact(v)} />
           <YAxis
             type="category"
+            interval={0}
             dataKey="grupo"
             {...eixo}
             width={128}
-            tickFormatter={(v) => truncarRotulo(String(v))}
+            tickFormatter={(v) => truncarRotulo(String(v), 15)}
           />
           <Tooltip {...tooltipEstilo} formatter={(v: number) => formatCurrency(v, moeda)} />
           <Legend {...legenda} />

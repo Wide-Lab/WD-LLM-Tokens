@@ -121,7 +121,9 @@ function MensagensPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-10 pl-3" />
+                  <TableHead className="w-10 pl-3">
+                    <span className="sr-only">Conteúdo</span>
+                  </TableHead>
                   <TableHead>Ator</TableHead>
                   <TableHead>Direção</TableHead>
                   <TableHead>Cobrança</TableHead>
@@ -195,11 +197,23 @@ function Direcao({ mensagem }: { mensagem: MensagemItem }) {
   );
 }
 
+/**
+ * Qual preço falta, por extenso. Vai no `title` da pílula "Sem preço" e repetido na linha aberta,
+ * porque `title` não existe no toque nem no teclado — e é por aqui que se descobre o que cadastrar.
+ */
+function precoQueFalta(m: MensagemItem): string {
+  const categoria = m.categoria ? nomeDaCategoria(m) : "esta categoria";
+  return `Sem preço cadastrado para ${categoria} em ${m.pais} nesta data. A mensagem é cobrável e fica fora da soma até o preço existir.`;
+}
+
 /** O texto da mensagem e o `wamid` — o id técnico, em mono, para achar a mensagem do lado da Meta. */
 function ConteudoDaMensagem({ mensagem }: { mensagem: MensagemItem }) {
   const cor = visualDaDirecao(mensagem.direcao)?.cor ?? "var(--wu-line-strong)";
   return (
     <div className="flex min-w-0 flex-col gap-3">
+      {mensagem.cobravel && mensagem.custo === null && (
+        <p className="text-muted-foreground text-[12.5px]">{precoQueFalta(mensagem)}</p>
+      )}
       <Conteudo
         titulo={mensagem.direcao === "recebida" ? "Mensagem do cliente" : "Mensagem enviada"}
         texto={mensagem.conteudo}
@@ -238,7 +252,7 @@ function MensagemLinha({
         <TableCell className="py-0 pr-0 pl-3">
           <BotaoDeConteudo aberto={aberta} onClick={() => onAlternar(mensagem.id)} />
         </TableCell>
-        <TableCell className="max-w-[16rem]">
+        <TableCell className="max-w-[13rem]">
           <div className="text-foreground truncate font-medium" title={mensagem.ator}>
             {mensagem.ator}
           </div>
@@ -253,7 +267,10 @@ function MensagemLinha({
         <TableCell>
           <Cobranca mensagem={mensagem} />
         </TableCell>
-        <TableCell className="text-muted-foreground max-w-[22rem] truncate">
+        {/* `w-full max-w-0`: em tabela de layout automático um `max-w` em rem no `<td>` é ignorado e a
+            coluna cresce até caber a prévia inteira, empurrando Data para fora a 1280. Com largura
+            zero de máximo ela ocupa só a sobra, e o `truncate` corta dentro dela. */}
+        <TableCell className="text-muted-foreground w-full max-w-0 truncate">
           {mensagem.conteudo ? (
             previa(mensagem.conteudo)
           ) : (
@@ -290,7 +307,14 @@ function MensagemCartao({
   onAlternar: (id: string) => void;
 }) {
   return (
-    <li className="flex flex-col gap-1 px-4 py-3">
+    // O cartão inteiro abre, como a linha da tabela; o botão continua sendo o caminho do teclado.
+    <li
+      onClick={() => {
+        if (haTextoSelecionado()) return;
+        onAlternar(mensagem.id);
+      }}
+      className="flex cursor-pointer flex-col gap-1 px-4 py-3"
+    >
       <div className="flex items-center justify-between gap-3">
         <span className="text-subtle text-xs">
           {formatDateTime(mensagem.criado_em, { segundos: true })}
@@ -298,7 +322,9 @@ function MensagemCartao({
         <Cobranca mensagem={mensagem} />
       </div>
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-foreground min-w-0 truncate font-medium">{mensagem.ator}</span>
+        <span className="text-foreground min-w-0 truncate font-medium" title={mensagem.ator}>
+          {mensagem.ator}
+        </span>
         <span className="text-foreground shrink-0 font-medium">
           <CelulaCusto mensagem={mensagem} />
         </span>
@@ -325,7 +351,8 @@ function MensagemCartao({
  * `null` só acontece com mensagem **cobrável sem preço cadastrado** para `(categoria, país, data)`,
  * e é o caminho pelo qual alguém descobre que precisa cadastrar um preço — a mensagem some da soma
  * sem erro nenhum. Por isso ela sai como pílula "Sem preço" (o mesmo tom do "Sem preço vigente" da
- * tela de preços), com o `title` dizendo qual preço falta, em vez de um traço mudo.
+ * tela de preços), com o `title` dizendo qual preço falta (repetido na linha aberta), em vez de um
+ * traço mudo.
  *
  * A não-cobrável fica em branco: o `0,00` dela competiria visualmente com os valores reais, e a
  * pílula de cobrança já disse "grátis".
@@ -335,13 +362,7 @@ function CelulaCusto({ mensagem }: { mensagem: MensagemItem }) {
 
   if (mensagem.custo === null) {
     return (
-      <StatusPill
-        tom="pending"
-        className="cursor-help"
-        title={`Sem preço cadastrado para ${mensagem.categoria ?? "esta categoria"} em ${
-          mensagem.pais
-        } nesta data. A mensagem é cobrável e fica fora da soma até o preço existir.`}
-      >
+      <StatusPill tom="pending" className="cursor-help" title={precoQueFalta(mensagem)}>
         Sem preço
       </StatusPill>
     );

@@ -220,12 +220,14 @@ function Cartoes({ baseParams }: { baseParams: Params }) {
         carregando={q.isLoading}
       />
       <Cartao
-        rotulo="Custo por mensagem cobrável"
+        // "Tarifa média", e não "Custo por mensagem cobrável": o rótulo longo saía cortado no tile
+        // (a 1280 e a 390), e cortado ele deixa de dizer o que o número é.
+        rotulo="Tarifa média"
         icone={Tag}
         // Quatro casas, e não as duas dos outros tiles: a tarifa da Meta fica em centavos de dólar,
         // e com duas casas `US$ 0,0068` e `US$ 0,0250` virariam `US$ 0,01` e `US$ 0,03`.
         valor={formatCurrency(unitario, moeda)}
-        nota={cobraveis > 0 ? "tarifa média do período" : "sem mensagem cobrável"}
+        nota={cobraveis > 0 ? "por mensagem cobrável" : "sem mensagem cobrável"}
         carregando={q.isLoading}
       />
     </div>
@@ -476,6 +478,7 @@ function TopAtores({ baseParams }: { baseParams: Params }) {
           <XAxis type="number" {...eixo} tickFormatter={(v) => formatCompact(v)} />
           <YAxis
             type="category"
+            interval={0}
             dataKey="grupo"
             {...eixo}
             width={120}
