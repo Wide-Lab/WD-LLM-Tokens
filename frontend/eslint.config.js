@@ -32,6 +32,19 @@ export default tseslint.config(
           ],
         },
       ],
+      // No projeto, `muted` é fundo (shadcn) e não texto (wide-ui): `text-muted` pintaria o texto
+      // na cor de fundo. Texto secundário é `text-muted-foreground` — ver `src/styles.css`.
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Literal[value=/(^|[ :])text-muted($| )/]",
+          message: "`text-muted` é fundo neste projeto; use `text-muted-foreground`.",
+        },
+        {
+          selector: "TemplateElement[value.raw=/(^|[ :])text-muted($| )/]",
+          message: "`text-muted` é fundo neste projeto; use `text-muted-foreground`.",
+        },
+      ],
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
     },

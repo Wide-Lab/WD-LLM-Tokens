@@ -77,7 +77,8 @@ export const ORIGENS = [
  * `service` fica com a série mais apagada (a cinza-azulada) de propósito: é a única das quatro que
  * a Meta não cobra, e a cor precisa dizer isso antes da legenda. As outras três não têm hierarquia
  * embutida — nenhuma é "mais cara" por natureza, o preço é por país. A segunda série fica de fora
- * porque é a do WhatsApp, e a rampa dos baldes (as direções) sai dela.
+ * porque é a do WhatsApp; marketing repetir a primeira (a do LLM) é aceito, porque categoria só
+ * aparece dentro do painel WhatsApp, onde a cor do LLM não está.
  */
 export const CATEGORIAS = [
   { chave: "marketing", nome: "Marketing", cor: "var(--categoria-marketing)" },
@@ -92,15 +93,21 @@ export const SEM_CATEGORIA = "sem categoria";
 /**
  * As séries do empilhado de mensagens: as quatro categorias mais o balde das recebidas.
  *
- * As recebidas saem na cor de linha forte, e não numa série, porque mensagem recebida não é
- * categoria nenhuma e não custa: cinza claro aqui é a afirmação, não a falta de escolha.
+ * As recebidas saem num cinza neutro (`--categoria-nenhuma`), e não numa série, porque mensagem
+ * recebida não é categoria nenhuma e não custa: o cinza aqui é a afirmação, não a falta de
+ * escolha. Ele ainda passa de 3:1 contra o cartão e não se confunde com o cinza-azulado de
+ * `service`.
  */
 export const SERIES_DE_CATEGORIA = [
   ...CATEGORIAS,
   { chave: SEM_CATEGORIA, nome: "Sem categoria", cor: "var(--categoria-nenhuma)" },
 ] as const;
 
-/** As duas direções, nas cores dos baldes de token do LLM — ver `conversa.tsx`. */
+/**
+ * As duas direções, nas cores dos baldes de token do LLM — ver `conversa.tsx`. Os baldes são uma
+ * rampa neutra (de `fg` para o cinza, em `styles.css`), e não uma série, para que nem token nem
+ * direção peguem a cor de uma origem.
+ */
 export const DIRECOES = [
   // O que o cliente falou é o que vira token de entrada do outro lado; o que o número respondeu,
   // token de saída. Reusar as duas cores mantém "quem falou" com o mesmo significado nas duas

@@ -252,7 +252,7 @@ function Linha({
 
       {aberta && (
         <TableRow className="hover:bg-transparent">
-          <TableCell colSpan={9} className="bg-muted/50 px-5 pt-1 pb-5">
+          <TableCell colSpan={9} className="bg-raised px-5 pt-1 pb-5">
             <Conteudo
               titulo={mensagem.direcao === "recebida" ? "Mensagem do cliente" : "Mensagem enviada"}
               texto={mensagem.conteudo}

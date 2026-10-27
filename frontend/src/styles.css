@@ -19,8 +19,8 @@
  * 1. Liga as variáveis do shadcn (`--background`, `--primary`, `--border`...) aos tokens `--wu-*`,
  *    para os componentes de `components/ui/` seguirem o wide-ui sem ser editados um a um.
  * 2. Resolve o único conflito de nome entre os dois (abaixo).
- * 3. Declara os tokens do projeto — as cores com papel fixo nos gráficos —, todos derivados das
- *    séries do wide-ui.
+ * 3. Declara os tokens do projeto — as cores com papel fixo nos gráficos —, todos derivados dos
+ *    tokens do wide-ui.
  *
  * O conflito do `muted`: no wide-ui, `--color-muted` é **texto** secundário (`text-muted`); no
  * shadcn, `muted` é **fundo** apagado (`bg-muted`, com o texto em `text-muted-foreground`). Os
@@ -95,9 +95,13 @@
   --primary-foreground: var(--wu-on-brand);
   --secondary: var(--wu-sel);
   --secondary-foreground: var(--wu-fg);
+  /* `sel` tem alfa: `bg-muted/50` vira ~3% e some. `muted` não aceita `/opacidade` — para fundo
+     apagado de linha use `bg-raised`, para separador `bg-border`. */
   --muted: var(--wu-sel);
   --muted-foreground: var(--wu-muted);
-  --accent: var(--wu-hover);
+  /* `sel`, e não `hover`: o shadcn usa `bg-accent` no item com foco de teclado dos menus, e
+     realce de teclado é "selecionado" — em `hover` (1.08:1) o item some. */
+  --accent: var(--wu-sel);
   --accent-foreground: var(--wu-fg);
   --destructive: var(--wu-danger);
   /* `surface`, e não branco fixo: no escuro o danger é um vermelho claro e pede texto escuro. */
@@ -116,8 +120,9 @@
   --sidebar-ring: var(--wu-brand);
 
   /*
-   * Tokens do projeto: cor com papel fixo. Os nomes dizem o papel, o valor vem sempre de uma
-   * série do wide-ui (`--wu-c1`..`--wu-c5`) — nenhuma cor nova entra aqui. Quem lê os papéis é
+   * Tokens do projeto: cor com papel fixo. Os nomes dizem o papel, o valor vem sempre de um
+   * token do wide-ui — uma série (`--wu-c1`..`--wu-c5`) ou uma mistura de `fg` com `surface` —,
+   * nenhuma cor nova entra aqui. Quem lê os papéis é
    * `src/lib/grafico.ts`; componente nenhum escolhe cor de dado por conta própria.
    */
 
@@ -125,25 +130,38 @@
   --origem-llm: var(--wu-c1);
   --origem-whatsapp: var(--wu-c2);
 
-  /* As categorias de mensagem. `service` é a que a Meta não cobra e fica com a série mais
-     apagada; mensagem sem categoria (as recebidas) não é série, é linha. */
+  /* As categorias de mensagem, pulando c2 (é a do WhatsApp; marketing repetir a cor do LLM é
+     aceito porque categoria só aparece dentro do painel WhatsApp). `service` é a que a Meta não
+     cobra e fica com a série mais apagada. Mensagem sem categoria (as recebidas) não é série:
+     sai num cinza neutro, ≥ 3:1 contra o cartão e longe do cinza-azulado de c5 — 3.30:1 no
+     claro; no escuro, o mesmo cinza cairia em cima de c5, e o bloco escuro abaixo o clareia. */
   --categoria-marketing: var(--wu-c1);
   --categoria-utility: var(--wu-c3);
   --categoria-authentication: var(--wu-c4);
   --categoria-service: var(--wu-c5);
-  --categoria-nenhuma: var(--wu-line-strong);
+  --categoria-nenhuma: color-mix(in oklab, var(--wu-fg) 45%, var(--wu-surface));
 
   /*
-   * Os quatro baldes de token, do mais caro ao mais barato: uma rampa de um tom só, porque os
-   * quatro são partes de um mesmo todo (nunca se sobrepõem — ver `docs/modelo-de-dados.md`). Os
-   * dois de cache são os mais apagados de propósito: cache é a faixa com desconto. A rampa
-   * mistura a série com `surface`, então "apagado" funciona nos dois temas sem bloco escuro.
+   * Os quatro baldes de token, do mais caro ao mais barato: uma rampa neutra, de `fg` para o
+   * cinza, porque os quatro são partes de um mesmo todo (nunca se sobrepõem — ver
+   * `docs/modelo-de-dados.md`) e porque token não pode pegar a cor de origem nenhuma — as
+   * séries c1..c5 já dizem LLM, WhatsApp e categoria. Os dois de cache são os mais apagados de
+   * propósito: cache é a faixa com desconto. A rampa mistura `fg` com `surface` em `oklab` (que
+   * não interpola matiz), então "apagado" funciona nos dois temas sem bloco escuro.
+   * Contraste contra `surface`, claro / escuro: 17.72 / 15.30, 7.04 / 6.94, 4.40 / 4.64,
+   * 3.11 / 3.31 — todos ≥ 3:1. Mais claro que o último e a fita vira trilho vazio.
    */
-  --balde-entrada: var(--wu-c2);
-  --balde-saida: color-mix(in oklch, var(--wu-c2) 65%, var(--wu-surface));
-  /* Mais claros que isso e a fita passa a parecer trilho vazio em vez de token contabilizado. */
-  --balde-cache-leitura: color-mix(in oklch, var(--wu-c2) 42%, var(--wu-surface));
-  --balde-cache-escrita: color-mix(in oklch, var(--wu-c2) 28%, var(--wu-surface));
+  --balde-entrada: var(--wu-fg);
+  --balde-saida: color-mix(in oklab, var(--wu-fg) 68%, var(--wu-surface));
+  --balde-cache-leitura: color-mix(in oklab, var(--wu-fg) 54%, var(--wu-surface));
+  --balde-cache-escrita: color-mix(in oklab, var(--wu-fg) 43%, var(--wu-surface));
+}
+
+/* A única exceção ao "sem bloco escuro": a 45% o cinza do "sem categoria" fica a 3.52:1, colado
+   em c5 (3.76:1). A 62% sai a 5.86:1, claramente outro cinza. O script do tema sempre grava
+   `data-theme`, então este seletor cobre o escuro do SO também. */
+:root[data-theme="dark"] {
+  --categoria-nenhuma: color-mix(in oklab, var(--wu-fg) 62%, var(--wu-surface));
 }
 
 @layer base {

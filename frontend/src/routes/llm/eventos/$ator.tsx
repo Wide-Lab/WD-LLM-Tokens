@@ -359,7 +359,7 @@ function Chamada({
       </TableRow>
       {aberto && (
         <TableRow className="hover:bg-transparent">
-          <TableCell colSpan={8} className="bg-muted/50 px-5 pt-1 pb-5">
+          <TableCell colSpan={8} className="bg-raised px-5 pt-1 pb-5">
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {/* A borda de cada painel usa a cor do balde correspondente: o que o ator mandou
                   virou token de entrada, o que o agente devolveu virou token de saída. */}

@@ -21,7 +21,7 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // `null` até ler o documento: gravar antes disso escreveria "light" por cima do tema salvo.
+  // `null` até ler o documento: aplicar antes disso escreveria "light" por cima do tema decidido.
   const [lido, setThemeState] = useState<Theme | null>(null);
   const theme: Theme = lido ?? "light";
 
@@ -30,15 +30,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const noDocumento = document.documentElement.getAttribute("data-theme");
     let initial: Theme = noDocumento === "dark" ? "dark" : "light";
     if (noDocumento !== "light" && noDocumento !== "dark") {
-      try {
-        const stored = window.localStorage.getItem(STORAGE_KEY);
-        if (stored === "light" || stored === "dark") initial = stored;
-        else if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) initial = "dark";
-      } catch {
-        // ignore
-      }
+      initial = lerSalvo() ?? temaDoSistema();
     }
     setThemeState(initial);
+
+    // Sem escolha salva, o painel segue o sistema — inclusive quando ele muda com a aba aberta.
+    // Depois de uma escolha explícita, o sistema deixa de mandar.
+    const consulta = window.matchMedia?.("(prefers-color-scheme: dark)");
+    if (!consulta) return;
+    const aoMudar = (e: MediaQueryListEvent) => {
+      if (lerSalvo() === null) setThemeState(e.matches ? "dark" : "light");
+    };
+    consulta.addEventListener("change", aoMudar);
+    return () => consulta.removeEventListener("change", aoMudar);
   }, []);
 
   useEffect(() => {
@@ -46,19 +50,40 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     root.setAttribute("data-theme", theme);
     root.classList.toggle("dark", theme === "dark");
-    try {
-      window.localStorage.setItem(STORAGE_KEY, theme);
-    } catch {
-      // ignore
-    }
   }, [lido, theme]);
 
-  const setTheme = (t: Theme) => setThemeState(t);
-  const toggle = () => setThemeState((t) => (t === "dark" ? "light" : "dark"));
+  // Só a ação do usuário grava: o tema vindo do sistema não pode virar preferência salva, senão o
+  // script do `<head>` nunca mais consultaria o sistema.
+  const setTheme = (t: Theme) => {
+    salvar(t);
+    setThemeState(t);
+  };
+  const toggle = () => setTheme(theme === "dark" ? "light" : "dark");
 
   return (
     <ThemeContext.Provider value={{ theme, toggle, setTheme }}>{children}</ThemeContext.Provider>
   );
+}
+
+function lerSalvo(): Theme | null {
+  try {
+    const salvo = window.localStorage.getItem(STORAGE_KEY);
+    return salvo === "light" || salvo === "dark" ? salvo : null;
+  } catch {
+    return null;
+  }
+}
+
+function temaDoSistema(): Theme {
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function salvar(t: Theme) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, t);
+  } catch {
+    // ignore
+  }
 }
 
 export function useTheme() {
