@@ -11,6 +11,9 @@ import {
   YAxis,
 } from "recharts";
 
+import { AppWindow, ChartColumn, Layers, Users, Wallet } from "lucide-react";
+
+import { CabecalhoDaPagina } from "@/components/cabecalho-da-pagina";
 import { Cartao } from "@/components/cartao";
 import { GlobalFilters } from "@/components/global-filters";
 import { PainelCard } from "@/components/painel-card";
@@ -25,7 +28,7 @@ import {
 } from "@/lib/grafico";
 import { apiGet } from "@/lib/api";
 import { useFilters, filtersToParams } from "@/lib/filters";
-import { formatCompact, formatCurrency, formatNumber } from "@/lib/format";
+import { formatCompact, formatCurrency, formatNumber, formatPeriodo } from "@/lib/format";
 import type { ConsolidadoBucket } from "@/lib/api-types";
 
 export const Route = createFileRoute("/")({
@@ -71,10 +74,14 @@ function Consolidado() {
 
   return (
     <div className="flex flex-col gap-4">
+      <CabecalhoDaPagina
+        titulo="Visão geral"
+        subtitulo="Quanto custou atender: LLM e WhatsApp somados no mesmo período"
+      />
       <GlobalFilters />
       <Cartoes baseParams={base} />
       <CustoTemporal baseParams={base} granularidade={filters.granularidade} />
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 min-[1180px]:grid-cols-2">
         <CustoPorAplicacao baseParams={base} />
         <TopAtores baseParams={base} />
       </div>
@@ -101,14 +108,25 @@ function Cartoes({ baseParams }: { baseParams: Params }) {
   const erro = total.error ?? origens.error;
   const carregando = total.isLoading || origens.isLoading;
 
-  if (erro) return <ErrorBox error={erro} />;
+  if (erro)
+    return (
+      <ErrorBox
+        error={erro}
+        onRetry={() => {
+          void total.refetch();
+          void origens.refetch();
+        }}
+      />
+    );
 
   const daOrigem = (chave: string) => origens.data?.find((b) => b.grupo === chave);
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 min-[520px]:grid-cols-2 min-[1100px]:grid-cols-4">
       <Cartao
         rotulo="Custo total"
+        icone={Wallet}
+        nota="LLM e WhatsApp somados"
         valor={formatCurrency(geral?.custo, moeda)}
         carregando={carregando}
       />
@@ -127,6 +145,7 @@ function Cartoes({ baseParams }: { baseParams: Params }) {
       })}
       <Cartao
         rotulo="Lançamentos"
+        icone={Layers}
         valor={formatNumber(geral?.lancamentos ?? 0)}
         nota="fatos somados no período"
         carregando={carregando}
@@ -153,7 +172,7 @@ function barrasDeOrigem({ vertical }: { vertical?: boolean } = {}) {
       fill={o.cor}
       name={o.nome}
       // Só o segmento de cima leva canto arredondado, ou a pilha ganha um sulco no meio.
-      radius={i === ORIGENS.length - 1 ? (vertical ? [0, 2, 2, 0] : [2, 2, 0, 0]) : undefined}
+      radius={i === ORIGENS.length - 1 ? (vertical ? [0, 3, 3, 0] : [3, 3, 0, 0]) : undefined}
       {...(vertical ? { barSize: 14 } : { maxBarSize: 64 })}
     />
   ));
@@ -176,18 +195,24 @@ function CustoTemporal({
       hint={
         granularidade === "dia" ? "por dia" : granularidade === "semana" ? "por semana" : "por mês"
       }
+      icon={ChartColumn}
       loading={q.isLoading}
       error={q.error}
+      onRetry={() => void q.refetch()}
       empty={!q.isLoading && dados.length === 0}
     >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={dados} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--border)" vertical={false} />
-          <XAxis dataKey="periodo" {...eixo} />
+          <XAxis
+            dataKey="periodo"
+            {...eixo}
+            tickFormatter={(v) => formatPeriodo(v, granularidade)}
+          />
           <YAxis {...eixo} tickFormatter={(v) => formatCompact(v)} width={52} />
           <Tooltip
             {...tooltipEstilo}
-            cursor={{ fill: "var(--muted)" }}
+            labelFormatter={(v) => formatPeriodo(String(v), granularidade)}
             formatter={(v: number) => formatCurrency(v, moeda)}
           />
           <Legend {...legendaEstilo} />
@@ -209,8 +234,10 @@ function CustoPorAplicacao({ baseParams }: { baseParams: Params }) {
     <PainelCard
       title="Custo por aplicação"
       hint="por origem"
+      icon={AppWindow}
       loading={q.isLoading}
       error={q.error}
+      onRetry={() => void q.refetch()}
       empty={!q.isLoading && dados.length === 0}
     >
       <ResponsiveContainer width="100%" height="100%">
@@ -218,11 +245,7 @@ function CustoPorAplicacao({ baseParams }: { baseParams: Params }) {
           <CartesianGrid stroke="var(--border)" vertical={false} />
           <XAxis dataKey="grupo" {...eixo} />
           <YAxis {...eixo} tickFormatter={(v) => formatCompact(v)} width={52} />
-          <Tooltip
-            {...tooltipEstilo}
-            cursor={{ fill: "var(--muted)" }}
-            formatter={(v: number) => formatCurrency(v, moeda)}
-          />
+          <Tooltip {...tooltipEstilo} formatter={(v: number) => formatCurrency(v, moeda)} />
           <Legend {...legendaEstilo} />
           {barrasDeOrigem()}
         </BarChart>
@@ -242,20 +265,18 @@ function TopAtores({ baseParams }: { baseParams: Params }) {
     <PainelCard
       title="Atores por custo"
       hint="10 maiores"
+      icon={Users}
       loading={q.isLoading}
       error={q.error}
+      onRetry={() => void q.refetch()}
       empty={!q.isLoading && dados.length === 0}
     >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={dados} layout="vertical" margin={{ top: 4, right: 12, left: 4, bottom: 0 }}>
           <CartesianGrid stroke="var(--border)" horizontal={false} />
           <XAxis type="number" {...eixo} tickFormatter={(v) => formatCompact(v)} />
-          <YAxis type="category" dataKey="grupo" {...eixo} width={140} />
-          <Tooltip
-            {...tooltipEstilo}
-            cursor={{ fill: "var(--muted)" }}
-            formatter={(v: number) => formatCurrency(v, moeda)}
-          />
+          <YAxis type="category" dataKey="grupo" {...eixo} width={128} />
+          <Tooltip {...tooltipEstilo} formatter={(v: number) => formatCurrency(v, moeda)} />
           <Legend {...legendaEstilo} />
           {barrasDeOrigem({ vertical: true })}
         </BarChart>

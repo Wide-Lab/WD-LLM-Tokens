@@ -50,7 +50,7 @@ export function formatDateTime(iso: string): string {
   try {
     return new Intl.DateTimeFormat("pt-BR", {
       dateStyle: "short",
-      timeStyle: "medium",
+      timeStyle: "short",
     }).format(new Date(iso));
   } catch {
     return iso;
@@ -93,4 +93,17 @@ export function toISODate(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+/**
+ * O rótulo de um balde de tempo dos gráficos: `dd/mm` por dia ou semana, `mm/aaaa` por mês.
+ *
+ * Lê só os dez primeiros caracteres e não passa por `new Date` — pelo mesmo motivo de
+ * `formatDateOnly`: o balde chega como data, e a conversão de fuso o jogaria no dia anterior.
+ */
+export function formatPeriodo(periodo: string, granularidade?: string): string {
+  const [ano, mes, dia] = String(periodo).slice(0, 10).split("-");
+  if (!ano || !mes) return String(periodo);
+  if (granularidade === "mes" || !dia) return `${mes}/${ano}`;
+  return `${dia}/${mes}`;
 }

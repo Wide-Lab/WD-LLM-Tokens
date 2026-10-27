@@ -142,7 +142,7 @@ export function GlobalFilters({
           ))}
         </div>
 
-        <div className="flex flex-wrap items-end gap-2 min-[1100px]:ml-auto">
+        <div className="contents">
           <Campo rotulo="Aplicação" para="filtro-aplicacao">
             <Select
               value={filters.aplicacao || ALL}

@@ -151,7 +151,7 @@ function BarraLateral({ aoBuscar }: { aoBuscar: () => void }) {
         >
           <Search className="h-4 w-4 shrink-0" />
           <span className="flex-1 truncate text-left">Buscar ou ir para...</span>
-          <kbd className="border-line rounded border px-1 text-[11px] font-medium">Ctrl K</kbd>
+          <kbd className="border-line rounded border px-1 font-sans text-[11px] font-medium">Ctrl K</kbd>
         </button>
       </div>
 
