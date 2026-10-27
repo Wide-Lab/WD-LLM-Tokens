@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { ChevronRight, FileUp, Info, Loader2, TriangleAlert, Upload } from "lucide-react";
 import { toast } from "sonner";
 
@@ -26,6 +26,7 @@ import {
   type LinhaCsv,
 } from "@/lib/csv";
 import { formatDateOnly, formatTarifa } from "@/lib/format";
+import { devolverFocoA } from "@/lib/utils";
 import {
   CATEGORIAS_COBRAVEIS,
   invalidarCusto,
@@ -218,6 +219,10 @@ interface Formato {
   origem: OrigemDeCusto;
   exemplo: string;
   opcionais: string;
+  /** O que cada linha vira, no singular e no plural: "preço" no modelo, "tarifa" na mensagem. */
+  unidade: [string, string];
+  /** O nome da coluna do item na prévia e no resultado. */
+  rotuloDoItem: string;
   preparar: (linha: LinhaCsv) => Preparada | { erro: string };
 }
 
@@ -234,6 +239,8 @@ const FORMATOS = {
       "gpt-5.6-terra,openai,2026-01-01,1.25,10,0.125,1.5625",
     opcionais:
       "Provedor, as duas colunas de cache e moeda são opcionais: cache em branco vira zero, e moeda em branco vira USD.",
+    unidade: ["preço", "preços"],
+    rotuloDoItem: "Preço",
     preparar: prepararModelo,
   },
   mensagem: {
@@ -247,6 +254,8 @@ const FORMATOS = {
       "categoria,pais,vigencia_inicio,por_mensagem\nutility,BR,2026-01-01,0.008\nmarketing,BR,2026-01-01,0.0625",
     opcionais:
       "Moeda é opcional e em branco vira USD. A categoria service não entra: a Meta não cobra mensagem de serviço.",
+    unidade: ["tarifa", "tarifas"],
+    rotuloDoItem: "Tarifa",
     preparar: prepararMensagem,
   },
 } satisfies Record<string, Formato>;
@@ -260,14 +269,31 @@ interface Resultado {
   erro: string | null;
 }
 
+/**
+ * O título do resultado. Mora fora do relatório porque o toast diz a mesma frase: os dois aparecem
+ * juntos, e contas diferentes nos dois (enviadas num, linhas do arquivo no outro) confundiriam
+ * justamente quando é preciso entender o que ficou de fora. O denominador é o de linhas do arquivo,
+ * contando as ignoradas: é o que a pessoa vê na planilha, e linha ignorada também não entrou.
+ */
+function tituloDoResultado(gravadas: number, total: number): string {
+  if (gravadas === total) {
+    return total === 1 ? "A linha foi gravada" : `Todas as ${total} linhas foram gravadas`;
+  }
+  if (gravadas === 0) return "Nenhuma linha foi gravada";
+  return `Importação parcial: ${gravadas} de ${total} linhas gravadas`;
+}
+
 export function DialogoImportarPrecos({
   tipo,
   aberto,
   onOpenChange,
+  origemDoFoco,
 }: {
   tipo: TipoDeImportacao;
   aberto: boolean;
   onOpenChange: (v: boolean) => void;
+  /** Quem abriu o diálogo, para o foco voltar a ele ao fechar. */
+  origemDoFoco?: RefObject<HTMLElement | null>;
 }) {
   const formato: Formato = FORMATOS[tipo];
   const queryClient = useQueryClient();
@@ -325,13 +351,12 @@ export function DialogoImportarPrecos({
         invalidarCusto(queryClient, formato.origem);
       }
 
-      if (entraram === feitos.length) {
-        toast.success(`${entraram} ${entraram === 1 ? "preço importado" : "preços importados"}.`);
-      } else if (entraram === 0) {
-        toast.error("Nenhuma linha entrou.");
-      } else {
-        toast.warning(`${entraram} de ${feitos.length} linhas enviadas entraram.`);
-      }
+      // A mesma frase e a mesma conta do título do resultado, que aparece junto.
+      const total = preparos.length;
+      const aviso = `${tituloDoResultado(entraram, total)}.`;
+      if (entraram === total) toast.success(aviso);
+      else if (entraram === 0) toast.error(aviso);
+      else toast.warning(aviso);
     },
   });
 
@@ -349,7 +374,7 @@ export function DialogoImportarPrecos({
 
   return (
     <Dialog open={aberto} onOpenChange={trocarAbertura}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl" onCloseAutoFocus={devolverFocoA(origemDoFoco)}>
         <DialogHeader>
           <DialogTitle>{resultados ? "Resultado da importação" : formato.titulo}</DialogTitle>
           <DialogDescription>
@@ -360,7 +385,11 @@ export function DialogoImportarPrecos({
         </DialogHeader>
 
         {resultados ? (
-          <Relatorio preparos={preparos} resultados={resultados} />
+          <Relatorio
+            preparos={preparos}
+            resultados={resultados}
+            rotuloDoItem={formato.rotuloDoItem}
+          />
         ) : (
           <div className="flex min-w-0 flex-col gap-4">
             <div className="space-y-1.5">
@@ -418,8 +447,22 @@ export function DialogoImportarPrecos({
               </div>
             </details>
 
-            {preparos.length > 0 && (
-              <Previa preparos={preparos} importando={importar.isPending} progresso={progresso} />
+            {preparos.length > 0 ? (
+              <Previa
+                preparos={preparos}
+                importando={importar.isPending}
+                progresso={progresso}
+                rotuloDoItem={formato.rotuloDoItem}
+              />
+            ) : (
+              // Só o cabeçalho (ou só linhas em branco): sem isto, "Importar" ficaria desabilitado
+              // sem dizer por quê.
+              texto.trim() && (
+                <p className="text-subtle text-[12.5px]">
+                  Nenhuma linha abaixo do cabeçalho. Cole as linhas de {formato.unidade[1]} depois
+                  dele.
+                </p>
+              )
             )}
           </div>
         )}
@@ -449,7 +492,7 @@ export function DialogoImportarPrecos({
                   ? `Importando ${progresso} de ${prontos.length}…`
                   : prontos.length === 0
                     ? "Importar"
-                    : `Importar ${prontos.length} ${prontos.length === 1 ? "preço" : "preços"}`}
+                    : `Importar ${plural(prontos.length, ...formato.unidade)}`}
               </Button>
             </>
           )}
@@ -548,9 +591,22 @@ function plural(n: number, um: string, varios: string): string {
 }
 
 /** Uma nota curta com ícone, no tom de informação ou de alerta. */
-function Nota({ children, alerta }: { children: ReactNode; alerta?: boolean }) {
+function Nota({
+  children,
+  alerta,
+  status,
+}: {
+  children: ReactNode;
+  alerta?: boolean;
+  /**
+   * Região viva (`role="status"`, que já é `aria-live="polite"`): o leitor de tela anuncia quando o
+   * texto muda. Precisa existir antes da mudança, então a nota é a mesma antes e durante o envio.
+   */
+  status?: boolean;
+}) {
   return (
     <div
+      role={status ? "status" : undefined}
       className={
         alerta
           ? "bg-danger-bg flex gap-2.5 rounded-[var(--wu-radius)] px-3 py-2"
@@ -582,10 +638,12 @@ function Previa({
   preparos,
   importando,
   progresso,
+  rotuloDoItem,
 }: {
   preparos: Preparo[];
   importando: boolean;
   progresso: number;
+  rotuloDoItem: string;
 }) {
   const prontas = preparos.filter((p) => p.item).length;
   const comErro = preparos.length - prontas;
@@ -622,8 +680,8 @@ function Previa({
           ]}
         />
       </div>
-      <TabelaDoLote linhas={linhas} rotuloDoItem="Preço" />
-      <Nota>
+      <TabelaDoLote linhas={linhas} rotuloDoItem={rotuloDoItem} />
+      <Nota status>
         {importando
           ? `Gravando ${progresso} de ${prontas}. As linhas vão uma de cada vez; não feche esta janela.`
           : "As linhas vão uma de cada vez e nada é desfeito: se uma falhar, as que já entraram continuam gravadas. Depois do envio, o resultado mostra linha a linha o que entrou."}
@@ -641,7 +699,22 @@ function Previa({
  * "Gravada" (`done`), "Falhou" (`danger`, com o motivo do servidor) e "Ignorada" (`neutral`: tinha
  * defeito na prévia e não foi enviada — nada aconteceu com ela, como a "Pronta" da prévia).
  */
-function Relatorio({ preparos, resultados }: { preparos: Preparo[]; resultados: Resultado[] }) {
+function Relatorio({
+  preparos,
+  resultados,
+  rotuloDoItem,
+}: {
+  preparos: Preparo[];
+  resultados: Resultado[];
+  rotuloDoItem: string;
+}) {
+  // O botão que estava focado ("Importando…") some quando o resultado entra; sem isto o foco cai no
+  // diálogo inteiro e o leitor de tela lê só o título genérico. No título, ele lê o desfecho.
+  const tituloRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    tituloRef.current?.focus();
+  }, []);
+
   const porNumero = new Map(resultados.map((r) => [r.numero, r]));
   const gravadas = resultados.filter((r) => !r.erro).length;
   const falharam = resultados.length - gravadas;
@@ -680,19 +753,16 @@ function Relatorio({ preparos, resultados }: { preparos: Preparo[]; resultados: 
     };
   });
 
-  const titulo =
-    gravadas === total
-      ? total === 1
-        ? "A linha foi gravada"
-        : `Todas as ${total} linhas foram gravadas`
-      : gravadas === 0
-        ? "Nenhuma linha foi gravada"
-        : `Importação parcial: ${gravadas} de ${total} linhas gravadas`;
-
   return (
     <div className="flex min-w-0 flex-col gap-3">
       <div>
-        <h3 className="text-foreground text-sm font-semibold">{titulo}</h3>
+        <h3
+          ref={tituloRef}
+          tabIndex={-1}
+          className="text-foreground text-sm font-semibold outline-none"
+        >
+          {tituloDoResultado(gravadas, total)}
+        </h3>
         <Resumo
           partes={[
             plural(gravadas, "gravada", "gravadas"),
@@ -708,7 +778,7 @@ function Relatorio({ preparos, resultados }: { preparos: Preparo[]; resultados: 
             : "Nada mudou na tabela de preços. Corrija as linhas no arquivo e importe de novo."}
         </Nota>
       )}
-      <TabelaDoLote linhas={linhas} rotuloDoItem="Preço" />
+      <TabelaDoLote linhas={linhas} rotuloDoItem={rotuloDoItem} />
     </div>
   );
 }

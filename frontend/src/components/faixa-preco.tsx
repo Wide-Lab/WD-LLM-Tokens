@@ -33,6 +33,19 @@ export interface ItemDePreco {
   onNovoPreco: () => void;
 }
 
+/**
+ * As palavras que mudam de uma aba para a outra: modelo tem "preço", mensagem tem "tarifa". Cada
+ * aba fala uma só — o botão do cabeçalho, a ação da linha e o diálogo dizem a mesma coisa.
+ */
+export interface TermosDePreco {
+  /** A ação de cadastrar: "Novo preço", "Nova tarifa". */
+  acao: string;
+  /** Sujeito da frase de quando nada vale ainda: "O primeiro preço", "A primeira tarifa". */
+  primeiro: string;
+  /** Prefixo da data do reajuste agendado: "novo preço em", "nova tarifa em". */
+  proximo: string;
+}
+
 /** Dias desde a época, a partir da string ISO — sem `new Date(iso)`, que desloca o fuso. */
 function emDias(iso: string): number {
   const [ano, mes, dia] = iso.split("-").map(Number);
@@ -70,8 +83,17 @@ function primeiroInicio(s: Situacao): string | null {
   return s.futuras.length > 0 ? s.futuras[s.futuras.length - 1].desde : null;
 }
 
+/** A data do próximo reajuste, quando há preço vigente e outro já agendado para depois. */
+function proximoInicio(s: Situacao): string | null {
+  return s.atual && s.futuras.length > 0 ? s.futuras[s.futuras.length - 1].desde : null;
+}
+
+/**
+ * O provedor e quantas vigências ficaram para trás — o que pode sair truncado sem perder nada vital.
+ * As datas (do primeiro preço, do reajuste agendado) não entram aqui: na tabela elas têm lugar
+ * próprio, e no cartão são somadas à parte.
+ */
 function linhaMeta(item: ItemDePreco, s: Situacao): string {
-  const inicio = primeiroInicio(s);
   return [
     item.meta,
     s.anteriores.length === 1
@@ -79,7 +101,6 @@ function linhaMeta(item: ItemDePreco, s: Situacao): string {
       : s.anteriores.length > 1
         ? `${s.anteriores.length} vigências anteriores`
         : null,
-    !s.atual && inicio ? `o primeiro começa em ${formatDateOnly(inicio)}` : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -148,7 +169,7 @@ function ReguaDeVigencia({ vigencias }: { vigencias: Vigencia[] }) {
  * O histórico de um item, aberto na própria linha: todas as vigências da mais nova para a mais
  * antiga, a agendada e a vigente marcadas, e a régua quando há o que comparar.
  */
-function Historico({ s }: { s: Situacao }) {
+function Historico({ s, termos }: { s: Situacao; termos: TermosDePreco }) {
   const inicio = primeiroInicio(s);
   const todas = [...s.futuras, ...s.valendo];
 
@@ -156,8 +177,8 @@ function Historico({ s }: { s: Situacao }) {
     <div className="flex flex-col gap-3 pt-2">
       {!s.atual && inicio && (
         <p className="text-muted-foreground text-[13px]">
-          O primeiro preço só começa em {formatDateOnly(inicio)}. Até lá, o custo destes eventos
-          fica em branco no painel.
+          {termos.primeiro} só começa em {formatDateOnly(inicio)}. Até lá, o custo fica em branco no
+          painel.
         </p>
       )}
       {s.valendo.length >= 2 && <ReguaDeVigencia vigencias={[...s.valendo].reverse()} />}
@@ -237,12 +258,14 @@ export function TabelaDePrecos({
   itens,
   rotuloDoItem,
   colunas,
+  termos,
 }: {
   itens: ItemDePreco[];
   /** O nome da primeira coluna: "Modelo", "Tarifa". */
   rotuloDoItem: string;
   /** Os rótulos das leituras de cada vigência, na ordem em que vêm em `leituras`. */
   colunas: string[];
+  termos: TermosDePreco;
 }) {
   const [abertos, setAbertos] = useState<Set<string>>(new Set());
 
@@ -261,6 +284,7 @@ export function TabelaDePrecos({
           <PrecoCartao
             key={item.chave}
             item={item}
+            termos={termos}
             aberto={abertos.has(item.chave)}
             onAlternar={alternar}
           />
@@ -292,6 +316,7 @@ export function TabelaDePrecos({
                 key={item.chave}
                 item={item}
                 colunas={colunas}
+                termos={termos}
                 aberto={abertos.has(item.chave)}
                 onAlternar={alternar}
               />
@@ -306,16 +331,20 @@ export function TabelaDePrecos({
 function PrecoLinha({
   item,
   colunas,
+  termos,
   aberto,
   onAlternar,
 }: {
   item: ItemDePreco;
   colunas: string[];
+  termos: TermosDePreco;
   aberto: boolean;
   onAlternar: (chave: string) => void;
 }) {
   const s = situacaoDe(item.vigencias);
   const meta = linhaMeta(item, s);
+  const inicio = primeiroInicio(s);
+  const proximo = proximoInicio(s);
 
   return (
     <>
@@ -340,6 +369,13 @@ function PrecoLinha({
                 {meta}
               </div>
             )}
+            {/* A data do reajuste agendado vai numa linha própria, fora do `truncate`: é o que a
+                pílula "Agendado" não diz, e cortada ela perderia o ano. */}
+            {proximo && (
+              <div className="text-subtle text-xs whitespace-nowrap">
+                {termos.proximo} {formatDateOnly(proximo)}
+              </div>
+            )}
           </div>
         </TableCell>
         <TableCell>
@@ -351,7 +387,13 @@ function PrecoLinha({
           </TableCell>
         ))}
         <TableCell className="text-muted-foreground text-right whitespace-nowrap">
-          {s.atual ? formatDateOnly(s.atual.desde) : <span className="text-subtle">—</span>}
+          {/* Sem preço vigente, "Desde" mostra quando o primeiro começa — é a única data útil da
+              linha —, no tom apagado que a separa de uma vigência que já vale. */}
+          {s.atual ? (
+            formatDateOnly(s.atual.desde)
+          ) : (
+            <span className="text-subtle">{inicio ? formatDateOnly(inicio) : "—"}</span>
+          )}
         </TableCell>
         <TableCell className="pr-4 text-right">
           {/* Ação de linha do wide-ui: só ícone, aparece no hover ou no foco; sem hover (toque), fica. */}
@@ -363,8 +405,8 @@ function PrecoLinha({
               e.stopPropagation();
               item.onNovoPreco();
             }}
-            aria-label={`Novo preço para ${item.titulo}`}
-            title="Novo preço"
+            aria-label={`${termos.acao} para ${item.titulo}`}
+            title={termos.acao}
           >
             <Plus />
           </Button>
@@ -374,7 +416,7 @@ function PrecoLinha({
       {aberto && (
         <TableRow className="bg-raised hover:bg-raised">
           <TableCell colSpan={colunas.length + 5} className="h-auto px-4 pt-0 pb-4">
-            <Historico s={s} />
+            <Historico s={s} termos={termos} />
           </TableCell>
         </TableRow>
       )}
@@ -385,17 +427,26 @@ function PrecoLinha({
 /** A mesma linha abaixo de 700px: nome e situação em cima, as tarifas, e as duas ações. */
 function PrecoCartao({
   item,
+  termos,
   aberto,
   onAlternar,
 }: {
   item: ItemDePreco;
+  termos: TermosDePreco;
   aberto: boolean;
   onAlternar: (chave: string) => void;
 }) {
   const s = situacaoDe(item.vigencias);
+  const inicio = primeiroInicio(s);
+  const proximo = proximoInicio(s);
+  // No cartão a meta não trunca e não há coluna "Desde": as datas entram nela.
   const meta = [
     linhaMeta(item, s) || null,
     s.atual ? `desde ${formatDateOnly(s.atual.desde)}` : null,
+    proximo ? `${termos.proximo} ${formatDateOnly(proximo)}` : null,
+    !s.atual && inicio
+      ? `${termos.primeiro.toLowerCase()} começa em ${formatDateOnly(inicio)}`
+      : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -439,14 +490,19 @@ function PrecoCartao({
             e.stopPropagation();
             item.onNovoPreco();
           }}
-          aria-label={`Novo preço para ${item.titulo}`}
+          aria-label={`${termos.acao} para ${item.titulo}`}
         >
           <Plus />
-          Novo preço
+          {termos.acao}
         </Button>
       </div>
 
-      {aberto && <Historico s={s} />}
+      {/* O clique dentro do histórico não sobe ao `<li>`: ler e tocar numa vigência não o fecha. */}
+      {aberto && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <Historico s={s} termos={termos} />
+        </div>
+      )}
     </li>
   );
 }

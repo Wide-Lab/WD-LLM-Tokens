@@ -1,10 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Cpu, MessageSquare, Plus, TriangleAlert, Upload } from "lucide-react";
 
 import { CabecalhoDaPagina } from "@/components/cabecalho-da-pagina";
-import { TabelaDePrecos, type ItemDePreco, type Vigencia } from "@/components/faixa-preco";
+import {
+  TabelaDePrecos,
+  type ItemDePreco,
+  type TermosDePreco,
+  type Vigencia,
+} from "@/components/faixa-preco";
 import {
   DialogoPrecoMensagem,
   DialogoPrecoModelo,
@@ -40,6 +45,12 @@ export const Route = createFileRoute("/precos")({
 
 type Aba = "modelos" | "mensagens";
 
+/** Cada aba fala uma palavra só: o cabeçalho, a ação da linha e o diálogo dizem a mesma coisa. */
+const TERMOS: Record<Aba, TermosDePreco> = {
+  modelos: { acao: "Novo preço", primeiro: "O primeiro preço", proximo: "novo preço em" },
+  mensagens: { acao: "Nova tarifa", primeiro: "A primeira tarifa", proximo: "nova tarifa em" },
+};
+
 /**
  * A tela de preços — a única do painel que escreve.
  *
@@ -63,6 +74,14 @@ function Precos() {
   const [baseMensagem, setBaseMensagem] = useState<BasePrecoMensagem | null>(null);
   const [importandoModelo, setImportandoModelo] = useState(false);
   const [importandoMensagem, setImportandoMensagem] = useState(false);
+
+  // Quem abriu o diálogo — o botão do cabeçalho, o "+" de uma linha, o do alerta —, para o foco
+  // voltar a ele ao fechar. Os diálogos não têm `DialogTrigger`, e sem isto o foco cairia no `<body>`.
+  const origemDoFoco = useRef<HTMLElement | null>(null);
+  const guardarOrigem = () => {
+    origemDoFoco.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  };
 
   const precosModelo = useQuery({
     queryKey: ["precos-modelo"],
@@ -95,10 +114,12 @@ function Precos() {
   );
 
   const abrirModelo = (b: BasePrecoModelo | null) => {
+    guardarOrigem();
     setBaseModelo(b);
     setAbertoModelo(true);
   };
   const abrirMensagem = (b: BasePrecoMensagem | null) => {
+    guardarOrigem();
     setBaseMensagem(b);
     setAbertoMensagem(true);
   };
@@ -115,16 +136,18 @@ function Precos() {
           <>
             <Button
               variant="outline"
-              onClick={() =>
-                aba === "modelos" ? setImportandoModelo(true) : setImportandoMensagem(true)
-              }
+              onClick={() => {
+                guardarOrigem();
+                if (aba === "modelos") setImportandoModelo(true);
+                else setImportandoMensagem(true);
+              }}
             >
               <Upload />
               Importar CSV
             </Button>
             <Button onClick={() => (aba === "modelos" ? abrirModelo(null) : abrirMensagem(null))}>
               <Plus />
-              {aba === "modelos" ? "Novo preço" : "Nova tarifa"}
+              {TERMOS[aba].acao}
             </Button>
           </>
         }
@@ -162,6 +185,7 @@ function Precos() {
             <TabelaDePrecos
               rotuloDoItem="Modelo"
               colunas={["Entrada", "Saída", "Cache leitura", "Cache escrita"]}
+              termos={TERMOS.modelos}
               itens={[...gruposModelo].map(([modelo, linhas]) => {
                 const vigente = vigenteHoje(linhas);
                 return {
@@ -200,6 +224,7 @@ function Precos() {
             <TabelaDePrecos
               rotuloDoItem="Tarifa"
               colunas={["Por mensagem"]}
+              termos={TERMOS.mensagens}
               itens={[...gruposMensagem].map(([chave, linhas]) => {
                 const vigente = vigenteHoje(linhas);
                 const { categoria, pais } = vigente;
@@ -226,21 +251,25 @@ function Precos() {
         onOpenChange={setAbertoModelo}
         base={baseModelo}
         modelosConhecidos={modelosVistos.data ?? []}
+        origemDoFoco={origemDoFoco}
       />
       <DialogoPrecoMensagem
         aberto={abertoMensagem}
         onOpenChange={setAbertoMensagem}
         base={baseMensagem}
+        origemDoFoco={origemDoFoco}
       />
       <DialogoImportarPrecos
         tipo="modelo"
         aberto={importandoModelo}
         onOpenChange={setImportandoModelo}
+        origemDoFoco={origemDoFoco}
       />
       <DialogoImportarPrecos
         tipo="mensagem"
         aberto={importandoMensagem}
         onOpenChange={setImportandoMensagem}
+        origemDoFoco={origemDoFoco}
       />
     </div>
   );

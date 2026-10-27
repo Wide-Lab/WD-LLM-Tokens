@@ -1,5 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type FormEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { CalendarClock, Check, Loader2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 
@@ -22,9 +29,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { apiPost } from "@/lib/api";
+import { ApiError, apiPost } from "@/lib/api";
 import { formatDateOnly, toISODate } from "@/lib/format";
 import { CATEGORIAS_COBRAVEIS, invalidarCusto, mensagemDoErro } from "@/lib/precos";
+import { devolverFocoA } from "@/lib/utils";
 
 /**
  * O que o formulário já sabe quando é aberto a partir de uma linha da tela.
@@ -143,7 +151,42 @@ function useValidacao(faltando: Record<string, string>) {
 
   const zerar = useCallback(() => setErros({}), []);
 
-  return { erros, conferir, limpar, zerar };
+  /** Um erro que só o servidor sabe (o `409` de data repetida), posto no campo que o conserta. */
+  const marcar = (nome: string, frase: string) =>
+    setErros((atual) => ({ ...atual, [nome]: frase }));
+
+  return { erros, conferir, limpar, zerar, marcar };
+}
+
+/**
+ * As palavras de cada formulário. Modelo tem "preço", mensagem tem "tarifa" — a aba Mensagens
+ * inteira fala "tarifa", e o diálogo dela não pode salvar um "preço".
+ */
+const PALAVRAS = {
+  modelo: {
+    este: "este preço",
+    atual: "o preço atual",
+    agendado: "Preço agendado",
+    salvar: "Salvar preço",
+    conflito: "Já existe um preço com esta data. Escolha outra data de vigência.",
+  },
+  mensagem: {
+    este: "esta tarifa",
+    atual: "a tarifa atual",
+    agendado: "Tarifa agendada",
+    salvar: "Salvar tarifa",
+    conflito: "Já existe uma tarifa com esta data. Escolha outra data de vigência.",
+  },
+};
+
+type Palavras = (typeof PALAVRAS)[keyof typeof PALAVRAS];
+
+/**
+ * O `409` é sempre vigência repetida (`unique` por item e data): além da frase no rodapé, ele vai
+ * para baixo do campo de data, que ganha o foco — é ali que se conserta.
+ */
+function ehConflitoDeData(e: unknown): boolean {
+  return e instanceof ApiError && e.status === 409;
 }
 
 /**
@@ -159,12 +202,14 @@ function CampoVigencia({
   onChange,
   erro,
   descricaoDoImpacto,
+  palavras,
 }: {
   valor: string;
   onChange: (v: string) => void;
   erro?: string;
   /** O que passa a ser recalculado — quem sabe disso é cada formulário. */
   descricaoDoImpacto: string;
+  palavras: Palavras;
 }) {
   const hoje = hojeISO();
 
@@ -190,8 +235,8 @@ function CampoVigencia({
           <TriangleAlert className="text-danger mt-0.5 h-4 w-4 shrink-0" />
           <p className="text-foreground text-[12.5px]">
             Data no passado: {descricaoDoImpacto} de {formatDateOnly(valor)} em diante passam a ser
-            calculados por este preço, e os totais já vistos mudam. Preço não se apaga pela tela —
-            corrigir exige acesso ao banco.
+            calculados por {palavras.este}, e os totais já vistos mudam. Vigência não se apaga pela
+            tela — corrigir exige acesso ao banco.
           </p>
         </div>
       )}
@@ -200,7 +245,8 @@ function CampoVigencia({
         <div className="bg-raised flex gap-2.5 rounded-[var(--wu-radius)] px-3 py-2">
           <CalendarClock className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
           <p className="text-muted-foreground text-[12.5px]">
-            Preço agendado: nada muda até {formatDateOnly(valor)}. Até lá vale o preço atual.
+            {palavras.agendado}: nada muda até {formatDateOnly(valor)}. Até lá vale {palavras.atual}
+            .
           </p>
         </div>
       )}
@@ -273,6 +319,8 @@ function MolduraDoFormulario({
   erro,
   enviando,
   onSubmit,
+  rotuloDoBotao,
+  origemDoFoco,
   children,
 }: {
   aberto: boolean;
@@ -282,11 +330,14 @@ function MolduraDoFormulario({
   erro: string | null;
   enviando: boolean;
   onSubmit: (e: FormEvent<HTMLFormElement>) => void;
+  /** "Salvar preço", "Salvar tarifa". */
+  rotuloDoBotao: string;
+  origemDoFoco?: RefObject<HTMLElement | null>;
   children: ReactNode;
 }) {
   return (
     <Dialog open={aberto} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent onCloseAutoFocus={devolverFocoA(origemDoFoco)}>
         <DialogHeader>
           <DialogTitle>{titulo}</DialogTitle>
           <DialogDescription>{descricao}</DialogDescription>
@@ -304,7 +355,7 @@ function MolduraDoFormulario({
             </Button>
             <Button type="submit" disabled={enviando}>
               {enviando ? <Loader2 className="animate-spin" /> : <Check />}
-              Salvar preço
+              {rotuloDoBotao}
             </Button>
           </DialogFooter>
         </form>
@@ -334,12 +385,15 @@ export function DialogoPrecoModelo({
   onOpenChange,
   base,
   modelosConhecidos = [],
+  origemDoFoco,
 }: {
   aberto: boolean;
   onOpenChange: (v: boolean) => void;
   base?: BasePrecoModelo | null;
   /** Os modelos já vistos em eventos, para não errar o nome — ele casa por igualdade exata. */
   modelosConhecidos?: string[];
+  /** Quem abriu o diálogo, para o foco voltar a ele ao fechar. */
+  origemDoFoco?: RefObject<HTMLElement | null>;
 }) {
   const queryClient = useQueryClient();
   const [modelo, setModelo] = useState("");
@@ -350,7 +404,8 @@ export function DialogoPrecoModelo({
   const [cacheLeitura, setCacheLeitura] = useState("0");
   const [cacheEscrita, setCacheEscrita] = useState("0");
   const [erro, setErro] = useState<string | null>(null);
-  const { erros, conferir, limpar, zerar } = useValidacao(FALTANDO_MODELO);
+  const { erros, conferir, limpar, zerar, marcar } = useValidacao(FALTANDO_MODELO);
+  const palavras = PALAVRAS.modelo;
 
   const moeda = base?.moeda ?? MOEDA_PADRAO;
 
@@ -387,7 +442,13 @@ export function DialogoPrecoModelo({
       toast.success(`Preço de ${modelo.trim()} vale a partir de ${formatDateOnly(vigencia)}.`);
       onOpenChange(false);
     },
-    onError: (e) => setErro(mensagemDoErro(e)),
+    onError: (e) => {
+      setErro(mensagemDoErro(e));
+      if (ehConflitoDeData(e)) {
+        marcar("vigencia", palavras.conflito);
+        document.getElementById("preco-vigencia")?.focus();
+      }
+    },
   });
 
   const enviar = (e: FormEvent<HTMLFormElement>) => {
@@ -412,6 +473,8 @@ export function DialogoPrecoModelo({
       erro={erro}
       enviando={salvar.isPending}
       onSubmit={enviar}
+      rotuloDoBotao={palavras.salvar}
+      origemDoFoco={origemDoFoco}
     >
       <div className="grid grid-cols-1 gap-4 min-[700px]:grid-cols-2">
         <div className="space-y-1.5">
@@ -455,6 +518,7 @@ export function DialogoPrecoModelo({
         onChange={campo("vigencia", setVigencia)}
         erro={erros.vigencia}
         descricaoDoImpacto="os eventos deste modelo"
+        palavras={palavras}
       />
 
       <div className="grid grid-cols-1 gap-4 min-[700px]:grid-cols-2">
@@ -515,10 +579,13 @@ export function DialogoPrecoMensagem({
   aberto,
   onOpenChange,
   base,
+  origemDoFoco,
 }: {
   aberto: boolean;
   onOpenChange: (v: boolean) => void;
   base?: BasePrecoMensagem | null;
+  /** Quem abriu o diálogo, para o foco voltar a ele ao fechar. */
+  origemDoFoco?: RefObject<HTMLElement | null>;
 }) {
   const queryClient = useQueryClient();
   const [categoria, setCategoria] = useState("utility");
@@ -526,7 +593,8 @@ export function DialogoPrecoMensagem({
   const [vigencia, setVigencia] = useState(hojeISO());
   const [porMensagem, setPorMensagem] = useState("");
   const [erro, setErro] = useState<string | null>(null);
-  const { erros, conferir, limpar, zerar } = useValidacao(FALTANDO_MENSAGEM);
+  const { erros, conferir, limpar, zerar, marcar } = useValidacao(FALTANDO_MENSAGEM);
+  const palavras = PALAVRAS.mensagem;
 
   const moeda = base?.moeda ?? MOEDA_PADRAO;
 
@@ -557,7 +625,13 @@ export function DialogoPrecoMensagem({
       );
       onOpenChange(false);
     },
-    onError: (e) => setErro(mensagemDoErro(e)),
+    onError: (e) => {
+      setErro(mensagemDoErro(e));
+      if (ehConflitoDeData(e)) {
+        marcar("vigencia", palavras.conflito);
+        document.getElementById("preco-vigencia")?.focus();
+      }
+    },
   });
 
   const enviar = (e: FormEvent<HTMLFormElement>) => {
@@ -585,6 +659,8 @@ export function DialogoPrecoMensagem({
       erro={erro}
       enviando={salvar.isPending}
       onSubmit={enviar}
+      rotuloDoBotao={palavras.salvar}
+      origemDoFoco={origemDoFoco}
     >
       <div className="grid grid-cols-1 gap-4 min-[700px]:grid-cols-2">
         <div className="space-y-1.5">
@@ -634,6 +710,7 @@ export function DialogoPrecoMensagem({
         onChange={campo("vigencia", setVigencia)}
         erro={erros.vigencia}
         descricaoDoImpacto="as mensagens desta categoria e país"
+        palavras={palavras}
       />
 
       <div className="grid grid-cols-1 gap-4 min-[700px]:grid-cols-2">
