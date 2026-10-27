@@ -11,14 +11,23 @@ export function formatCompact(n: number | null | undefined): string {
   }).format(n);
 }
 
-export function formatCurrency(value: number | null | undefined, currency: string = "USD"): string {
+/**
+ * Um valor gasto. Por padrão vai até quatro casas — é o que tooltip e tabela precisam para um
+ * custo de centavos não sumir. O tile de KPI passa `{ casas: 2 }`: ali o número é lido de longe,
+ * no formato `R$ 1.284,60`, e a precisão fina continua a um passe de mouse no gráfico.
+ */
+export function formatCurrency(
+  value: number | null | undefined,
+  currency: string = "USD",
+  { casas = 4 }: { casas?: number } = {},
+): string {
   if (value === null || value === undefined) return "—";
   try {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency,
       minimumFractionDigits: 2,
-      maximumFractionDigits: 4,
+      maximumFractionDigits: Math.max(2, casas),
     }).format(value);
   } catch {
     return `${value.toFixed(2)} ${currency}`;
@@ -46,11 +55,18 @@ export function formatTarifa(valor: number, moeda: string = "USD"): string {
   }
 }
 
-export function formatDateTime(iso: string): string {
+/**
+ * Data e hora em `dd/mm/aaaa HH:mm`. Lista de log (eventos, mensagens) passa `{ segundos: true }`:
+ * ali duas linhas do mesmo minuto precisam se distinguir pela hora.
+ */
+export function formatDateTime(
+  iso: string,
+  { segundos = false }: { segundos?: boolean } = {},
+): string {
   try {
     return new Intl.DateTimeFormat("pt-BR", {
       dateStyle: "short",
-      timeStyle: "short",
+      timeStyle: segundos ? "medium" : "short",
     }).format(new Date(iso));
   } catch {
     return iso;

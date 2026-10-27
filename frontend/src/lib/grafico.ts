@@ -45,6 +45,40 @@ export const legendaEstilo = {
 } as const;
 
 /**
+ * A legenda com o valor de cada série ao lado do nome (`foundations.md`: legenda com valor). O
+ * tooltip não basta, porque não existe no toque nem para leitor de tela.
+ *
+ * `valores` vem por `dataKey` e já formatado: quem chama sabe de onde saiu o número — e ele tem de
+ * sair do banco, não de uma soma das barras no browser. Série sem valor mostra só o nome.
+ */
+export function legendaComValores(valores: Record<string, string | undefined>) {
+  return {
+    ...legendaEstilo,
+    formatter: (nome: string, entrada: { dataKey?: unknown }) => {
+      const valor = valores[String(entrada?.dataKey)];
+      return createElement(
+        "span",
+        { style: { color: "var(--wu-muted)" } },
+        nome,
+        valor &&
+          createElement(
+            "span",
+            {
+              style: {
+                color: "var(--wu-fg)",
+                fontVariantNumeric: "tabular-nums",
+                fontWeight: 500,
+                marginLeft: 6,
+              },
+            },
+            valor,
+          ),
+      );
+    },
+  };
+}
+
+/**
  * As séries categóricas do wide-ui, na ordem do pacote. Para gráfico cujas fatias não têm papel
  * fixo (um modelo, um ator): a cor só separa as fatias, e quem diz qual é qual é a legenda.
  */

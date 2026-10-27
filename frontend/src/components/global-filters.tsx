@@ -142,54 +142,52 @@ export function GlobalFilters({
           ))}
         </div>
 
-        <div className="contents">
-          <Campo rotulo="Aplicação" para="filtro-aplicacao">
-            <Select
-              value={filters.aplicacao || ALL}
-              onValueChange={(v) => setFilters({ aplicacao: v === ALL ? "" : v })}
-            >
-              <SelectTrigger id="filtro-aplicacao" className="w-[11rem]">
-                <SelectValue placeholder="Todas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL}>Todas</SelectItem>
-                {aplicacoes.data?.map((a) => (
-                  <SelectItem key={a} value={a}>
-                    {a}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Campo>
+        <Campo rotulo="Aplicação" para="filtro-aplicacao">
+          <Select
+            value={filters.aplicacao || ALL}
+            onValueChange={(v) => setFilters({ aplicacao: v === ALL ? "" : v })}
+          >
+            <SelectTrigger id="filtro-aplicacao" className="w-[11rem]">
+              <SelectValue placeholder="Todas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Todas</SelectItem>
+              {aplicacoes.data?.map((a) => (
+                <SelectItem key={a} value={a}>
+                  {a}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Campo>
 
-          <Campo rotulo="Ator" para="filtro-ator">
-            <Input
-              id="filtro-ator"
-              value={filters.ator}
-              onChange={(e) => setFilters({ ator: e.target.value })}
-              placeholder="Nome ou número"
-              className="w-[11rem]"
-            />
-          </Campo>
+        <Campo rotulo="Ator" para="filtro-ator">
+          <Input
+            id="filtro-ator"
+            value={filters.ator}
+            onChange={(e) => setFilters({ ator: e.target.value })}
+            placeholder="Nome ou número"
+            className="w-[11rem]"
+          />
+        </Campo>
 
-          <Campo rotulo="Granularidade" para="filtro-granularidade">
-            <Select
-              value={filters.granularidade}
-              onValueChange={(v) => setFilters({ granularidade: v as "dia" | "semana" | "mes" })}
-            >
-              <SelectTrigger id="filtro-granularidade" className="w-[8rem]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="dia">Dia</SelectItem>
-                <SelectItem value="semana">Semana</SelectItem>
-                <SelectItem value="mes">Mês</SelectItem>
-              </SelectContent>
-            </Select>
-          </Campo>
+        <Campo rotulo="Granularidade" para="filtro-granularidade">
+          <Select
+            value={filters.granularidade}
+            onValueChange={(v) => setFilters({ granularidade: v as "dia" | "semana" | "mes" })}
+          >
+            <SelectTrigger id="filtro-granularidade" className="w-[8rem]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="dia">Dia</SelectItem>
+              <SelectItem value="semana">Semana</SelectItem>
+              <SelectItem value="mes">Mês</SelectItem>
+            </SelectContent>
+          </Select>
+        </Campo>
 
-          {children}
-        </div>
+        {children}
       </div>
 
       {ativos.length > 0 && (

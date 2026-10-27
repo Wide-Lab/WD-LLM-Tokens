@@ -5,12 +5,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 /**
- * O tile de KPI do wide-ui: ícone e rótulo (13 `muted`), o valor (28/600, 22 abaixo de 700px),
+ * O tile de KPI do wide-ui: ícone e rótulo (13 `muted`), o valor (28/600, que desce a 22 e a 18
+ * pela largura do próprio tile, e não da tela — ver abaixo),
  * a unidade ao lado (14/500 `subtle`) e uma linha de contexto (12px). `problema` pinta rótulo e
  * valor em `danger` — é o tile que sinaliza que algo precisa de atenção.
  *
  * É o irmão de `PainelCard` para número solto — lá a leitura é um gráfico, aqui é uma quantia —, e
  * ter os dois num arquivo só quebraria o fast refresh do Vite.
+ */
+/*
+ * O tamanho do valor segue a largura do tile (container query) porque é ela que decide se a quantia
+ * cabe: com dois tiles por linha a 390px, e com quatro logo acima de 1100px (a barra lateral come
+ * 252px), sobram ~140-160px de texto, e `US$ 1.284,60` a 28 ou mesmo a 22 seria cortado. Pela
+ * largura da tela, o tile cortaria justamente o número que existe para ser lido.
  */
 export function Cartao({
   rotulo,
@@ -39,7 +46,7 @@ export function Cartao({
   children?: ReactNode;
 }) {
   return (
-    <section className="border-line bg-card shadow-card flex min-w-0 flex-col gap-1 rounded-[var(--wu-radius)] border p-4">
+    <section className="border-line bg-card shadow-card @container flex min-w-0 flex-col gap-1 rounded-[var(--wu-radius)] border p-4">
       <div
         className={cn(
           "flex min-w-0 items-center gap-1.5 text-[13px]",
@@ -58,7 +65,7 @@ export function Cartao({
         <div className="flex min-w-0 items-baseline gap-1">
           <span
             className={cn(
-              "truncate text-[22px] leading-tight font-semibold tracking-[-0.02em] min-[700px]:text-[28px]",
+              "truncate text-[18px] leading-tight font-semibold tracking-[-0.02em] @[9.5rem]:text-[22px] @[12rem]:text-[28px]",
               problema ? "text-danger" : "text-foreground",
             )}
             title={valor}

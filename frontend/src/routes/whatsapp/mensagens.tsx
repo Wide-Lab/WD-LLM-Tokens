@@ -198,7 +198,7 @@ function Linha({
           </Button>
         </TableCell>
         <TableCell className="text-muted-foreground font-mono text-xs whitespace-nowrap">
-          {formatDateTime(mensagem.criado_em)}
+          {formatDateTime(mensagem.criado_em, { segundos: true })}
         </TableCell>
         <TableCell className="max-w-[10rem] truncate font-mono text-xs" title={mensagem.ator}>
           {mensagem.ator}
