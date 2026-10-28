@@ -5,6 +5,10 @@ export function formatNumber(n: number | null | undefined): string {
 
 export function formatCompact(n: number | null | undefined): string {
   if (n === null || n === undefined) return "—";
+  // Abaixo de 1 a casa decimal única zera os ticks de um eixo de custo (todos viram `0`).
+  if (n !== 0 && Math.abs(n) < 1) {
+    return new Intl.NumberFormat("pt-BR", { maximumSignificantDigits: 2 }).format(n);
+  }
   return new Intl.NumberFormat("pt-BR", {
     notation: "compact",
     maximumFractionDigits: 1,
@@ -23,6 +27,16 @@ export function formatCurrency(
 ): string {
   if (value === null || value === undefined) return "—";
   try {
+    // Um gasto que existe e não chega a um centavo não pode sair `0,00`: o tile diria que nada foi
+    // gasto. Nesse caso as casas crescem até mostrar dois dígitos significativos.
+    const minimo = 10 ** -Math.max(2, casas) / 2;
+    if (value !== 0 && Math.abs(value) < minimo) {
+      return new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency,
+        maximumSignificantDigits: 2,
+      }).format(value);
+    }
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency,
