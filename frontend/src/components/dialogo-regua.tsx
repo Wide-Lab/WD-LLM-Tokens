@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type RefObject } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -17,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { criarRegua, salvarRegua } from "@/lib/reguas-mock";
 import type { Regua } from "@/lib/reguas";
+import { devolverFocoA } from "@/lib/utils";
 
 /** As duas leituras que a escrita derruba: a lista de réguas e a carteira, que aponta para elas. */
 const CHAVES = [["reguas-disparos"], ["carteira-disparos"]];
@@ -33,12 +33,15 @@ export function DialogoRegua({
   aberto,
   onOpenChange,
   aoCriar,
+  origemDoFoco,
 }: {
   /** `null` cria. A tela mantém um só diálogo montado e troca o que ele edita. */
   regua: Regua | null;
   aberto: boolean;
   onOpenChange: (v: boolean) => void;
   aoCriar: (regua: Regua) => void;
+  /** Quem abriu o diálogo, para o foco voltar a ele ao fechar. */
+  origemDoFoco?: RefObject<HTMLElement | null>;
 }) {
   const queryClient = useQueryClient();
   const [nome, setNome] = useState("");
@@ -79,18 +82,16 @@ export function DialogoRegua({
 
   return (
     <Dialog open={aberto} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onCloseAutoFocus={devolverFocoA(origemDoFoco)}>
         <DialogHeader>
-          <DialogTitle className="text-base">
+          <DialogTitle className="[overflow-wrap:anywhere]">
             {criando ? "Nova régua" : `Renomear ${regua.nome}`}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="regua-nome" className="etiqueta">
-              Nome
-            </Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="regua-nome">Nome</Label>
             <Input
               id="regua-nome"
               autoFocus
@@ -100,10 +101,8 @@ export function DialogoRegua({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="regua-motivo" className="etiqueta">
-              Motivo
-            </Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="regua-motivo">Motivo</Label>
             <Textarea
               id="regua-motivo"
               rows={3}
@@ -119,7 +118,7 @@ export function DialogoRegua({
             Cancelar
           </Button>
           <Button disabled={nome.trim() === "" || salvar.isPending} onClick={() => salvar.mutate()}>
-            {salvar.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            {salvar.isPending && <Loader2 className="animate-spin" />}
             {criando ? "Criar régua" : "Salvar"}
           </Button>
         </DialogFooter>

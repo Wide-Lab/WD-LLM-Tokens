@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type RefObject } from "react";
 import { Loader2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 
@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -27,6 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import { motivoSemDisparo, ANCORAS, ANEXOS, CONTAGENS, type Etapa } from "@/lib/reguas";
 import { salvarEtapa } from "@/lib/reguas-mock";
 import type { Template } from "@/lib/templates";
+import { devolverFocoA } from "@/lib/utils";
 
 /** As duas leituras que a escrita derruba: a lista de réguas e a carteira, que aponta para elas. */
 const CHAVES = [["reguas-disparos"], ["carteira-disparos"]];
@@ -53,6 +53,7 @@ export function DialogoEtapa({
   templates,
   aberto,
   onOpenChange,
+  origemDoFoco,
 }: {
   reguaId: string;
   /** `null` fecha o diálogo. A tela mantém um só montado e troca a etapa dele. */
@@ -60,6 +61,8 @@ export function DialogoEtapa({
   templates: Template[];
   aberto: boolean;
   onOpenChange: (v: boolean) => void;
+  /** Quem abriu o diálogo, para o foco voltar a ele ao fechar. */
+  origemDoFoco?: RefObject<HTMLElement | null>;
 }) {
   const queryClient = useQueryClient();
   const [rascunho, setRascunho] = useState<Etapa | null>(null);
@@ -94,16 +97,17 @@ export function DialogoEtapa({
 
   return (
     <Dialog open={aberto} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent
+        className="max-h-[90vh] overflow-y-auto sm:max-w-lg"
+        onCloseAutoFocus={devolverFocoA(origemDoFoco)}
+      >
         <DialogHeader>
-          <DialogTitle className="text-base">{rascunho.nome}</DialogTitle>
+          <DialogTitle className="[overflow-wrap:anywhere]">{rascunho.nome}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="etapa-nome" className="etiqueta">
-              Nome
-            </Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="etapa-nome">Nome</Label>
             <Input
               id="etapa-nome"
               value={rascunho.nome}
@@ -112,10 +116,8 @@ export function DialogoEtapa({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="etapa-ancora" className="etiqueta">
-                Âncora
-              </Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="etapa-ancora">Âncora</Label>
               <Select
                 value={rascunho.ancora}
                 onValueChange={(v) => mudar("ancora", v as Etapa["ancora"])}
@@ -133,14 +135,12 @@ export function DialogoEtapa({
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="etapa-deslocamento" className="etiqueta">
-                Dias
-              </Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="etapa-deslocamento">Dias</Label>
               <Input
                 id="etapa-deslocamento"
                 type="number"
-                className="leitura"
+                className="tabular-nums"
                 value={deslocamento}
                 onChange={(e) => {
                   const texto = e.target.value;
@@ -152,10 +152,8 @@ export function DialogoEtapa({
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="etapa-contagem" className="etiqueta">
-                Contagem
-              </Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="etapa-contagem">Contagem</Label>
               <Select
                 value={rascunho.contagem}
                 onValueChange={(v) => mudar("contagem", v as Etapa["contagem"])}
@@ -174,18 +172,16 @@ export function DialogoEtapa({
             </div>
           </div>
 
-          <div className="bg-muted/50 rounded-sm border px-4 py-3">
-            <div className="etiqueta">Cai em</div>
-            <div className="mt-2">
+          <div className="bg-raised rounded-[var(--wu-radius)] px-4 py-3">
+            <div className="text-subtle text-[12.5px]">Cai em</div>
+            <div className="mt-1.5">
               <QuandoCai etapa={rascunho} />
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="etapa-template" className="etiqueta">
-                Template
-              </Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="etapa-template">Template</Label>
               <Select
                 value={rascunho.template ?? SEM_TEMPLATE}
                 onValueChange={(v) => mudar("template", v === SEM_TEMPLATE ? null : v)}
@@ -203,24 +199,20 @@ export function DialogoEtapa({
                   ))}
                 </SelectContent>
               </Select>
-              {escolhido ? (
+              {escolhido && (
                 <div className="flex flex-wrap items-center gap-2">
                   <SeloEstadoMeta estado={escolhido.estado} />
-                  <span className="text-muted-foreground text-xs">
+                  <span className="text-subtle text-xs">
                     {escolhido.rascunho !== null && escolhido.aprovadoEmProducao
                       ? `sai a v${escolhido.versao}; há rascunho pendente`
                       : `sai a v${escolhido.versao}`}
                   </span>
                 </div>
-              ) : (
-                <p className="text-muted-foreground text-xs"></p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="etapa-anexo" className="etiqueta">
-                Anexo
-              </Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="etapa-anexo">Anexo</Label>
               <Select
                 value={rascunho.anexo}
                 onValueChange={(v) => mudar("anexo", v as Etapa["anexo"])}
@@ -240,21 +232,21 @@ export function DialogoEtapa({
           </div>
 
           {semDisparo && (
-            <div className="border-destructive/50 flex flex-col gap-1 rounded-sm border-l-2 py-1.5 pl-3">
-              <span className="etiqueta flex items-center gap-1.5">
-                <TriangleAlert className="h-3 w-3 shrink-0" aria-hidden />
-                Não dispara
-              </span>
-              <p className="text-muted-foreground text-xs">
-                Etapa ativa {semDisparo}: título que chegar nela não tem o que enviar. No serviço
-                real isto bloqueia o salvamento.
-              </p>
+            <div className="bg-danger-bg flex gap-2.5 rounded-[var(--wu-radius)] px-3 py-2">
+              <TriangleAlert className="text-danger mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <div className="text-foreground text-[12.5px]">
+                <p className="font-medium">Não dispara</p>
+                <p className="mt-0.5">
+                  Etapa ativa {semDisparo}: título que chegar nela não tem o que enviar. No serviço
+                  real isto bloqueia o salvamento.
+                </p>
+              </div>
             </div>
           )}
 
-          <div className="flex items-center justify-between gap-4 rounded-sm border px-4 py-3">
+          <div className="flex items-center justify-between gap-4 border-line rounded-[var(--wu-radius)] border px-4 py-3">
             <div>
-              <div className="text-sm font-medium">Ativa</div>
+              <div className="text-foreground text-[13.5px] font-medium">Ativa</div>
             </div>
             <Switch
               checked={rascunho.ativa}
@@ -263,9 +255,9 @@ export function DialogoEtapa({
             />
           </div>
 
-          <div className="flex items-center justify-between gap-4 rounded-sm border px-4 py-3">
+          <div className="flex items-center justify-between gap-4 border-line rounded-[var(--wu-radius)] border px-4 py-3">
             <div>
-              <div className="text-sm font-medium">Etapa final</div>
+              <div className="text-foreground text-[13.5px] font-medium">Etapa final</div>
             </div>
             <Switch
               checked={rascunho.etapaFinal}
@@ -280,7 +272,7 @@ export function DialogoEtapa({
             Cancelar
           </Button>
           <Button disabled={salvar.isPending} onClick={() => salvar.mutate(rascunho)}>
-            {salvar.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            {salvar.isPending && <Loader2 className="animate-spin" />}
             Salvar
           </Button>
         </DialogFooter>
