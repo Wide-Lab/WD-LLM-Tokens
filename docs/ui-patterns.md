@@ -187,6 +187,11 @@ Base em `lib/grafico.ts`: `eixo`, `tooltipEstilo`, `legendaEstilo`, `TooltipDoTe
 | | Rascunho (o texto ainda é nosso) | `neutral` |
 | | Rejeitado | `danger` |
 | | Sem preço (cobráveis, `custo: null`) | `pending`, como em `/whatsapp/mensagens` |
+| `/disparos/mensagens` | Lida | `done` |
+| | Enviada, Entregue | `progress` |
+| | Adiada (montada, o motor ainda vai soltar) | `pending` |
+| | Suprimida (decisão da carteira, não problema; o motivo vai embaixo) | `neutral` |
+| | Falhou | `danger` |
 | Importação, prévia | Pronta | `neutral` |
 | | Com erro | `danger` |
 | Importação, resultado | Gravada | `done` |
@@ -197,7 +202,9 @@ Base em `lib/grafico.ts`: `eixo`, `tooltipEstilo`, `legendaEstilo`, `TooltipDoTe
 - Vigência anterior não tem pílula. Vigente + Agendado ficam **empilhadas** na tabela; lado a lado
   forçavam rolagem lateral a 1280.
 - `archived` fica fora da importação: é esverdeado e lia como sucesso ao lado de "Gravada".
-- Não há status de entrega de mensagem: a API não traz.
+- Não há status de entrega nas telas ligadas à API: ela não traz. O log de `/disparos/mensagens` tem
+  (Enviada, Entregue, Lida), mas é mock. A resposta do cliente nesse log é texto, não pílula: é fato
+  do cliente, não estado da mensagem.
 - "Modelos sem preço" (modelo em eventos sem tarifa nenhuma) não é pílula: é alerta inline
   `danger-bg` no topo da aba Modelos, condição que bloqueia.
 

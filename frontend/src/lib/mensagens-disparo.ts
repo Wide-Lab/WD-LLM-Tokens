@@ -54,26 +54,6 @@ export const RESPOSTAS: Record<Resposta, string> = {
   opt_out: "Pediu para sair",
 };
 
-/**
- * A cor do status, e ela é só tinta — nenhuma cor de dado.
- *
- * A paleta do painel não tem verde de "ok" nem âmbar de "espere", pelo motivo que `styles.css`
- * declara e `selo-estado-meta.tsx` já enfrentou: as séries (`--wu-c1`..`--wu-c5`) têm papel fixo,
- * e gastar uma num status faria a cor mentir na tela em que ela é o dado. Sobra a escala neutra mais
- * o `destructive`, e aqui isso basta porque o status **é uma rampa**: quanto mais longe a mensagem
- * chegou, mais escura a tinta. `suprimida` e `adiada` são as mais apagadas porque não saíram —
- * não é erro, é decisão da régua, e o motivo ao lado é que diz qual. `falhou` é o único em
- * `destructive`: é o único em que algo quebrou.
- */
-export const COR_STATUS: Record<Status, string> = {
-  suprimida: "text-muted-foreground",
-  adiada: "text-muted-foreground",
-  enviada: "text-foreground/60",
-  entregue: "text-foreground/80",
-  lida: "text-foreground",
-  falhou: "text-destructive",
-};
-
 /** Um título consolidado na mensagem. É foto do portal no dia, não consulta. */
 export interface TituloCobrado {
   numero: string;

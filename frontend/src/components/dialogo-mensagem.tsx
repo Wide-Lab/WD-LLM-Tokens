@@ -1,22 +1,11 @@
+import type { RefObject } from "react";
 import { ArrowRight } from "lucide-react";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { SeloStatusDisparo } from "@/components/selo-status-disparo";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatCurrency, formatDateOnly, formatDateTime } from "@/lib/format";
-import {
-  escala,
-  valorTotal,
-  COR_STATUS,
-  RESPOSTAS,
-  STATUS,
-  type Mensagem,
-} from "@/lib/mensagens-disparo";
-import { cn } from "@/lib/utils";
+import { RESPOSTAS, valorTotal, type Mensagem } from "@/lib/mensagens-disparo";
+import { devolverFocoA } from "@/lib/utils";
 
 /**
  * Uma mensagem por dentro — e a resposta a "por que esta saiu assim".
@@ -37,11 +26,14 @@ export function DialogoMensagem({
   mensagem,
   aberto,
   onOpenChange,
+  origemDoFoco,
 }: {
   /** `null` fecha. A tela mantém um só montado e troca a mensagem dele. */
   mensagem: Mensagem | null;
   aberto: boolean;
   onOpenChange: (v: boolean) => void;
+  /** Quem abriu o diálogo, para o foco voltar a ele ao fechar. */
+  origemDoFoco?: RefObject<HTMLElement | null>;
 }) {
   if (!mensagem) return null;
 
@@ -49,87 +41,82 @@ export function DialogoMensagem({
 
   return (
     <Dialog open={aberto} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent
+        className="max-h-[90vh] overflow-y-auto sm:max-w-xl"
+        onCloseAutoFocus={devolverFocoA(origemDoFoco)}
+      >
         <DialogHeader>
-          <DialogTitle className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            {mensagem.cliente}
-            <span className={cn("text-sm font-medium", COR_STATUS[mensagem.status])}>
-              {STATUS[mensagem.status]}
-            </span>
+          <DialogTitle className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <span className="[overflow-wrap:anywhere]">{mensagem.cliente}</span>
+            <SeloStatusDisparo status={mensagem.status} />
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-            <Campo rotulo="Telefone" mono>
-              {mensagem.telefone}
-            </Campo>
+        <div className="space-y-4">
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
+            <Campo rotulo="Telefone">{mensagem.telefone}</Campo>
             <Campo rotulo="Régua aplicada">{mensagem.reguaNome}</Campo>
-            <Campo rotulo="Lote montado" mono>
-              {formatDateTime(mensagem.montadaEm)}
-            </Campo>
-            <Campo rotulo="Enviada" mono>
+            <Campo rotulo="Lote montado">{formatDateTime(mensagem.montadaEm)}</Campo>
+            <Campo rotulo="Enviada">
               {mensagem.enviadaEm ? formatDateTime(mensagem.enviadaEm) : "—"}
             </Campo>
-          </div>
+          </dl>
 
-          {/* A cadeia inteira numa linha: é a frase que explica a mensagem. */}
-          <div className="bg-muted/50 flex flex-wrap items-center gap-2 rounded-sm border px-3 py-2 text-sm">
-            <span className="font-medium">{mensagem.reguaNome}</span>
-            <ArrowRight className="text-muted-foreground h-3.5 w-3.5 shrink-0" aria-hidden />
-            <span>{mensagem.etapaNome}</span>
-            <ArrowRight className="text-muted-foreground h-3.5 w-3.5 shrink-0" aria-hidden />
-            <span className="font-mono text-xs">{mensagem.template}</span>
-            <span className="etiqueta">v{mensagem.templateVersao}</span>
+          {/* A cadeia inteira numa linha: é a frase que explica a mensagem. O `name` do template é o
+              id técnico literal da Meta, e por isso o único texto em mono. */}
+          <div className="bg-raised flex flex-wrap items-center gap-2 rounded-[var(--wu-radius)] px-4 py-3 text-[13.5px]">
+            <span className="text-foreground font-medium">{mensagem.reguaNome}</span>
+            <ArrowRight className="text-subtle h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span className="text-foreground">{mensagem.etapaNome}</span>
+            <ArrowRight className="text-subtle h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span className="text-foreground font-mono text-xs">{mensagem.template}</span>
+            <span className="text-subtle text-xs tabular-nums">v{mensagem.templateVersao}</span>
           </div>
 
           {mensagem.motivo && (
-            <div className="rounded-sm border border-dashed px-3 py-2">
-              <div className="etiqueta">Motivo</div>
-              <p className="mt-1.5 text-sm">{mensagem.motivo}</p>
+            <div className="border-line-strong rounded-[var(--wu-radius)] border border-dashed px-4 py-3">
+              <div className="text-subtle text-[12.5px]">Motivo</div>
+              <p className="text-foreground mt-1 text-[13.5px]">{mensagem.motivo}</p>
             </div>
           )}
 
           <div>
-            <div className="etiqueta mb-2">
+            <div className="text-subtle mb-2 text-[12.5px]">
               Títulos consolidados — {mensagem.titulos.length}, {formatCurrency(total, "BRL")}
             </div>
-            <div className="overflow-hidden rounded-sm border">
-              <table className="w-full text-sm">
-                <tbody>
-                  {mensagem.titulos.map((t) => (
-                    <tr key={t.numero} className="border-b last:border-0">
-                      <td className="leitura px-3 py-1.5 text-xs">{t.numero}</td>
-                      <td className="text-muted-foreground px-3 py-1.5 text-xs">
-                        venc. {formatDateOnly(t.vencimento)}
-                      </td>
-                      <td className="leitura px-3 py-1.5 text-right text-xs">
-                        {formatCurrency(t.valor, "BRL")}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <table className="border-line divide-line w-full divide-y overflow-hidden rounded-[var(--wu-radius)] border text-[13px]">
+              <tbody className="divide-line divide-y">
+                {mensagem.titulos.map((t) => (
+                  <tr key={t.numero}>
+                    <td className="text-foreground px-3 py-2 tabular-nums">{t.numero}</td>
+                    <td className="text-muted-foreground px-3 py-2">
+                      venc. {formatDateOnly(t.vencimento)}
+                    </td>
+                    <td className="text-foreground px-3 py-2 text-right tabular-nums">
+                      {formatCurrency(t.valor, "BRL")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
           <div>
-            <div className="etiqueta mb-2">Texto enviado</div>
-            <div className="bg-card rounded-sm border px-3 py-2.5">
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{mensagem.texto}</p>
+            <div className="text-subtle mb-2 text-[12.5px]">Texto enviado</div>
+            <div className="border-line bg-card rounded-[var(--wu-radius-sm)] border p-3">
+              <p className="text-foreground text-[13.5px] leading-relaxed whitespace-pre-wrap">
+                {mensagem.texto}
+              </p>
             </div>
           </div>
 
           {mensagem.resposta !== "nenhuma" && (
             <div>
-              <div className="etiqueta mb-2">
+              <div className="text-subtle mb-1 text-[12.5px]">
                 Resposta do cliente
                 {mensagem.respondidaEm && ` · ${formatDateTime(mensagem.respondidaEm)}`}
               </div>
-              <p className="text-sm">
-                {RESPOSTAS[mensagem.resposta]}
-                {escala(mensagem.resposta) && <span className="text-muted-foreground"> </span>}
-              </p>
+              <p className="text-foreground text-[13.5px]">{RESPOSTAS[mensagem.resposta]}</p>
             </div>
           )}
         </div>
@@ -138,19 +125,11 @@ export function DialogoMensagem({
   );
 }
 
-function Campo({
-  rotulo,
-  mono,
-  children,
-}: {
-  rotulo: string;
-  mono?: boolean;
-  children: React.ReactNode;
-}) {
+function Campo({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="etiqueta">{rotulo}</div>
-      <div className={cn("mt-1 text-sm", mono && "leitura text-xs")}>{children}</div>
+      <dt className="text-subtle text-[12.5px]">{rotulo}</dt>
+      <dd className="text-foreground mt-1 text-[13.5px] tabular-nums">{children}</dd>
     </div>
   );
 }
