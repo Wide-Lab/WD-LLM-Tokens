@@ -62,6 +62,7 @@ Componente nenhum escolhe cor de dado por conta própria.
 | Sem categoria (recebidas) | `--categoria-nenhuma` | `fg` 45% (claro) / 62% (escuro) | `SERIES_DE_CATEGORIA` |
 | Fatia "Outros" | `--serie-outros` | = `--categoria-nenhuma` | `OUTROS` |
 | Baldes de token | `--balde-entrada`, `-saida`, `-cache-leitura`, `-cache-escrita` | `fg` 100/68/54/43% | `BALDES` (`components/medidor.tsx`) |
+| Etapas da régua (dashboard de Disparos) | `color-mix` de `fg` sobre `surface`, 43% a 100% | | `rampaNeutra` (`lib/grafico.ts`) |
 | Recebida / enviada | `--balde-entrada` / `--balde-saida` | | `DIRECOES` |
 | Fatias sem papel (rosca por modelo) | `--wu-c1`..`--wu-c5` em ordem | | `SERIES` |
 
@@ -78,16 +79,22 @@ Componente nenhum escolhe cor de dado por conta própria.
   pode pegar a cor de uma origem. Caches são os mais apagados porque são a faixa com desconto.
   `oklab` (não `oklch`) para não interpolar matiz. Contraste contra `surface`, claro / escuro:
   17.72 / 15.30, 7.04 / 6.94, 4.40 / 4.64, 3.11 / 3.31.
+- **Série ordinal em rampa neutra** (`rampaNeutra`): as etapas de régua do dashboard de Disparos já são
+  uma ordem, então a mais cedo no eixo do vencimento é a mais apagada e a mais tarde a mais escura,
+  no mesmo intervalo (43% a 100% de `fg`) e no mesmo `oklab` dos baldes, sem depender deles. Barra,
+  legenda e tooltip usam a mesma posição; série única fica em 68%, a tinta do balde de saída.
 - **Direções reusam entrada/saída**: o que o cliente falou é o que vira token de entrada do outro
   lado. Mesma pergunta ("quem falou"), mesma cor, nas duas origens.
 - **Custo é `fg`.** Valor de KPI é sempre `fg`, ou `danger` no tile de `problema`; o ponto colorido
   antes do rótulo do `Cartao` (`cor`) é a legenda da série, não pinta o número. Só leva ponto o
   número que é uma série com cor nos gráficos da tela (as origens no consolidado).
 - Categoria na tabela vai só em texto, sem ponto: a cor dela é de gráfico.
+- Valor em aberto da carteira e valor dos títulos do log de Disparos são dívida do cliente no portal, não
+  gasto do painel: saem em `fg` com `tabular-nums`, sem tratamento de custo e sem mono.
 
 ## Tipografia e formatos
 
-- Mono (`font-mono`) só para ID técnico literal (o `wamid` na mensagem aberta) e para o conteúdo
+- Mono (`font-mono`) só para ID técnico literal (o `wamid` na mensagem aberta e o nome do template, o `name` da Meta, onde ele aparecer) e para o conteúdo
   literal de CSV (textarea e exemplo da importação). Nome de modelo e de país não é mono.
 - Dinheiro (`formatCurrency`, `lib/format.ts`): até **4 casas** por padrão (tooltip, tabela), para
   um custo de centavos não sumir. KPI, medidor e legenda passam `{ casas: 2 }`.
@@ -252,8 +259,8 @@ em lote: manda uma linha por vez e **pode gravar metade**. Isso aparece em três
 
 - `Moldura` (`components/app-sidebar.tsx`); destinos, trilha e busca saem de `lib/navegacao.ts`
   (`GRUPOS`, `trilhaDaRota`).
-- O subtítulo da barra é "LLM e WhatsApp". O "Painel de cobranças / Disparos" foi removido de
-  propósito: é marca da NSC.
+- O subtítulo da barra é "LLM e WhatsApp". O "Painel de cobranças" do protótipo NSC foi removido
+  de propósito: é marca da NSC. Disparos entra como grupo da barra, não no subtítulo.
 - **Trilha abaixo de 640px**: só o último passo, prefixado pelo grupo em `subtle` ("LLM · Painel").
   O grupo que é a própria página sai sem link.
 - 404 dentro da moldura usa `TRILHA_NAO_ENCONTRADA` ("Página não encontrada"), decidido pelo
