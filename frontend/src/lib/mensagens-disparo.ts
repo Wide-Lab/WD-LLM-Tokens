@@ -55,12 +55,12 @@ export const RESPOSTAS: Record<Resposta, string> = {
 };
 
 /**
- * A cor do status, e ela é só tinta — nem violeta, nem petróleo.
+ * A cor do status, e ela é só tinta — nenhuma cor de dado.
  *
  * A paleta do painel não tem verde de "ok" nem âmbar de "espere", pelo motivo que `styles.css`
- * declara e `selo-estado-meta.tsx` já enfrentou: violeta é dinheiro e petróleo é token, e gastar um
- * dos dois num status faria a cor mentir na tela em que ela é o dado. Sobra a escala neutra mais o
- * `destructive`, e aqui isso basta porque o status **é uma rampa**: quanto mais longe a mensagem
+ * declara e `selo-estado-meta.tsx` já enfrentou: as séries (`--wu-c1`..`--wu-c5`) têm papel fixo,
+ * e gastar uma num status faria a cor mentir na tela em que ela é o dado. Sobra a escala neutra mais
+ * o `destructive`, e aqui isso basta porque o status **é uma rampa**: quanto mais longe a mensagem
  * chegou, mais escura a tinta. `suprimida` e `adiada` são as mais apagadas porque não saíram —
  * não é erro, é decisão da régua, e o motivo ao lado é que diz qual. `falhou` é o único em
  * `destructive`: é o único em que algo quebrou.
@@ -119,8 +119,8 @@ export function saiu(m: Mensagem): boolean {
 /**
  * A soma dos títulos da mensagem.
  *
- * É dívida do cliente no portal, não gasto do painel — e por isso sai em mono **sem** o violeta de
- * custo, pelo mesmo motivo do valor em aberto da carteira.
+ * É dívida do cliente no portal, não gasto do painel — e por isso sai em `fg` como o resto, sem o
+ * tratamento de custo, pelo mesmo motivo do valor em aberto da carteira.
  */
 export function valorTotal(m: Mensagem): number {
   return m.titulos.reduce((soma, t) => soma + t.valor, 0);

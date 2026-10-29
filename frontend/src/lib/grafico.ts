@@ -243,6 +243,21 @@ export function totalDaLinha(linha: Record<string, string | number>, eixo: strin
   );
 }
 
+/**
+ * A rampa neutra para séries que já são uma ordem: a primeira é a mais apagada e a última a mais
+ * escura, de 43% a 100% de `fg` sobre `surface` — o mesmo princípio e o mesmo intervalo dos baldes
+ * de token (`--balde-*`, em `styles.css`), sem depender deles: etapa de régua não é balde de token,
+ * e as duas rampas só compartilham a regra de não pegar a cor de uma origem. `oklab` pelo mesmo
+ * motivo de lá (não interpolar matiz); os extremos passam de 3:1 contra o cartão nos dois temas.
+ *
+ * Quem desenha usa a mesma posição na barra, na legenda e no tooltip, então as três concordam.
+ * Série única fica no meio da rampa.
+ */
+export function rampaNeutra(indice: number, total: number): string {
+  const pct = total <= 1 ? 68 : Math.round(43 + (57 * indice) / (total - 1));
+  return `color-mix(in oklab, var(--wu-fg) ${pct}%, var(--wu-surface))`;
+}
+
 /** O rótulo de valor na ponta de cada barra: é a legenda com valor de um gráfico de uma série só. */
 export const rotuloDeValor = { fill: "var(--wu-fg)", fontSize: 12 } as const;
 

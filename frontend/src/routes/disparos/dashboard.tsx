@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-import { AvisoDeMock } from "@/components/aviso-mock";
+import { CabecalhoDaPagina } from "@/components/cabecalho-da-pagina";
 import { Cartao } from "@/components/cartao";
 import { ErrorBox } from "@/components/empty-states";
 import { Campo } from "@/components/global-filters";
@@ -22,10 +22,11 @@ import {
   type SerieDeEtapa,
 } from "@/lib/dashboard-disparos";
 import { somarDias } from "@/lib/calendario";
-import { eixo, tooltipEstilo } from "@/lib/grafico";
+import { eixo, rampaNeutra, tooltipEstilo } from "@/lib/grafico";
 import { formatDateOnly, formatNumber } from "@/lib/format";
 import { listarMensagens, PERIODO_DO_LOG } from "@/lib/mensagens-disparo-mock";
 import { listarReguas } from "@/lib/reguas-mock";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/disparos/dashboard")({
   head: () => ({
@@ -68,7 +69,8 @@ const CHAVE_REGUAS = ["reguas-disparos"];
  * Disparos: régua, carteira e catálogo são cadastro, e recortar cadastro por data não responde
  * nada; volume é leitura de período, e sem o recorte não há como comparar duas semanas. Não é o
  * `<GlobalFilters>` porque aplicação, ator e granularidade não existem aqui — um controle que
- * parece filtrar e não filtra é pior do que controle nenhum.
+ * parece filtrar e não filtra é pior do que controle nenhum. Ele só empresta o `Campo` e o desenho
+ * da barra de filtros.
  */
 function Dashboard() {
   const [pedido, setPedido] = useState<Periodo>(PERIODO_DO_LOG);
@@ -92,137 +94,145 @@ function Dashboard() {
   const carregando = q.isLoading || qReguas.isLoading;
   const erro = q.error ?? qReguas.error;
 
-  if (erro) return <ErrorBox error={erro} />;
-
   const dias = dados.length;
+  const maiorVolume = Math.max(...volume.map((v) => v.total), 1);
 
   return (
     <div className="flex flex-col gap-4">
+      <CabecalhoDaPagina
+        titulo="Dashboard"
+        subtitulo="Quanto a régua já mandou no período, por dia e por etapa"
+      />
+
       <FiltroDePeriodo periodo={periodo} onChange={setPedido} />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Cartao
-          rotulo="Mensagens enviadas"
-          valor={formatNumber(resumo.mensagens)}
-          nota={dias > 0 ? `em ${formatNumber(dias)} ${dias === 1 ? "dia" : "dias"}` : ""}
-          carregando={carregando}
+      {erro ? (
+        <ErrorBox
+          error={erro}
+          onRetry={() => {
+            void q.refetch();
+            void qReguas.refetch();
+          }}
         />
-        <Cartao
-          rotulo="Clientes"
-          valor={formatNumber(resumo.clientes)}
-          nota=""
-          carregando={carregando}
-        />
-        <Cartao
-          rotulo="Títulos"
-          valor={formatNumber(resumo.titulos)}
-          nota=""
-          carregando={carregando}
-        />
-      </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-3">
+            <Cartao
+              rotulo="Mensagens enviadas"
+              valor={formatNumber(resumo.mensagens)}
+              nota={
+                dias > 0 ? `em ${formatNumber(dias)} ${dias === 1 ? "dia" : "dias"}` : undefined
+              }
+              carregando={carregando}
+            />
+            <Cartao
+              rotulo="Clientes"
+              valor={formatNumber(resumo.clientes)}
+              carregando={carregando}
+            />
+            <Cartao rotulo="Títulos" valor={formatNumber(resumo.titulos)} carregando={carregando} />
+          </div>
 
-      <PainelCard
-        title="Mensagens enviadas por dia"
-        hint="por etapa"
-        action={<Legenda series={series} />}
-        loading={carregando}
-        empty={!carregando && resumo.mensagens === 0}
-        emptyMessage="Nenhuma mensagem saiu neste período. Sem envio não há volume para quebrar por etapa."
-      >
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={dados} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-            <CartesianGrid stroke="var(--border)" vertical={false} />
-            <XAxis dataKey="rotulo" {...eixo} />
-            <YAxis {...eixo} allowDecimals={false} width={44} />
-            <Tooltip cursor={{ fill: "var(--muted)" }} content={<Dica series={series} />} />
-            {series.map((s, i) => (
-              <Bar
-                key={s.id}
-                dataKey={s.id}
-                stackId="etapa"
-                fill="var(--foreground)"
-                fillOpacity={opacidade(i, series.length)}
-              />
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
-      </PainelCard>
+          <PainelCard
+            title="Mensagens enviadas por dia"
+            hint="por etapa"
+            action={<Legenda series={series} />}
+            loading={carregando}
+            empty={!carregando && resumo.mensagens === 0}
+            emptyMessage="Nenhuma mensagem saiu neste período. Sem envio não há volume para quebrar por etapa."
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={dados} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="rotulo" {...eixo} />
+                <YAxis {...eixo} allowDecimals={false} width={44} />
+                <Tooltip cursor={tooltipEstilo.cursor} content={<Dica series={series} />} />
+                {series.map((s, i) => (
+                  <Bar
+                    key={s.id}
+                    dataKey={s.id}
+                    stackId="etapa"
+                    fill={rampaNeutra(i, series.length)}
+                    // Só o segmento de cima leva canto arredondado, ou a pilha ganha um sulco no meio.
+                    radius={i === series.length - 1 ? [3, 3, 0, 0] : undefined}
+                    maxBarSize={64}
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </PainelCard>
 
-      <PainelCard
-        title="Volume por etapa no período"
-        hint={`${formatDateOnly(periodo.de)} — ${formatDateOnly(periodo.ate)}`}
-        loading={carregando}
-        empty={!carregando && volume.length === 0}
-        emptyMessage="Nenhuma etapa disparou no período."
-        bleed
-      >
-        <div className="flex flex-col gap-3 p-5">
-          {volume.map(({ etapa, total }, i) => (
-            <div key={etapa.id} className="flex items-center gap-3">
-              <span className="etiqueta w-10 shrink-0">{etapa.rotulo}</span>
-              <span className="min-w-0 flex-1 truncate text-sm">{etapa.nome}</span>
-              {/* A fita é a mesma leitura do gráfico somada: proporção sobre a maior etapa, para
-                  a distância entre duas etapas ser visível sem contar dígito. */}
-              <span className="bg-muted hidden h-[3px] w-40 overflow-hidden rounded-full sm:block">
-                <span
-                  className="block h-full bg-foreground"
-                  style={{
-                    width: `${(total / Math.max(...volume.map((v) => v.total), 1)) * 100}%`,
-                    opacity: opacidade(i, volume.length),
-                  }}
-                />
-              </span>
-              <span className="leitura w-16 shrink-0 text-right text-sm">
-                {formatNumber(total)}
-              </span>
-            </div>
-          ))}
-        </div>
-      </PainelCard>
+          <PainelCard
+            title="Volume por etapa"
+            hint={`${formatDateOnly(periodo.de)} — ${formatDateOnly(periodo.ate)}`}
+            loading={carregando}
+            empty={!carregando && volume.length === 0}
+            emptyMessage="Nenhuma etapa disparou no período."
+            bleed
+          >
+            <ul className="flex flex-col gap-3 p-4">
+              {volume.map(({ etapa, total }, i) => (
+                <li key={etapa.id} className="flex items-center gap-3">
+                  <span className="text-muted-foreground w-10 shrink-0 text-xs tabular-nums">
+                    {etapa.rotulo}
+                  </span>
+                  <span className="text-foreground min-w-0 flex-1 truncate text-[13.5px]">
+                    {etapa.nome}
+                  </span>
+                  {/* A fita é a mesma leitura do gráfico somada: proporção sobre a maior etapa, para
+                      a distância entre duas etapas ser visível sem contar dígito. */}
+                  <span className="bg-sel hidden h-1.5 w-40 overflow-hidden rounded-full sm:block">
+                    <span
+                      className="block h-full rounded-full"
+                      style={{
+                        width: `${(total / maiorVolume) * 100}%`,
+                        background: rampaNeutra(i, volume.length),
+                      }}
+                    />
+                  </span>
+                  <span className="text-foreground w-16 shrink-0 text-right text-[13.5px] tabular-nums">
+                    {formatNumber(total)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </PainelCard>
+        </>
+      )}
     </div>
   );
 }
 
 /**
- * A rampa neutra das etapas, e ela é só tinta.
+ * A legenda das etapas, escrita à mão: o ponto na tinta da rampa neutra (`rampaNeutra`) e o nome em
+ * `muted-foreground`, no desenho da legenda do recharts nos outros gráficos (ponto redondo de 8px, 12px).
  *
- * Nem violeta nem petróleo: no painel inteiro violeta é dinheiro e petróleo é token (`styles.css`),
- * e gastar um dos dois numa etapa faria a cor mentir na tela em que ela é o dado. Sobra a escala
- * neutra, e aqui ela basta porque a etapa **é uma rampa**: quanto mais tarde no eixo do vencimento,
- * mais escura a tinta. É a mesma escolha do `COR_STATUS` do log, pelo mesmo motivo — e é por isso
- * que a linha do tempo das réguas também não tem cor semântica nenhuma.
+ * A tinta sai da posição da etapa na lista, e é a mesma `series` que desenha as barras e o tooltip:
+ * a rampa é neutra porque cor de dado tem papel fixo e a etapa já é uma ordem — quanto mais tarde no
+ * eixo do vencimento, mais escura a tinta. O padrão do recharts leria tudo com o mesmo ponto.
  */
-function opacidade(indice: number, total: number): number {
-  if (total <= 1) return 0.85;
-  return 0.3 + (0.6 * indice) / (total - 1);
-}
-
 function Legenda({ series }: { series: SerieDeEtapa[] }) {
   if (series.length === 0) return null;
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+    <ul className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
       {series.map((s, i) => (
-        <span
-          key={s.id}
-          className="text-muted-foreground flex items-center gap-1.5 text-[0.6875rem]"
-        >
+        <li key={s.id} className="text-muted-foreground flex items-center gap-1.5 text-xs">
           <span
-            className="h-2.5 w-2.5 shrink-0 rounded-[2px] bg-foreground"
-            style={{ opacity: opacidade(i, series.length) }}
             aria-hidden
+            className="h-2 w-2 shrink-0 rounded-full"
+            style={{ background: rampaNeutra(i, series.length) }}
           />
           {s.nome}
-        </span>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }
 
 /**
- * O tooltip é escrito à mão porque a legenda do recharts leria tudo igual.
- *
- * As séries compartilham a cor e se distinguem pela opacidade; o quadradinho padrão do recharts usa
- * só o `fill`, e num empilhado de quatro etapas mostraria quatro quadrados idênticos.
+ * O tooltip é escrito à mão porque o do recharts não tem rodapé e pintaria o ponto pelo `fill` da
+ * barra, que aqui é a tinta da rampa — e ela só se lê pela posição da etapa. O desenho é o do
+ * `TooltipDoTempo`: uma linha por série, com o ponto na tinta, e o total da pilha embaixo.
  */
 function Dica({
   active,
@@ -237,24 +247,24 @@ function Dica({
   const linha = payload[0].payload;
 
   return (
-    <div style={tooltipEstilo.contentStyle} className="flex flex-col gap-1 font-mono">
+    <div style={{ ...tooltipEstilo.contentStyle, padding: "8px 10px" }}>
       <div style={tooltipEstilo.labelStyle}>{formatDateOnly(String(linha.dia))}</div>
       {series.map((s, i) => (
-        <div key={s.id} className="flex items-center justify-between gap-6">
-          <span className="flex items-center gap-1.5">
-            <span
-              className="h-2 w-2 shrink-0 rounded-[2px] bg-popover-foreground"
-              style={{ opacity: opacidade(i, series.length) }}
-              aria-hidden
-            />
-            {s.nome}
+        <div key={s.id} className="flex items-center gap-1.5 py-px">
+          <span
+            aria-hidden
+            className="h-2 w-2 shrink-0 rounded-full"
+            style={{ background: rampaNeutra(i, series.length) }}
+          />
+          <span className="text-muted-foreground">{s.nome}</span>
+          <span className="ml-auto pl-4 tabular-nums">
+            {formatNumber(Number(linha[s.id] ?? 0))}
           </span>
-          <span>{formatNumber(Number(linha[s.id] ?? 0))}</span>
         </div>
       ))}
-      <div className="mt-0.5 flex items-center justify-between gap-6 border-t pt-1">
+      <div className="border-line mt-1 flex items-center gap-1.5 border-t pt-1 font-medium">
         <span>Total</span>
-        <span>{formatNumber(Number(linha.total))}</span>
+        <span className="ml-auto pl-4 tabular-nums">{formatNumber(Number(linha.total))}</span>
       </div>
     </div>
   );
@@ -282,10 +292,7 @@ function FiltroDePeriodo({
   onChange: (p: Periodo) => void;
 }) {
   return (
-    <section
-      aria-label="Período do dashboard"
-      className="bg-card flex flex-wrap items-end gap-x-4 gap-y-3 rounded-xl border p-4 shadow-sm"
-    >
+    <section aria-label="Período do dashboard" className="flex flex-wrap items-end gap-2">
       <Campo rotulo="De" para="disparos-de">
         <Input
           id="disparos-de"
@@ -294,7 +301,7 @@ function FiltroDePeriodo({
           min={PERIODO_DO_LOG.de}
           max={periodo.ate}
           onChange={(e) => onChange({ ...periodo, de: e.target.value })}
-          className="h-9 w-[9.5rem] font-mono text-xs"
+          className="w-[9.5rem]"
         />
       </Campo>
       <Campo rotulo="Até" para="disparos-ate">
@@ -305,16 +312,16 @@ function FiltroDePeriodo({
           min={periodo.de}
           max={PERIODO_DO_LOG.ate}
           onChange={(e) => onChange({ ...periodo, ate: e.target.value })}
-          className="h-9 w-[9.5rem] font-mono text-xs"
+          className="w-[9.5rem]"
         />
       </Campo>
 
-      <div className="border-input flex h-9 items-stretch overflow-hidden rounded-md border">
+      {/* Os atalhos emendados num grupo só, como no `<GlobalFilters>`: lê-se como um seletor. */}
+      <div className="border-input bg-surface flex h-9 items-stretch overflow-hidden rounded-[var(--wu-radius)] border">
         {ATALHOS.map((a, i) => (
           <Button
             key={a.rotulo}
             variant="ghost"
-            size="sm"
             onClick={() =>
               onChange(
                 a.dias === 0
@@ -322,7 +329,7 @@ function FiltroDePeriodo({
                   : { de: somarDias(PERIODO_DO_LOG.ate, -(a.dias - 1)), ate: PERIODO_DO_LOG.ate },
               )
             }
-            className={`h-full rounded-none px-3 text-xs font-medium ${i > 0 ? "border-input border-l" : ""}`}
+            className={cn("h-full rounded-none px-3 text-[13px]", i > 0 && "border-input border-l")}
           >
             {a.rotulo}
           </Button>
