@@ -1,14 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import { Search, SquarePen } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Search, TriangleAlert } from "lucide-react";
 
-import { AvisoDeMock } from "@/components/aviso-mock";
+import { CabecalhoDaPagina } from "@/components/cabecalho-da-pagina";
 import { DialogoVinculo } from "@/components/dialogo-vinculo";
-import { EmptyBox, ErrorBox } from "@/components/empty-states";
-import { Button } from "@/components/ui/button";
+import { ErrorBox } from "@/components/empty-states";
+import { PainelCard } from "@/components/painel-card";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -17,11 +16,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { bloqueio, buscar, vinculoVazio, type Cliente } from "@/lib/clientes";
+import { bloqueio, buscar, vinculoVazio, type Cliente, type Vinculo } from "@/lib/clientes";
 import { listarCarteira } from "@/lib/clientes-mock";
-import { reguaDoCliente } from "@/lib/reguas";
+import { reguaDoCliente, type Regua } from "@/lib/reguas";
 import { formatCurrency, formatNumber } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { cn, haTextoSelecionado } from "@/lib/utils";
 
 export const Route = createFileRoute("/disparos/clientes")({
   head: () => ({
@@ -62,6 +61,15 @@ function Clientes() {
   const [termo, setTermo] = useState("");
   const [abertoId, setAbertoId] = useState<string | null>(null);
 
+  // Quem abriu o diálogo — o nome do cliente, a linha —, para o foco voltar a ele ao fechar. O
+  // diálogo não tem `DialogTrigger`, e sem isto o foco cairia no `<body>`.
+  const origemDoFoco = useRef<HTMLElement | null>(null);
+  const abrir = (c: Cliente) => {
+    origemDoFoco.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setAbertoId(c.id);
+  };
+
   const q = useQuery({ queryKey: CHAVE, queryFn: listarCarteira });
 
   const clientes = useMemo(() => q.data?.clientes ?? [], [q.data]);
@@ -74,65 +82,81 @@ function Clientes() {
   // clique é a versão anterior, e o diálogo seguiria mostrando o vínculo de antes da escrita.
   const aberto = abertoId ? (clientes.find((c) => c.id === abertoId) ?? null) : null;
 
-  if (q.error) return <ErrorBox error={q.error} />;
+  // As duas metades da linha, lidas uma vez: o vínculo ausente vira o vazio, e a régua já vem
+  // resolvida (vínculo sem régua é a padrão).
+  const linhas = lista.map((cliente) => {
+    const vinculo = vinculos[cliente.id] ?? vinculoVazio(cliente.id);
+    return { cliente, vinculo, regua: reguaDoCliente(reguas, vinculo.reguaId) };
+  });
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="relative w-full max-w-sm">
-          <Search
-            className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
-            aria-hidden
-          />
-          <Input
-            className="pl-9"
-            placeholder="Buscar por razão social, CNPJ ou cidade"
-            value={termo}
-            onChange={(e) => setTermo(e.target.value)}
-            aria-label="Buscar cliente"
-          />
-        </div>
-        <p className="etiqueta">
-          {formatNumber(lista.length)} de {formatNumber(clientes.length)}{" "}
-          {clientes.length === 1 ? "cliente" : "clientes"}
-        </p>
-      </div>
+      <CabecalhoDaPagina
+        titulo="Clientes"
+        subtitulo="Quem recebe o disparo, por qual régua e em que número verificado"
+      />
 
-      {q.isLoading ? (
-        <Carregando />
-      ) : lista.length === 0 ? (
-        <EmptyBox
-          message={
-            clientes.length === 0 ? "Nenhum cliente na carteira." : "Nenhum cliente com esse termo."
-          }
-        />
+      {q.error ? (
+        <ErrorBox error={q.error} onRetry={() => void q.refetch()} />
       ) : (
-        <div className="bg-card overflow-hidden rounded-xl border shadow-sm">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="etiqueta py-3">Cliente</TableHead>
-                <TableHead className="etiqueta py-3">Cidade</TableHead>
-                <TableHead className="etiqueta py-3 text-right">Em aberto</TableHead>
-                <TableHead className="etiqueta py-3">Régua</TableHead>
-                <TableHead className="etiqueta py-3">Vínculo</TableHead>
-                <TableHead className="etiqueta py-3">Gerente</TableHead>
-                <TableHead className="w-10 pr-3" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {lista.map((cliente) => (
-                <Linha
-                  key={cliente.id}
-                  cliente={cliente}
-                  regua={reguaDoCliente(reguas, (vinculos[cliente.id] ?? null)?.reguaId ?? null)}
-                  vinculo={vinculos[cliente.id] ?? vinculoVazio(cliente.id)}
-                  onAbrir={() => setAbertoId(cliente.id)}
-                />
+        <>
+          <div className="relative w-full max-w-sm">
+            <Search
+              className="text-subtle pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
+              aria-hidden
+            />
+            <Input
+              className="pl-9"
+              placeholder="Buscar por razão social, CNPJ ou cidade"
+              value={termo}
+              onChange={(e) => setTermo(e.target.value)}
+              aria-label="Buscar cliente"
+            />
+          </div>
+
+          <PainelCard
+            title="Carteira"
+            hint={
+              q.isLoading
+                ? undefined
+                : `${formatNumber(lista.length)} de ${formatNumber(clientes.length)} ${clientes.length === 1 ? "cliente" : "clientes"}`
+            }
+            bleed
+            loading={q.isLoading}
+            empty={lista.length === 0}
+            emptyMessage={
+              clientes.length === 0
+                ? "Nenhum cliente na carteira."
+                : "Nenhum cliente com esse termo."
+            }
+          >
+            {/* Abaixo de 700px a tabela vira lista de cartões: os mesmos fatos, sem rolagem lateral. */}
+            <ul className="divide-line divide-y min-[700px]:hidden">
+              {linhas.map((l) => (
+                <ClienteCartao key={l.cliente.id} {...l} onAbrir={abrir} />
               ))}
-            </TableBody>
-          </Table>
-        </div>
+            </ul>
+            <div className="hidden min-[700px]:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="pl-4">Cliente</TableHead>
+                    <TableHead>Cidade</TableHead>
+                    <TableHead className="text-right">Em aberto</TableHead>
+                    <TableHead>Régua</TableHead>
+                    <TableHead>Vínculo</TableHead>
+                    <TableHead className="pr-4">Gerente</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {linhas.map((l) => (
+                    <ClienteLinha key={l.cliente.id} {...l} onAbrir={abrir} />
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </PainelCard>
+        </>
       )}
 
       <DialogoVinculo
@@ -141,91 +165,175 @@ function Clientes() {
         reguas={reguas}
         aberto={aberto !== null}
         onOpenChange={(v) => !v && setAbertoId(null)}
+        origemDoFoco={origemDoFoco}
       />
     </div>
   );
 }
 
-function Carregando() {
+/**
+ * O que identifica o cliente numa linha: razão social e documento.
+ *
+ * A razão social é o botão que abre o vínculo: a linha inteira abre, mas uma `<tr>` com `onClick` não
+ * é focável, e este é o caminho do teclado e do leitor de tela.
+ */
+function Identificacao({
+  cliente,
+  comCidade,
+  onAbrir,
+}: {
+  cliente: Cliente;
+  /** No cartão a cidade não tem coluna e vai na linha do documento. */
+  comCidade?: boolean;
+  onAbrir: (c: Cliente) => void;
+}) {
   return (
-    <div className="flex flex-col gap-2">
-      <Skeleton className="h-12 w-full rounded-xl" />
-      <Skeleton className="h-64 w-full rounded-xl" />
+    <div className="min-w-0">
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        onClick={(e) => {
+          // Para aqui: o resto da linha também abre, e sem isto o clique abriria duas vezes.
+          e.stopPropagation();
+          onAbrir(cliente);
+        }}
+        className="text-foreground min-w-0 cursor-pointer rounded-[var(--wu-radius-sm)] text-left text-[13.5px] font-medium [overflow-wrap:anywhere] hover:underline"
+      >
+        {cliente.razaoSocial}
+      </button>
+      <div className="text-subtle mt-0.5 text-xs tabular-nums">
+        {cliente.documento}
+        {comCidade && ` · ${cliente.cidade}`}
+      </div>
     </div>
   );
 }
 
 /**
- * Uma linha: o cliente do portal e o vínculo nosso, na mesma tabela.
- *
- * O valor em aberto é a única quantia da tela e sai em mono **sem o violeta de custo**. Violeta
- * neste painel quer dizer "quanto nós gastamos" (`styles.css`), e aqui a quantia é dívida do cliente
- * no portal: reusar o tom faria o único número violeta da tela significar outra coisa.
+ * O valor em aberto é a única quantia da tela, e sai em `fg` como o resto: é dívida do cliente no
+ * portal, não gasto nosso, e por isso não leva o tratamento de custo de nenhum outro número.
  */
-function Linha({
-  cliente,
-  regua,
-  vinculo,
-  onAbrir,
-}: {
-  cliente: Cliente;
-  regua: { id: string; nome: string };
-  vinculo: ReturnType<typeof vinculoVazio>;
-  onAbrir: () => void;
-}) {
+function EmAberto({ cliente }: { cliente: Cliente }) {
+  return (
+    <>
+      <span className="text-foreground tabular-nums">
+        {formatCurrency(cliente.valorAberto, "BRL")}
+      </span>
+      <span className="text-subtle ml-1.5 text-xs">
+        {formatNumber(cliente.titulosAbertos)} tít.
+      </span>
+    </>
+  );
+}
+
+/** A régua que vale para o cliente. Sem atribuição ela é a padrão, e precisa ler-se como escolha. */
+function CelulaDeRegua({ regua, vinculo }: { regua: Regua; vinculo: Vinculo }) {
+  return (
+    <>
+      <span
+        className={cn(
+          "text-[13.5px]",
+          vinculo.reguaId ? "text-foreground font-medium" : "text-muted-foreground",
+        )}
+      >
+        {regua.nome}
+      </span>
+      {!vinculo.reguaId && <span className="text-subtle ml-1.5 text-xs">herdada</span>}
+    </>
+  );
+}
+
+/**
+ * O número verificado e, quando a régua não vai rodar para ele, o porquê. O bloqueio sai em `danger`
+ * e sem pílula: o mapeamento de status do painel não cobre "não recebe", e ele é condição que
+ * bloqueia, como o "Sem versão aprovada" do template.
+ */
+function CelulaDeVinculo({ cliente, vinculo }: { cliente: Cliente; vinculo: Vinculo }) {
   const barrado = bloqueio(cliente, vinculo);
 
   return (
+    <>
+      {vinculo.numeroVinculado ? (
+        <span className="text-foreground text-xs tabular-nums">{vinculo.numeroVinculado}</span>
+      ) : (
+        <span className="text-subtle text-xs">sem número</span>
+      )}
+      {barrado && (
+        <p className="text-danger mt-1 flex items-start gap-1.5 text-xs">
+          <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+          não recebe · {barrado}
+        </p>
+      )}
+    </>
+  );
+}
+
+interface PropsDaLinha {
+  cliente: Cliente;
+  vinculo: Vinculo;
+  regua: Regua;
+  onAbrir: (c: Cliente) => void;
+}
+
+/** Uma linha: o cliente do portal e o vínculo nosso, na mesma tabela. */
+function ClienteLinha({ cliente, vinculo, regua, onAbrir }: PropsDaLinha) {
+  return (
+    // A linha inteira abre o vínculo, porque é o motivo de estar aqui. Clique que terminou uma
+    // seleção de texto é cópia, não pedido de abrir.
     <TableRow
-      // A linha inteira abre o vínculo porque é o motivo de estar aqui — mas o controle focável
-      // continua sendo o botão do fim, que também abre e por isso segura o clique.
-      onClick={onAbrir}
+      onClick={() => {
+        if (haTextoSelecionado()) return;
+        onAbrir(cliente);
+      }}
       className="cursor-pointer"
     >
-      <TableCell className="py-3">
-        <div className="text-sm font-medium">{cliente.razaoSocial}</div>
-        <div className="text-muted-foreground mt-0.5 font-mono text-xs">{cliente.documento}</div>
+      <TableCell className="pl-4">
+        <Identificacao cliente={cliente} onAbrir={onAbrir} />
       </TableCell>
-      <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
-        {cliente.cidade}
-      </TableCell>
+      <TableCell className="text-muted-foreground whitespace-nowrap">{cliente.cidade}</TableCell>
       <TableCell className="text-right whitespace-nowrap">
-        <span className="leitura text-sm">{formatCurrency(cliente.valorAberto, "BRL")}</span>
-        <span className="text-muted-foreground ml-1.5 text-xs">
-          {formatNumber(cliente.titulosAbertos)} tít.
-        </span>
+        <EmAberto cliente={cliente} />
       </TableCell>
       <TableCell>
-        <div className={cn("text-sm", vinculo.reguaId ? "font-medium" : "text-muted-foreground")}>
-          {regua.nome}
-        </div>
-        {!vinculo.reguaId && <div className="etiqueta mt-1">herdada</div>}
+        <CelulaDeRegua regua={regua} vinculo={vinculo} />
       </TableCell>
-      <TableCell className="text-xs">
-        {vinculo.numeroVinculado ? (
-          <span className="font-mono whitespace-nowrap">{vinculo.numeroVinculado}</span>
-        ) : (
-          <span className="text-muted-foreground">sem número</span>
-        )}
-        {barrado && <div className="text-destructive mt-1">não recebe · {barrado}</div>}
+      <TableCell>
+        <CelulaDeVinculo cliente={cliente} vinculo={vinculo} />
       </TableCell>
-      <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
+      <TableCell className="text-muted-foreground pr-4 whitespace-nowrap">
         {vinculo.gerenteDaConta ?? "—"}
       </TableCell>
-      <TableCell className="pr-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={(e) => {
-            e.stopPropagation();
-            onAbrir();
-          }}
-          aria-label={`Editar vínculo de ${cliente.razaoSocial}`}
-        >
-          <SquarePen className="h-4 w-4" />
-        </Button>
-      </TableCell>
     </TableRow>
+  );
+}
+
+/** O mesmo cliente abaixo de 700px: o portal em cima e o que é nosso embaixo. */
+function ClienteCartao({ cliente, vinculo, regua, onAbrir }: PropsDaLinha) {
+  return (
+    // O cartão inteiro abre, como a linha da tabela; o botão do nome continua sendo o caminho do
+    // teclado.
+    <li
+      onClick={() => {
+        if (haTextoSelecionado()) return;
+        onAbrir(cliente);
+      }}
+      className="flex cursor-pointer flex-col gap-2 px-4 py-3"
+    >
+      <Identificacao cliente={cliente} comCidade onAbrir={onAbrir} />
+      <div className="text-[13px]">
+        <EmAberto cliente={cliente} />
+      </div>
+      <div className="flex flex-col gap-1 pt-2">
+        <div>
+          <CelulaDeRegua regua={regua} vinculo={vinculo} />
+        </div>
+        <div>
+          <CelulaDeVinculo cliente={cliente} vinculo={vinculo} />
+        </div>
+        <div className="text-muted-foreground text-xs">
+          Gerente · {vinculo.gerenteDaConta ?? "—"}
+        </div>
+      </div>
+    </li>
   );
 }
