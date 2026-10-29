@@ -1,9 +1,13 @@
 import {
+  CalendarClock,
+  ChartColumn,
+  FileText,
   Gauge,
   LayoutDashboard,
   ListOrdered,
   MessageSquare,
   Tags,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -19,7 +23,8 @@ export interface GrupoDeNavegacao {
 }
 
 /**
- * Três grupos, um por origem de custo, com a soma no topo e sem rótulo.
+ * Um grupo por origem de custo, com a soma no topo e sem rótulo, e depois o que não é origem:
+ * `Disparos` decide o fato que vai existir (quando e para quem), `Preços` converte fato em dinheiro.
  *
  * A lista única de antes dizia, pela própria forma, que o painel era de uma coisa só. Agora a
  * primeira leitura da barra é o desenho do produto: o consolidado é a casa, LLM e WhatsApp são
@@ -45,12 +50,28 @@ export const GRUPOS: GrupoDeNavegacao[] = [
     itens: [
       { title: "Painel", url: "/whatsapp", icon: MessageSquare },
       { title: "Mensagens", url: "/whatsapp/mensagens", icon: ListOrdered },
+      // Fim do grupo, depois das duas leituras: é a única aba da seção que cadastra, e vem depois
+      // do que ela explica — o texto aprovado é a causa das mensagens listadas acima.
+      { title: "Templates", url: "/whatsapp/templates", icon: FileText },
+    ],
+  },
+  // Seção própria, e não uma quarta aba do WhatsApp: o WhatsApp é o canal, o disparo é a decisão
+  // de usar o canal. A ordem é a da dependência: a régua é o ritmo, o cliente aponta para uma
+  // régua, e as duas leituras vêm depois por serem a consequência dos dois cadastros — entre si
+  // na ordem que LLM e WhatsApp já usam, o painel (quanto) antes da lista (quais).
+  {
+    rotulo: "Disparos",
+    itens: [
+      { title: "Réguas", url: "/disparos/reguas", icon: CalendarClock },
+      { title: "Clientes", url: "/disparos/clientes", icon: Users },
+      { title: "Dashboard", url: "/disparos/dashboard", icon: ChartColumn },
+      { title: "Mensagens", url: "/disparos/mensagens", icon: ListOrdered },
     ],
   },
   // Sozinha no fim e sem rótulo: preço não é uma quarta origem de custo — é a régua com que as
   // outras duas viram dinheiro. Um grupo "Configurações" com um item só nomearia uma gaveta que
   // ainda não existe. A barra separa o grupo sem rótulo com um fio, para ele não ler como
-  // continuação do WhatsApp.
+  // continuação do grupo de cima.
   {
     rotulo: null,
     itens: [{ title: "Preços", url: "/precos", icon: Tags }],
@@ -96,9 +117,9 @@ export const TRILHA_NAO_ENCONTRADA: Migalha[] = [{ rotulo: "Página não encontr
  * A trilha do topo: os pais em links, a página atual por último.
  *
  * Sai do destino ativo da barra, e não de uma tabela de títulos à parte, para o topo e a barra
- * nunca discordarem de onde se está. O grupo entra como primeiro passo (apontando para o painel
- * da origem — ou sem link, quando o painel é a própria página); o ator, que não é item da barra,
- * entra como o passo depois de "Eventos".
+ * nunca discordarem de onde se está. O grupo entra como primeiro passo (apontando para o primeiro
+ * item do grupo — ou sem link, quando esse item é a própria página); o ator, que não é item da
+ * barra, entra como o passo depois de "Eventos".
  */
 export function trilhaDaRota(caminhoAtual: string): Migalha[] {
   const url = destinoAtivo(caminhoAtual);
