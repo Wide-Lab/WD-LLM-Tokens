@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type RefObject } from "react";
 import { Check, Loader2, Send, TriangleAlert, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -25,7 +25,7 @@ import {
   responderMeta,
   salvarRascunho,
 } from "@/lib/templates-mock";
-import { cn } from "@/lib/utils";
+import { devolverFocoA } from "@/lib/utils";
 
 /** A chave que a lista usa — o diálogo derruba a mesma leitura depois de cada escrita. */
 const CHAVE = ["templates-whatsapp"];
@@ -46,18 +46,21 @@ export function DialogoTemplate({
   template,
   aberto,
   onOpenChange,
+  origemDoFoco,
 }: {
   /** `null` fecha o diálogo. A tela mantém um só montado e troca o template dele. */
   template: Template | null;
   aberto: boolean;
   onOpenChange: (v: boolean) => void;
+  /** Quem abriu o diálogo, para o foco voltar a ele ao fechar. */
+  origemDoFoco?: RefObject<HTMLElement | null>;
 }) {
   const queryClient = useQueryClient();
   const [nome, setNome] = useState("");
   const [texto, setTexto] = useState("");
 
-  // Reinicia a cada abertura e a cada troca de template: o diálogo é reaproveitado por todos os
-  // cartões, e sem isso o segundo abriria com o texto do primeiro.
+  // Reinicia a cada abertura e a cada troca de template: o diálogo é reaproveitado por todas as
+  // linhas, e sem isso o segundo abriria com o texto do primeiro.
   useEffect(() => {
     if (!aberto || !template) return;
     setNome(template.nome);
@@ -114,30 +117,27 @@ export function DialogoTemplate({
 
   return (
     <Dialog open={aberto} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl" onCloseAutoFocus={devolverFocoA(origemDoFoco)}>
         <DialogHeader>
-          <DialogTitle className="flex flex-wrap items-center gap-2.5 font-mono text-base">
-            {template.nome}
+          {/* O nome é o `name` da Meta, o id técnico literal: o único texto em mono do cabeçalho. */}
+          <DialogTitle className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+            <span className="font-mono [overflow-wrap:anywhere]">{template.nome}</span>
             {template.versao > 0 && (
-              <span className="leitura text-muted-foreground text-sm">v{template.versao}</span>
+              <span className="text-subtle text-[13px] font-normal">v{template.versao}</span>
             )}
             <SeloEstadoMeta estado={template.estado} />
-            {categoria && (
-              <span
-                className="etiqueta rounded-sm px-2 py-1 text-[0.625rem] text-white"
-                style={{ background: categoria.cor }}
-              >
-                {categoria.nome}
-              </span>
-            )}
           </DialogTitle>
+          {/* A cor da categoria é de gráfico: aqui ela só aparece em texto. */}
+          <DialogDescription>
+            {[categoria?.nome ?? template.categoria, template.aplicacao, template.idioma].join(
+              " · ",
+            )}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="template-nome" className="etiqueta">
-              Nome
-            </Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="template-nome">Nome</Label>
             <Input
               id="template-nome"
               value={nome}
@@ -149,8 +149,8 @@ export function DialogoTemplate({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="template-corpo" className="etiqueta">
+          <div className="space-y-1.5">
+            <Label htmlFor="template-corpo">
               {template.rascunho !== null ? "Rascunho — não está em produção" : "Corpo"}
             </Label>
             <Textarea
@@ -158,14 +158,14 @@ export function DialogoTemplate({
               rows={8}
               value={texto}
               onChange={(e) => setTexto(e.target.value)}
-              className="font-mono text-xs leading-relaxed"
+              className="leading-relaxed"
               // Em análise o corpo é da Meta, não nosso: editar aqui daria a impressão de que a
               // versão em avaliação mudou junto.
               readOnly={emAnalise}
             />
           </div>
 
-          <div className="flex flex-wrap gap-1.5">
+          <div role="group" aria-label="Variáveis do catálogo" className="flex flex-wrap gap-1.5">
             {VARIAVEIS.map((v) => (
               <button
                 key={v.chave}
@@ -173,10 +173,7 @@ export function DialogoTemplate({
                 disabled={emAnalise}
                 title={`${v.descricao} — ex.: ${v.exemplo}`}
                 onClick={() => setTexto((t) => `${t}{{${v.chave}}}`)}
-                className={cn(
-                  "text-muted-foreground rounded-sm border px-2 py-1 font-mono text-xs",
-                  "hover:bg-secondary hover:text-foreground disabled:opacity-50",
-                )}
+                className="text-muted-foreground border-input hover:bg-hover hover:text-foreground cursor-pointer rounded-[var(--wu-radius-sm)] border px-2 py-1 font-mono text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {`{{${v.chave}}}`}
               </button>
@@ -184,9 +181,9 @@ export function DialogoTemplate({
           </div>
 
           {desconhecidas.length > 0 && (
-            <div className="border-destructive/50 flex gap-2.5 rounded-sm border-l-2 py-1.5 pl-3">
-              <TriangleAlert className="text-destructive mt-0.5 h-4 w-4 shrink-0" />
-              <p className="text-muted-foreground text-xs">
+            <div className="bg-danger-bg flex gap-2.5 rounded-[var(--wu-radius)] px-3 py-2">
+              <TriangleAlert className="text-danger mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <p className="text-foreground text-[12.5px]">
                 Fora do catálogo: {desconhecidas.map((d) => `{{${d}}}`).join(", ")}. A aplicação não
                 manda esse dado — a Meta aprova o corpo e o envio falha depois, uma mensagem por
                 vez.
@@ -194,9 +191,9 @@ export function DialogoTemplate({
             </div>
           )}
 
-          <div className="bg-muted/50 rounded-sm border px-4 py-3">
-            <div className="etiqueta">Prévia com os exemplos do catálogo</div>
-            <p className="mt-2 text-sm leading-relaxed whitespace-pre-wrap">
+          <div className="bg-raised rounded-[var(--wu-radius)] px-4 py-3">
+            <div className="text-subtle text-[12.5px]">Prévia com os exemplos do catálogo</div>
+            <p className="text-foreground mt-1.5 text-[13.5px] leading-relaxed whitespace-pre-wrap">
               {texto.trim() === "" ? "—" : previa(texto)}
             </p>
           </div>
@@ -204,9 +201,11 @@ export function DialogoTemplate({
           {/* O corpo que está saindo, ao lado do que ainda não saiu: é a única forma de ver que as
               duas coisas são diferentes sem sair da tela. */}
           {template.rascunho !== null && template.aprovadoEmProducao && (
-            <div className="rounded-sm border px-4 py-3">
-              <div className="etiqueta">Em produção agora — v{template.versao}</div>
-              <p className="text-muted-foreground mt-2 text-xs leading-relaxed whitespace-pre-wrap">
+            <div className="border-line rounded-[var(--wu-radius)] border px-4 py-3">
+              <div className="text-subtle text-[12.5px]">
+                Em produção agora — v{template.versao}
+              </div>
+              <p className="text-muted-foreground mt-1.5 text-[13px] leading-relaxed whitespace-pre-wrap">
                 {template.corpo}
               </p>
             </div>
@@ -222,24 +221,18 @@ export function DialogoTemplate({
               <>
                 <Button
                   variant="outline"
-                  size="sm"
                   disabled={escrevendo}
                   onClick={() => responder.mutate({ aprovado: true })}
                 >
-                  {responder.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Check className="h-4 w-4" />
-                  )}
+                  {responder.isPending ? <Loader2 className="animate-spin" /> : <Check />}
                   Simular aprovação
                 </Button>
                 <Button
                   variant="outline"
-                  size="sm"
                   disabled={escrevendo}
                   onClick={() => responder.mutate({ aprovado: false })}
                 >
-                  <X className="h-4 w-4" />
+                  <X />
                   Simular recusa
                 </Button>
               </>
@@ -248,7 +241,7 @@ export function DialogoTemplate({
 
           <div className="flex flex-wrap gap-2">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>
-              Fechar
+              {emAnalise ? "Fechar" : "Cancelar"}
             </Button>
             {!emAnalise && (
               <>
@@ -270,11 +263,7 @@ export function DialogoTemplate({
                   }
                   onClick={() => salvar.mutate({ enviar: true })}
                 >
-                  {salvar.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
+                  {salvar.isPending ? <Loader2 className="animate-spin" /> : <Send />}
                   Enviar para a Meta
                 </Button>
               </>
@@ -291,34 +280,36 @@ export function DialogoTemplate({
  *
  * Lá dá para ver o template; aqui dá para ver quanto ele gastou, e é essa leitura que decide se vale
  * reescrever o corpo ou trocar a categoria. O período é fixo em trinta dias porque a aba não tem
- * filtro de data: catálogo é cadastro, como `/precos`.
+ * filtro de data: catálogo é cadastro, como `/precos`. O custo é `fg`, como em todo o painel.
  */
 function Uso({ template }: { template: Template }) {
   const semCusto = template.cobraveis > 0 && template.custo === null;
 
   return (
-    <div className="rounded-sm border px-4 py-3">
-      <div className="etiqueta">Uso nos últimos 30 dias</div>
-      <dl className="mt-3 grid grid-cols-3 gap-x-6">
-        <div>
-          <dt className="etiqueta">Enviadas</dt>
-          <dd className="leitura mt-1.5 text-lg leading-none">{formatNumber(template.enviadas)}</dd>
+    <div className="border-line rounded-[var(--wu-radius)] border px-4 py-3">
+      <div className="text-subtle text-[12.5px]">Uso nos últimos 30 dias</div>
+      <dl className="mt-2 grid grid-cols-3 gap-x-4">
+        <div className="min-w-0">
+          <dt className="text-muted-foreground text-[13px]">Enviadas</dt>
+          <dd className="text-foreground mt-0.5 text-lg leading-tight font-semibold tracking-[-0.01em]">
+            {formatNumber(template.enviadas)}
+          </dd>
         </div>
-        <div>
-          <dt className="etiqueta">Cobráveis</dt>
-          <dd className="leitura mt-1.5 text-lg leading-none">
+        <div className="min-w-0">
+          <dt className="text-muted-foreground text-[13px]">Cobráveis</dt>
+          <dd className="text-foreground mt-0.5 text-lg leading-tight font-semibold tracking-[-0.01em]">
             {formatNumber(template.cobraveis)}
           </dd>
         </div>
-        <div>
-          <dt className="etiqueta">Custo</dt>
-          <dd className="leitura text-custo mt-1.5 text-lg leading-none">
+        <div className="min-w-0">
+          <dt className="text-muted-foreground text-[13px]">Custo</dt>
+          <dd className="text-foreground mt-0.5 truncate text-lg leading-tight font-semibold tracking-[-0.01em]">
             {formatCurrency(template.custo, template.moeda)}
           </dd>
         </div>
       </dl>
       {semCusto && (
-        <p className="text-muted-foreground mt-3 text-xs">
+        <p className="text-muted-foreground mt-3 text-[12.5px]">
           {formatNumber(template.cobraveis)} mensagens cobráveis e nenhum custo apurado: falta preço
           vigente para {template.categoria} no período. Elas ficam fora da soma do painel até o
           preço existir.

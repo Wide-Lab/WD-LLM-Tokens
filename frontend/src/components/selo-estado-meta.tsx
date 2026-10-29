@@ -1,39 +1,26 @@
-import { Check, Clock, PencilLine, TriangleAlert } from "lucide-react";
-
-import { Badge } from "@/components/ui/badge";
+import { StatusPill, type TomDeStatus } from "@/components/status-pill";
 import { ESTADOS, type EstadoMeta } from "@/lib/templates";
-import { cn } from "@/lib/utils";
 
 /**
- * O estado do template na Meta, dito por ícone antes de por cor.
+ * O estado do template na Meta, em pílula de status do wide-ui.
  *
- * A paleta do painel não tem verde de "ok" nem âmbar de "espere": violeta é dinheiro e petróleo é
- * token, e gastar um desses dois num selo de aprovação faria a cor mentir na tela em que ela é o
- * dado (`styles.css`). Sobra a escala neutra mais o `destructive` — e é o suficiente, porque a
- * hierarquia aqui é de duas casas, não de quatro: **dá para enviar** ou **não dá**.
- *
- * Rejeitado é o único em `destructive`: é o estado que impede o disparo. Aprovado é o mais quieto de
- * todos porque é o normal — quase todo template está aprovado, e um selo forte em quase toda linha
- * deixa de marcar coisa nenhuma. Cada um leva ícone próprio: o selo aparece em cartão pequeno, onde
- * dois cinzas parecidos a um metro de distância são o mesmo cinza.
+ * A hierarquia é de duas casas — **dá para enviar** ou **não dá** — e o tom segue o que o estado
+ * pede de quem olha: Aprovado é o normal (`done`); Em análise é espera, a Meta ainda não respondeu
+ * (`pending`); Rascunho é o texto que ainda é nosso, sem ação de ninguém (`neutral`); Rejeitado é o
+ * único que impede o disparo e pede conserto (`danger`). O significado está no texto da pílula, a
+ * cor só reforça. O mapeamento está em `docs/ui-patterns.md`, e quem usa passa o estado, não o tom.
  */
-const VISUAL: Record<EstadoMeta, { icone: typeof Check; classe: string }> = {
-  aprovado: { icone: Check, classe: "text-muted-foreground border-border" },
-  em_analise: { icone: Clock, classe: "bg-secondary text-secondary-foreground border-transparent" },
-  rejeitado: {
-    icone: TriangleAlert,
-    classe: "bg-destructive text-destructive-foreground border-transparent",
-  },
-  rascunho: { icone: PencilLine, classe: "text-muted-foreground border-dashed border-border" },
+const TOM: Record<EstadoMeta, TomDeStatus> = {
+  aprovado: "done",
+  em_analise: "pending",
+  rejeitado: "danger",
+  rascunho: "neutral",
 };
 
-export function SeloEstadoMeta({ estado }: { estado: EstadoMeta }) {
-  const { icone: Icone, classe } = VISUAL[estado];
-
+export function SeloEstadoMeta({ estado, className }: { estado: EstadoMeta; className?: string }) {
   return (
-    <Badge variant="outline" className={cn("gap-1.5 font-medium", classe)}>
-      <Icone className="h-3 w-3 shrink-0" aria-hidden />
+    <StatusPill tom={TOM[estado]} className={className}>
       {ESTADOS[estado]}
-    </Badge>
+    </StatusPill>
   );
 }

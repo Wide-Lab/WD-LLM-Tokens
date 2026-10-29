@@ -182,6 +182,11 @@ Base em `lib/grafico.ts`: `eixo`, `tooltipEstilo`, `legendaEstilo`, `TooltipDoTe
 | `/precos` | Vigente | `done` |
 | | Agendado | `progress` |
 | | Sem preço vigente (só há preço futuro) | `pending` |
+| `/whatsapp/templates` | Aprovado | `done` |
+| | Em análise (a Meta ainda não respondeu) | `pending` |
+| | Rascunho (o texto ainda é nosso) | `neutral` |
+| | Rejeitado | `danger` |
+| | Sem preço (cobráveis, `custo: null`) | `pending`, como em `/whatsapp/mensagens` |
 | Importação, prévia | Pronta | `neutral` |
 | | Com erro | `danger` |
 | Importação, resultado | Gravada | `done` |
